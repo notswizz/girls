@@ -20,39 +20,72 @@ export default async function handler(req, res) {
     switch (method) {
       // Get a single model
       case 'GET':
-        const model = await db.collection('models').findOne({ _id: objectId });
-        
-        if (!model) {
-          return res.status(404).json({ error: 'Model not found' });
-        }
-        
-        // Calculate additional stats
-        const stats = await db.collection('images').aggregate([
-          { $match: { modelId: id, isActive: true } },
-          { $group: { 
-            _id: "$modelId", 
-            totalImages: { $sum: 1 },
-            ratedImages: { $sum: { $cond: [{ $gt: ["$timesRated", 0] }, 1, 0] } },
-            averageElo: { $avg: "$elo" },
-            highestElo: { $max: "$elo" },
-            totalWins: { $sum: "$wins" },
-            totalLosses: { $sum: "$losses" }
-          }}
-        ]).toArray();
-        
-        const extendedModel = {
-          ...model,
-          stats: stats.length > 0 ? stats[0] : {
+        try {
+          console.log(`GET /api/models/${id} - Fetching single model`);
+          
+          const model = await db.collection('models').findOne({ _id: objectId });
+          
+          if (!model) {
+            console.log(`Model with ID ${id} not found`);
+            return res.status(404).json({ success: false, error: 'Model not found' });
+          }
+          
+          console.log(`Found model: ${model.name} (${model._id})`);
+          
+          // Calculate additional stats
+          const stats = await db.collection('images').aggregate([
+            { $match: { modelId: id, isActive: true } },
+            { $group: { 
+              _id: "$modelId", 
+              totalImages: { $sum: 1 },
+              ratedImages: { $sum: { $cond: [{ $or: [{ $gt: ["$wins", 0] }, { $gt: ["$losses", 0] }] }, 1, 0] } },
+              averageElo: { $avg: "$elo" },
+              highestElo: { $max: "$elo" },
+              totalWins: { $sum: { $ifNull: ["$wins", 0] } },
+              totalLosses: { $sum: { $ifNull: ["$losses", 0] } }
+            }}
+          ]).toArray();
+          
+          // Calculate model stats
+          const modelStats = stats.length > 0 ? stats[0] : {
             totalImages: 0,
             ratedImages: 0,
             averageElo: 1200,
             highestElo: 1200,
             totalWins: 0,
             totalLosses: 0
-          }
-        };
-        
-        res.status(200).json({ model: extendedModel });
+          };
+          
+          // Calculate win rate
+          const totalMatches = modelStats.totalWins + modelStats.totalLosses;
+          const winRate = totalMatches > 0 ? modelStats.totalWins / totalMatches : 0;
+          
+          // Construct the full model with stats
+          const extendedModel = {
+            ...model,
+            imageCount: modelStats.totalImages || 0,
+            wins: modelStats.totalWins || 0,
+            losses: modelStats.totalLosses || 0,
+            winRate: winRate || 0,
+            elo: modelStats.averageElo > 0 ? modelStats.averageElo : 1200,
+            stats: modelStats
+          };
+          
+          console.log(`Returning model with stats:`, {
+            id: extendedModel._id,
+            name: extendedModel.name,
+            imageCount: extendedModel.imageCount
+          });
+          
+          return res.status(200).json({ 
+            success: true, 
+            model: extendedModel,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error(`Error fetching model with ID ${id}:`, error);
+          return res.status(500).json({ success: false, error: 'Internal Server Error' });
+        }
         break;
         
       // Update a model

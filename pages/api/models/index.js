@@ -12,11 +12,16 @@ export default async function handler(req, res) {
       case 'GET':
         // Fetch models
         try {
+          // Add logging to trace request
+          console.log('GET /api/models - Fetching models');
+          
           const models = await db
             .collection('models')
             .find({ isActive: true })
             .sort({ name: 1 })
             .toArray();
+          
+          console.log(`Found ${models.length} models in database`);
             
           // Get the count of images for each model
           const modelImagesCount = await db.collection('images').aggregate([
@@ -47,19 +52,23 @@ export default async function handler(req, res) {
           // Create a map of model ID to image count
           const modelIdToStats = {};
           modelImagesCount.forEach(item => {
-            modelIdToStats[item._id] = {
-              totalImages: item.count,
-              totalWins: item.totalWins,
-              totalLosses: item.totalLosses,
-              averageElo: item.avgElo,
-              highestElo: item.highestElo,
-              ratedImages: item.ratedImagesCount
-            };
+            if (item && item._id) {
+              modelIdToStats[item._id.toString()] = {
+                totalImages: item.count,
+                totalWins: item.totalWins,
+                totalLosses: item.totalLosses,
+                averageElo: item.avgElo,
+                highestElo: item.highestElo,
+                ratedImages: item.ratedImagesCount
+              };
+            }
           });
           
           // Add the image count to each model
           const modelsWithStats = models.map(model => {
-            const stats = modelIdToStats[model._id] || { 
+            // Convert ObjectId to string for consistent comparison
+            const modelIdStr = model._id.toString();
+            const stats = modelIdToStats[modelIdStr] || { 
               totalImages: 0, 
               totalWins: 0, 
               totalLosses: 0,
@@ -72,18 +81,24 @@ export default async function handler(req, res) {
             const totalMatches = stats.totalWins + stats.totalLosses;
             const winRate = totalMatches > 0 ? stats.totalWins / totalMatches : 0;
             
+            // Ensure all required fields exist
             return { 
               ...model, 
-              imageCount: stats.totalImages,
-              wins: stats.totalWins,
-              losses: stats.totalLosses,
-              winRate: winRate,
+              imageCount: stats.totalImages || 0,
+              wins: stats.totalWins || 0,
+              losses: stats.totalLosses || 0,
+              winRate: winRate || 0,
               elo: stats.averageElo > 0 ? stats.averageElo : null,
               stats: stats
             };
           });
           
-          return res.status(200).json({ success: true, models: modelsWithStats });
+          console.log(`Returning ${modelsWithStats.length} models with stats`);
+          return res.status(200).json({ 
+            success: true, 
+            models: modelsWithStats,
+            timestamp: new Date().toISOString() // Add timestamp for cache validation
+          });
         } catch (error) {
           console.error('Error fetching models:', error);
           return res.status(500).json({ success: false, message: 'Failed to fetch models' });
@@ -93,7 +108,11 @@ export default async function handler(req, res) {
       case 'POST':
         // Create a new model
         try {
-          const { name, description, instagram, twitter, onlyfans } = req.body;
+          console.log('POST /api/models - Creating new model');
+          const { name, username, description, instagram, twitter, onlyfans } = req.body;
+          
+          // Log request body
+          console.log('Request body:', req.body);
           
           if (!name || name.trim() === '') {
             return res.status(400).json({ success: false, message: 'Model name is required' });
@@ -109,16 +128,38 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'A model with this name already exists' });
           }
           
-          const model = new Model({
-            name,
+          // Format username if provided, or generate a default one
+          let formattedUsername = username || '';
+          if (!formattedUsername && name) {
+            // Generate a username based on the first 3 letters of the name + 3 random digits
+            const namePrefix = name.slice(0, 3).toUpperCase();
+            const randomDigits = Math.floor(100 + Math.random() * 900).toString();
+            formattedUsername = namePrefix + randomDigits;
+          }
+          
+          // Make sure username field isn't null or undefined
+          formattedUsername = formattedUsername || '';
+          
+          const modelData = {
+            name: name.trim(),
+            username: formattedUsername,
             description: description || '',
             instagram: instagram || '',
             twitter: twitter || '',
             onlyfans: onlyfans || '',
             isActive: true,
             createdAt: new Date(),
-            updatedAt: new Date()
-          });
+            updatedAt: new Date(),
+            imageCount: 0,
+            averageScore: null,
+            wins: 0,
+            losses: 0,
+            winRate: 0,
+            elo: 1200 // Starting ELO rating
+          };
+          
+          console.log('Creating model with data:', modelData);
+          const model = new Model(modelData);
           
           const result = await db.collection('models').insertOne(model.toDatabase());
           
@@ -126,7 +167,20 @@ export default async function handler(req, res) {
             throw new Error('Failed to create model');
           }
           
-          return res.status(201).json({ success: true, model: { ...model, _id: result.insertedId } });
+          // Retrieve the created model to ensure all fields are present
+          const createdModelFromDb = await db.collection('models').findOne({ _id: result.insertedId });
+          
+          if (!createdModelFromDb) {
+            throw new Error('Model created but failed to retrieve it from the database');
+          }
+          
+          // Return the full model
+          console.log('Successfully created model:', createdModelFromDb);
+          
+          return res.status(201).json({ 
+            success: true, 
+            model: createdModelFromDb 
+          });
         } catch (error) {
           console.error('Error creating model:', error);
           return res.status(500).json({ success: false, message: 'Failed to create model' });

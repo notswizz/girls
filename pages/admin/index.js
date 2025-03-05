@@ -39,40 +39,102 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('models');
   
   const router = useRouter();
-  const { tab, modelId } = router.query;
   
-  // Set active tab based on query parameter
+  // Initial data loading on mount
   useEffect(() => {
-    if (tab && ['models', 'upload', 'create'].includes(tab)) {
+    console.log("Component mounted, fetching initial data...");
+    fetchModels();
+    
+    // Also fetch models when the window regains focus
+    const handleFocus = () => {
+      console.log("Window focused, refreshing models...");
+      fetchModels();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  // Set active tab based on URL query param
+  useEffect(() => {
+    const { tab, modelId } = router.query;
+    
+    // Set active tab based on query param
+    if (tab) {
       setActiveTab(tab);
-      
-      // If modelId is provided and tab is upload, set the selected model
-      if (tab === 'upload' && modelId) {
-        setSelectedModelId(modelId);
+    }
+    
+    // If modelId is provided in query, set the selected model
+    if (modelId) {
+      setSelectedModelId(modelId);
+    }
+  }, [router.query]);
+
+  // When selectedModelId changes and is not empty, fetch the selected model details and images
+  useEffect(() => {
+    if (selectedModelId) {
+      const model = models.find(m => m._id === selectedModelId);
+      if (model) {
+        setSelectedModel({
+          id: model._id,
+          name: model.name,
+          username: model.username || '(No username)'
+        });
+        
+        // If active tab is 'images', fetch images for the selected model
+        if (activeTab === 'images') {
+          fetchModelImages(model._id);
+        }
       }
     }
-  }, [tab, modelId]);
-
-  // Fetch models on component mount
-  useEffect(() => {
-    fetchModels();
-  }, []);
+  }, [selectedModelId, models, activeTab]);
 
   // Fetch models from the API
   const fetchModels = async () => {
     try {
       setIsLoadingModels(true);
-      const response = await fetch('/api/models');
+      
+      // Add cache-busting parameter to avoid stale data
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/models?t=${timestamp}`);
+      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error('Failed to fetch models');
+        throw new Error(data.message || 'Failed to fetch models');
       }
       
-      const data = await response.json();
-      console.log('Fetched models:', data.models);
-      setModels(data.models || []);
-    } catch (err) {
-      console.error('Error fetching models:', err);
+      if (!data.models || !Array.isArray(data.models)) {
+        console.error('Invalid response format. Expected array of models:', data);
+        throw new Error('Invalid response format from server');
+      }
+      
+      // Sort models by name
+      const sortedModels = [...data.models].sort((a, b) => a.name.localeCompare(b.name));
+      console.log("Fetched models:", sortedModels);
+      
+      // Check if we got any models
+      if (sortedModels.length === 0) {
+        console.log("Warning: No models returned from API");
+      } else {
+        console.log(`Fetched ${sortedModels.length} models successfully`);
+      }
+      
+      setModels(sortedModels);
+      
+      // Clear selected model if it's not in the fetched models
+      if (selectedModelId) {
+        const modelExists = sortedModels.some(model => model._id === selectedModelId);
+        if (!modelExists) {
+          setSelectedModelId('');
+          setSelectedModel(null);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error fetching models:', error);
     } finally {
       setIsLoadingModels(false);
     }
@@ -96,15 +158,54 @@ export default function AdminPage() {
       const data = await response.json();
       console.log('Fetched model images:', data);
       
-      setSelectedModel(data.model);
-      setModelImages(data.images || []);
-      setModelStats(data.stats);
+      // Calculate some statistics for this model
+      const totalImages = data.images.length;
+      const ratedImages = data.images.filter(img => img.wins > 0 || img.losses > 0).length;
       
-      // Switch to images tab on mobile
-      setActiveTab('images');
+      // Calculate average score if rated images exist
+      let averageScore = null;
+      if (ratedImages > 0) {
+        const totalScore = data.images.reduce((sum, img) => {
+          if (img.wins === 0 && img.losses === 0) return sum;
+          const score = img.wins / (img.wins + img.losses) * 100;
+          return sum + score;
+        }, 0);
+        averageScore = totalScore / ratedImages;
+      }
+      
+      // Find highest rated image
+      let highestRated = null;
+      if (ratedImages > 0) {
+        highestRated = data.images.reduce((highest, img) => {
+          if (img.wins === 0 && img.losses === 0) return highest;
+          const score = img.wins / (img.wins + img.losses);
+          if (!highest || score > highest.averageScore) {
+            return { ...img, averageScore: score };
+          }
+          return highest;
+        }, null);
+      }
+      
+      setModelStats({
+        totalImages,
+        ratedImages,
+        averageScore,
+        highestRated
+      });
+      
+      // Set images with formatted data
+      setModelImages(data.images.map(img => ({
+        id: img._id,
+        url: img.url,
+        wins: img.wins || 0,
+        losses: img.losses || 0,
+        winRate: img.wins + img.losses > 0 ? (img.wins / (img.wins + img.losses) * 100).toFixed(1) + '%' : 'N/A',
+        elo: img.elo ? Math.round(img.elo) : 'N/A',
+        createdAt: new Date(img.createdAt).toLocaleDateString()
+      })));
+      
     } catch (err) {
       console.error('Error fetching model images:', err);
-      setImageActionError('Failed to load images for this model');
     } finally {
       setIsLoadingModelImages(false);
     }
@@ -331,16 +432,56 @@ export default function AdminPage() {
         throw new Error(data.error || 'Failed to create model');
       }
       
+      console.log("Created model successfully:", data.model);
+      
       // Reset form
       setModelName('');
       setModelUsername(generateModelUsername()); // Generate new random username for next model
       setModelMessage('Model created successfully!');
       
-      // Refresh models list
-      fetchModels();
+      // Get the new model ID
+      const newModelId = data.model._id;
+      
+      // Force refetch models with cache-busting
+      await fetchModels();
+      
+      // ADDITIONAL SAFETY: Get the model directly if it's not in the models list
+      let newlyCreatedModel = models.find(m => m._id === newModelId);
+      
+      if (!newlyCreatedModel) {
+        console.log(`New model ${newModelId} not found in models list, fetching directly...`);
+        try {
+          // Directly fetch the newly created model to ensure we have it
+          const modelResponse = await fetch(`/api/models/${newModelId}?t=${new Date().getTime()}`);
+          if (modelResponse.ok) {
+            const modelData = await modelResponse.json();
+            if (modelData.success && modelData.model) {
+              newlyCreatedModel = modelData.model;
+              // Add to models list if not already there
+              if (!models.some(m => m._id === newModelId)) {
+                setModels(prevModels => [...prevModels, newlyCreatedModel]);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching individual model:", err);
+        }
+      }
+      
+      if (newlyCreatedModel) {
+        // Select the newly created model
+        console.log("Setting selected model to:", newlyCreatedModel);
+        setSelectedModelId(newModelId);
+        setSelectedModel({
+          id: newModelId,
+          name: newlyCreatedModel.name,
+          username: newlyCreatedModel.username || '(No username)'
+        });
+      }
       
       // Switch to upload tab on mobile after successful creation
       setActiveTab('upload');
+      
     } catch (err) {
       console.error('Model creation error:', err);
       setModelError(err.message || 'An unknown error occurred');
@@ -350,81 +491,79 @@ export default function AdminPage() {
   };
 
   return (
-    <AdminLayout title="admin dashboard">
-      <div className="max-w-4xl mx-auto py-8">
+    <AdminLayout title={activeTab}>
+      <div className="space-y-6">
         {/* Mobile Tabs */}
-        <div className="md:hidden mb-6 border-b border-gray-200">
-          <div className="flex space-x-2 overflow-x-auto pb-1">
+        <div className="md:hidden">
+          <div className="flex justify-between overflow-x-auto pb-2 no-scrollbar">
             <button
-              onClick={() => setActiveTab('models')}
-              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
+              className={`px-4 py-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-300 ${
                 activeTab === 'models'
-                  ? 'text-pink-600 border-b-2 border-pink-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-glow-pink'
+                  : 'bg-gray-800 text-gray-300'
               }`}
+              onClick={() => {
+                setActiveTab('models');
+                router.push('/admin', undefined, { shallow: true });
+              }}
             >
-              Add Model
+              Models
             </button>
             <button
-              onClick={() => setActiveTab('upload')}
-              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
+              className={`px-4 py-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-300 ${
                 activeTab === 'upload'
-                  ? 'text-pink-600 border-b-2 border-pink-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-glow-pink'
+                  : 'bg-gray-800 text-gray-300'
               }`}
+              onClick={() => {
+                setActiveTab('upload');
+                router.push('/admin?tab=upload', undefined, { shallow: true });
+              }}
             >
-              Upload Images
+              Upload
             </button>
             <button
-              onClick={() => setActiveTab('list')}
-              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
-                activeTab === 'list'
-                  ? 'text-pink-600 border-b-2 border-pink-500'
-                  : 'text-gray-500 hover:text-gray-700'
+              className={`px-4 py-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-300 ${
+                activeTab === 'images'
+                  ? 'bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow-glow-pink'
+                  : 'bg-gray-800 text-gray-300'
               }`}
+              onClick={() => {
+                setActiveTab('images');
+                router.push('/admin?tab=images', undefined, { shallow: true });
+              }}
+              disabled={!selectedModel}
             >
-              Models List
+              Images
             </button>
-            {selectedModel && (
-              <button
-                onClick={() => setActiveTab('images')}
-                className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
-                  activeTab === 'images'
-                    ? 'text-pink-600 border-b-2 border-pink-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Model Images
-              </button>
-            )}
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Add Model Form */}
-          <div className={`bg-white rounded-2xl shadow-lg p-6 ${activeTab !== 'models' ? 'md:block hidden' : ''}`}>
-            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">Add New Model</h2>
+          <div className={`bg-gray-900 border border-gray-800 rounded-2xl shadow-lg p-6 ${activeTab !== 'models' ? 'md:block hidden' : ''}`}>
+            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent">Add New Model</h2>
             
             {modelMessage && (
-              <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-green-900/20 border border-green-500/20 text-green-400 p-4 rounded-lg mb-4 text-sm">
                 {modelMessage}
               </div>
             )}
             
             {modelError && (
-              <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-red-900/20 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm">
                 {modelError}
               </div>
             )}
             
             <form onSubmit={handleModelSubmit} className="space-y-4">
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Model Name *</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Model Name *</label>
                 <input
                   type="text"
                   value={modelName}
                   onChange={(e) => setModelName(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   disabled={isCreatingModel}
                   required
                   placeholder="Enter model name"
@@ -432,7 +571,7 @@ export default function AdminPage() {
               </div>
               
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Username *</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Username *</label>
                 <div className="flex space-x-2">
                   <input
                     type="text"
@@ -442,9 +581,9 @@ export default function AdminPage() {
                       const formattedValue = e.target.value.slice(0, 6).replace(/[^A-Za-z0-9]/g, '');
                       setModelUsername(formattedValue);
                     }}
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
-                      !isValidModelUsername(modelUsername) && modelUsername ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`w-full p-3 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      !isValidModelUsername(modelUsername) && modelUsername ? 'border-red-500' : 'border-gray-700'
+                    } text-white`}
                     disabled={isCreatingModel}
                     required
                     placeholder="ABC123"
@@ -452,16 +591,16 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => setModelUsername(generateModelUsername())}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200"
+                    className="px-3 py-2 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"
                     disabled={isCreatingModel}
                   >
                     Generate
                   </button>
                 </div>
                 {!isValidModelUsername(modelUsername) && modelUsername && (
-                  <p className="text-xs text-red-500 mt-1">Username must be 3 letters followed by 3 numbers (e.g. ABC123)</p>
+                  <p className="text-xs text-red-400 mt-1">Username must be 3 letters followed by 3 numbers (e.g. ABC123)</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">this 3-letter-3-number id will be displayed publicly in comparisons</p>
+                <p className="text-xs text-gray-400 mt-1">this 3-letter-3-number id will be displayed publicly in comparisons</p>
               </div>
               
               <div>
@@ -470,8 +609,8 @@ export default function AdminPage() {
                   disabled={isCreatingModel || !isValidModelUsername(modelUsername)}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 ${
                     isCreatingModel || !isValidModelUsername(modelUsername)
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-lg'
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:shadow-glow-pink'
                   }`}
                 >
                   {isCreatingModel ? 'Creating...' : 'Create Model'}
@@ -481,43 +620,61 @@ export default function AdminPage() {
           </div>
           
           {/* Upload Image Form */}
-          <div className={`bg-white rounded-2xl shadow-lg p-6 ${activeTab !== 'upload' ? 'md:block hidden' : ''}`}>
-            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">Upload Images</h2>
+          <div className={`bg-gray-900 border border-gray-800 rounded-2xl shadow-lg p-6 ${activeTab !== 'upload' ? 'md:block hidden' : ''}`}>
+            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent">Upload Images</h2>
             
             {uploadMessage && (
-              <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-green-900/20 border border-green-500/20 text-green-400 p-4 rounded-lg mb-4 text-sm">
                 {uploadMessage}
               </div>
             )}
             
             {uploadError && (
-              <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 text-sm">
+              <div className="bg-red-900/20 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm">
                 {uploadError}
               </div>
             )}
             
             <form onSubmit={handleImageSubmit} className="space-y-4">
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Select Model *</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Select Model *</label>
                 <select
                   value={selectedModelId}
-                  onChange={(e) => setSelectedModelId(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  onChange={(e) => {
+                    console.log('Selected model ID:', e.target.value);
+                    setSelectedModelId(e.target.value);
+                    
+                    // If a model is selected, find it and update selectedModel state
+                    if (e.target.value) {
+                      const selectedModel = models.find(m => m._id === e.target.value);
+                      if (selectedModel) {
+                        console.log('Found model:', selectedModel);
+                        setSelectedModel({
+                          id: selectedModel._id,
+                          name: selectedModel.name,
+                          username: selectedModel.username || '(No username)'
+                        });
+                      }
+                    } else {
+                      setSelectedModel(null);
+                    }
+                  }}
+                  className="w-full p-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   disabled={isUploading || isLoadingModels}
                   required
                 >
                   <option value="">Select a model</option>
                   {models.map((model) => (
                     <option key={model._id} value={model._id}>
-                      {model.name}
+                      {model.name} {model.username ? `(${model.username})` : ''}
                     </option>
                   ))}
                 </select>
               </div>
               
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">Images *</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-pink-500 transition-colors">
+                <label className="block text-gray-300 text-sm font-medium mb-2">Images *</label>
+                <div className="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-pink-500 transition-colors">
                   <input
                     type="file"
                     onChange={handleFileChange}
@@ -575,13 +732,13 @@ export default function AdminPage() {
               
               {isUploading && (
                 <div className="mt-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-800 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-pink-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-pink-500 to-blue-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-gray-500 text-center mt-1">
+                  <p className="text-xs text-gray-400 text-center mt-1">
                     Uploading: {uploadProgress}%
                   </p>
                 </div>
@@ -593,8 +750,8 @@ export default function AdminPage() {
                   disabled={isUploading || files.length === 0 || !selectedModelId}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 ${
                     isUploading || files.length === 0 || !selectedModelId
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-lg'
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-pink-500 to-blue-500 text-white hover:shadow-glow-pink'
                   }`}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Images'}
@@ -604,80 +761,68 @@ export default function AdminPage() {
           </div>
           
           {/* Models List */}
-          <div className={`bg-white rounded-2xl shadow-lg p-6 md:col-span-2 ${activeTab !== 'list' ? 'md:block hidden' : ''}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">Models List</h2>
-              <button
-                onClick={fetchModels}
-                className="text-sm text-pink-600 hover:text-pink-700 flex items-center"
-                disabled={isLoadingModels}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
-            </div>
+          <div className={`bg-gray-900 border border-gray-800 rounded-2xl shadow-lg p-6 md:col-span-2 ${activeTab !== 'models' ? 'md:block hidden' : ''}`}>
+            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent">Models</h2>
             
             {isLoadingModels ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-pink-500"></div>
-                <p className="mt-2 text-gray-500 text-sm">Loading models...</p>
+              <div className="text-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto"></div>
+                <p className="mt-3 text-gray-300">Loading models...</p>
               </div>
             ) : models.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No models found. Create a model to get started.
+              <div className="text-center py-10 text-gray-400">
+                <p>No models found. Create your first model to get started.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-800">
+                  <thead className="bg-gray-900">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Model
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Images
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         ELO Rating
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Win/Loss
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Win Rate
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-gray-800/50 divide-y divide-gray-800">
                     {models.map((model, index) => (
-                      <tr key={model._id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <tr key={model._id || index} className={index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50'}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link href={`/admin/models/${model._id}`} className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900 hover:text-purple-600">
-                              {model.username || 'unknown'}
+                            <div className="text-sm font-medium text-gray-200 hover:text-pink-400">
+                              {model.name} <span className="text-xs text-gray-500">({model.username || 'unknown'})</span>
                             </div>
                           </Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{model.imageCount || 0}</div>
+                          <div className="text-sm text-gray-300">{model.imageCount || 0}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-300">
                             {model.elo ? Math.round(model.elo) : 'N/A'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-300">
                             {model.wins || 0}/{model.losses || 0}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-300">
                             {model.winRate !== undefined 
                               ? `${(model.winRate * 100).toFixed(1)}%` 
                               : 'N/A'
@@ -687,13 +832,13 @@ export default function AdminPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <Link 
                             href={`/admin/models/${model._id}`} 
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            className="text-blue-400 hover:text-blue-300 mr-4"
                           >
                             View
                           </Link>
                           <Link 
                             href={`/admin/upload?modelId=${model._id}`} 
-                            className="text-green-600 hover:text-green-900"
+                            className="text-pink-400 hover:text-pink-300"
                           >
                             Upload
                           </Link>
@@ -708,14 +853,14 @@ export default function AdminPage() {
           
           {/* Model Images */}
           {selectedModel && (
-            <div className={`bg-white rounded-2xl shadow-lg p-6 md:col-span-2 ${activeTab !== 'images' ? 'md:block hidden' : ''}`}>
+            <div className={`bg-gray-900 border border-gray-800 rounded-2xl shadow-lg p-6 md:col-span-2 ${activeTab !== 'images' ? 'md:block hidden' : ''}`}>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent">
                   Images for {selectedModel.name}
                 </h2>
                 <button
                   onClick={() => fetchModelImages(selectedModel.id)}
-                  className="text-sm text-pink-600 hover:text-pink-700 flex items-center"
+                  className="text-sm text-pink-400 hover:text-pink-300 flex items-center"
                   disabled={isLoadingModelImages}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -727,27 +872,27 @@ export default function AdminPage() {
               
               {/* Statistics card */}
               {modelStats && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                  <h3 className="text-md font-medium text-gray-700 mb-3">Model Statistics</h3>
+                <div className="bg-gray-800 rounded-xl p-4 mb-6">
+                  <h3 className="text-md font-medium text-gray-300 mb-3">Model Statistics</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                    <div className="bg-gray-900 p-3 rounded-lg shadow-sm">
                       <div className="text-sm text-gray-500">Total Images</div>
-                      <div className="text-xl font-semibold text-gray-800">{modelStats.totalImages}</div>
+                      <div className="text-xl font-semibold text-gray-200">{modelStats.totalImages}</div>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                    <div className="bg-gray-900 p-3 rounded-lg shadow-sm">
                       <div className="text-sm text-gray-500">Rated Images</div>
-                      <div className="text-xl font-semibold text-gray-800">{modelStats.ratedImages}</div>
+                      <div className="text-xl font-semibold text-gray-200">{modelStats.ratedImages}</div>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                    <div className="bg-gray-900 p-3 rounded-lg shadow-sm">
                       <div className="text-sm text-gray-500">Average Score</div>
-                      <div className="text-xl font-semibold text-gray-800">
+                      <div className="text-xl font-semibold text-gray-200">
                         {modelStats.averageScore ? modelStats.averageScore.toFixed(2) : 'N/A'}
                       </div>
                     </div>
                     {modelStats.highestRated && (
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="bg-gray-900 p-3 rounded-lg shadow-sm">
                         <div className="text-sm text-gray-500">Highest Score</div>
-                        <div className="text-xl font-semibold text-gray-800">
+                        <div className="text-xl font-semibold text-gray-200">
                           {modelStats.highestRated.averageScore.toFixed(2)}
                         </div>
                       </div>
@@ -757,31 +902,31 @@ export default function AdminPage() {
               )}
               
               {imageActionMessage && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 text-sm">
+                <div className="bg-green-900/20 border border-green-500/20 text-green-400 p-4 rounded-lg mb-4 text-sm">
                   {imageActionMessage}
                 </div>
               )}
               
               {imageActionError && (
-                <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 text-sm">
+                <div className="bg-red-900/20 border border-red-500/20 text-red-400 p-4 rounded-lg mb-4 text-sm">
                   {imageActionError}
                 </div>
               )}
               
               {isLoadingModelImages ? (
                 <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-pink-500"></div>
-                  <p className="mt-2 text-gray-500 text-sm">Loading images...</p>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-800 border-t-pink-500"></div>
+                  <p className="mt-2 text-gray-400 text-sm">Loading images...</p>
                 </div>
               ) : modelImages.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-400">
                   No images found for this model.
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {modelImages.map((image) => (
                     <div key={image.id} className="relative group">
-                      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                      <div className="bg-gray-800 rounded-lg shadow-md overflow-hidden">
                         <img
                           src={image.url}
                           alt={image.name || 'Image'}
