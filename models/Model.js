@@ -10,6 +10,7 @@ class Model {
     instagram = '',
     twitter = '',
     onlyfans = '',
+    isActive = true,
     createdAt = new Date(),
     imageCount = 0,
     averageScore = null,
@@ -25,6 +26,7 @@ class Model {
     this.instagram = instagram;
     this.twitter = twitter;
     this.onlyfans = onlyfans;
+    this.isActive = isActive;
     this.createdAt = createdAt;
     this.imageCount = imageCount;
     this.averageScore = averageScore;
@@ -43,6 +45,7 @@ class Model {
       instagram: this.instagram,
       twitter: this.twitter,
       onlyfans: this.onlyfans,
+      isActive: this.isActive,
       createdAt: this.createdAt,
       imageCount: this.imageCount,
       averageScore: this.averageScore,
@@ -62,6 +65,7 @@ class Model {
       instagram: doc.instagram || '',
       twitter: doc.twitter || '',
       onlyfans: doc.onlyfans || '',
+      isActive: doc.isActive !== undefined ? doc.isActive : true,
       createdAt: doc.createdAt,
       imageCount: doc.imageCount,
       averageScore: doc.averageScore,

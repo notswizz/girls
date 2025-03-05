@@ -72,19 +72,29 @@ router.post(async (req, res) => {
       
       if (modelId) {
         try {
+          console.log(`Looking up model ID: ${modelId}`);
           const model = await db.collection('models').findOne({ 
             _id: new ObjectId(modelId) 
           });
           
           if (model) {
+            console.log(`Found model: ${model.name} (${model._id})`);
             modelName = model.name;
             modelUsername = model.username || model.name; // Use username if available, fallback to name
             
-            // Increment the image count for this model
-            await db.collection('models').updateOne(
+            // Update the model with increment to imageCount
+            // Also ensure isActive is set to true (in case it was missing)
+            const updateResult = await db.collection('models').updateOne(
               { _id: new ObjectId(modelId) },
-              { $inc: { imageCount: 1 } }
+              { 
+                $inc: { imageCount: 1 },
+                $set: { isActive: true }
+              }
             );
+            
+            console.log(`Updated model ${modelId}, modified: ${updateResult.modifiedCount}`);
+          } else {
+            console.log(`Model ID ${modelId} not found in database`);
           }
         } catch (error) {
           console.error('Error finding model:', error);

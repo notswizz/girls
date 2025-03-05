@@ -365,26 +365,24 @@ export default function AdminPage() {
         }
       });
       
-      // Reset form
+      // Reset form and show success message
       setFiles([]);
       setPreviews([]);
       
-      if (successCount === 0) {
-        setUploadError('Failed to upload any images');
-      } else if (successCount < totalFiles) {
-        setUploadMessage(`Successfully uploaded ${successCount} out of ${totalFiles} images to model: ${modelName}`);
-      } else {
-        setUploadMessage(`Successfully uploaded all ${totalFiles} images to model: ${modelName}!`);
-      }
+      // Force refresh models list to ensure model is still visible after upload
+      console.log("Image upload completed. Refreshing models list...");
+      await fetchModels();
       
-      // Refresh the models list to update image counts
-      fetchModels();
+      if (successCount === totalFiles) {
+        setUploadMessage(`Successfully uploaded ${successCount} images for ${modelName}`);
+      } else {
+        setUploadMessage(`Successfully uploaded ${successCount} out of ${totalFiles} images for ${modelName}`);
+      }
     } catch (err) {
-      console.error('Upload error:', err);
-      setUploadError(err.message || 'An unknown error occurred');
+      console.error('Error uploading images:', err);
+      setUploadError('An error occurred while uploading images. Please try again.');
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -666,10 +664,22 @@ export default function AdminPage() {
                   <option value="">Select a model</option>
                   {models.map((model) => (
                     <option key={model._id} value={model._id}>
-                      {model.name} {model.username ? `(${model.username})` : ''}
+                      {model.name} {model.username ? `(${model.username})` : ''} {model.isActive === false ? '(inactive)' : ''}
                     </option>
                   ))}
                 </select>
+                
+                {/* Add debug button to force refresh models */}
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    console.log('Forcing models refresh...');
+                    fetchModels();
+                  }}
+                  className="mt-2 text-xs text-gray-400 hover:text-pink-400 cursor-pointer underline"
+                >
+                  Refresh Models List
+                </button>
               </div>
               
               <div>

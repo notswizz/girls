@@ -15,14 +15,29 @@ export default async function handler(req, res) {
           // Add logging to trace request
           console.log('GET /api/models - Fetching models');
           
+          // Find all models, including those without isActive set (for backward compatibility)
+          // Models specifically marked as inactive (isActive: false) will still be excluded
           const models = await db
             .collection('models')
-            .find({ isActive: true })
+            .find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] })
             .sort({ name: 1 })
             .toArray();
           
           console.log(`Found ${models.length} models in database`);
-            
+          
+          // For any model without isActive field, update it to set isActive to true
+          const modelsToUpdate = models.filter(m => m.isActive === undefined);
+          if (modelsToUpdate.length > 0) {
+            console.log(`Updating ${modelsToUpdate.length} models to set isActive=true`);
+            const updatePromises = modelsToUpdate.map(model => 
+              db.collection('models').updateOne(
+                { _id: model._id },
+                { $set: { isActive: true } }
+              )
+            );
+            await Promise.all(updatePromises);
+          }
+          
           // Get the count of images for each model
           const modelImagesCount = await db.collection('images').aggregate([
             { $match: { isActive: true } },
