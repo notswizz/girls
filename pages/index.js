@@ -72,21 +72,21 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+    <div className="w-full max-w-md mx-auto px-4 sm:px-0">
+      <h1 className="text-2xl sm:text-3xl font-bold text-center mb-6 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
         Rate 1-3
       </h1>
       
       {loading ? (
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
           <div className="animate-pulse text-pink-500">Loading...</div>
         </div>
       ) : error ? (
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button 
             onClick={fetchNewImage}
-            className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors"
+            className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
           >
             Try Again
           </button>
@@ -98,11 +98,11 @@ export default function Home() {
           onSkip={handleSkip} 
         />
       ) : (
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
           <p className="text-gray-500 mb-4">No images available to rate.</p>
           <button 
             onClick={fetchNewImage}
-            className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors"
+            className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
           >
             Refresh
           </button>

@@ -31,7 +31,7 @@ export default function Leaderboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[300px]">
+      <div className="flex justify-center items-center min-h-[200px]">
         <div className="animate-pulse text-pink-500">Loading leaderboard...</div>
       </div>
     );
@@ -55,35 +55,43 @@ export default function Leaderboard() {
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      <h2 className="text-2xl font-bold text-center py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white">
+      <h2 className="text-xl sm:text-2xl font-bold text-center py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white">
         Top Rated
       </h2>
       
       <div className="divide-y divide-gray-100">
         {leaderboard.map((entry) => (
-          <div key={entry.id} className="flex items-center p-4 hover:bg-gray-50">
-            <div className="font-bold text-2xl text-pink-500 w-12 text-center">
+          <div key={entry.id} className="flex items-center p-3 sm:p-4 hover:bg-gray-50">
+            <div className="font-bold text-xl sm:text-2xl text-pink-500 w-8 sm:w-12 text-center">
               {entry.rank}
             </div>
             
-            <div className="relative w-16 h-16 rounded-full overflow-hidden mr-4">
+            <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden mr-3 sm:mr-4 flex-shrink-0">
               <Image
                 src={entry.url}
                 alt={entry.name || `Rank #${entry.rank}`}
                 fill
+                sizes="(max-width: 768px) 48px, 64px"
                 className="object-cover"
               />
             </div>
             
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">{entry.name || 'Anonymous'}</h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-base sm:text-lg truncate">
+                {entry.name || 'Anonymous'}
+                {entry.modelName && (
+                  <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1 sm:ml-2">
+                    ({entry.modelName})
+                  </span>
+                )}
+              </h3>
               {entry.description && (
-                <p className="text-gray-500 text-sm truncate">{entry.description}</p>
+                <p className="text-gray-500 text-xs sm:text-sm truncate">{entry.description}</p>
               )}
             </div>
             
-            <div className="text-right">
-              <div className="text-2xl font-bold text-pink-500">
+            <div className="text-right ml-2 flex-shrink-0">
+              <div className="text-xl sm:text-2xl font-bold text-pink-500">
                 {entry.averageScore.toFixed(1)}
               </div>
               <div className="text-xs text-gray-500">
