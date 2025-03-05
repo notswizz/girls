@@ -1,68 +1,123 @@
 import Link from 'next/link';
 import Layout from '../components/Layout';
+import Head from 'next/head';
+import { FaFire, FaCrown, FaChartLine, FaHeart, FaArrowRight } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 export default function Home() {
   return (
-    <Layout title="Home">
-      <div className="w-full max-w-4xl mx-auto px-4 py-12 sm:py-20">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-8 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-            Hot or Not
-          </h1>
+    <Layout title="home">
+      <Head>
+        <title>home | hot girl shit</title>
+        <meta name="description" content="rate and compare hot girl shit" />
+      </Head>
+      
+      <div className="w-full max-w-5xl mx-auto px-4 py-8 sm:py-16">
+        {/* Hero Section */}
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="relative mb-6 inline-block">
+            <h1 className="text-5xl sm:text-7xl font-display font-bold mb-4 text-cyber">
+              hot girl shit
+            </h1>
+            <div className="absolute -top-6 -right-6 w-12 h-12 animate-spin-slow opacity-70">
+              <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50,10 L55,30 L75,30 L60,45 L65,65 L50,55 L35,65 L40,45 L25,30 L45,30 L50,10 Z" fill="none" stroke="#FF6AB1" strokeWidth="2" />
+              </svg>
+            </div>
+          </div>
+          
+         
           
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
-            <Link 
-              href="/rate"
-              className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transform transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-md"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
             >
-              Compare Images
-            </Link>
+              <Link 
+                href="/rate"
+                className="group btn-cyber flex items-center justify-center gap-2"
+              >
+                <FaFire className="text-cyber-pink" /> 
+                <span>start rating</span>
+                <FaArrowRight className="ml-2 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
+              </Link>
+            </motion.div>
             
-            <Link 
-              href="/leaderboard"
-              className="px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-full font-medium hover:bg-gray-50 hover:shadow-md hover:scale-105 transform transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-sm"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
             >
-              Leaderboard
-            </Link>
+              <Link 
+                href="/leaderboard"
+                className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-md font-medium hover:bg-white/15 hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                <FaCrown className="text-cyber-yellow" /> 
+                <span>view leaderboard</span>
+              </Link>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:scale-105 transform">
-            <div className="h-40 bg-gradient-to-br from-pink-400 to-purple-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-              </svg>
+        {/* Features Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <motion.div 
+            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <div className="h-40 flex items-center justify-center mb-4">
+              <div className="w-24 h-24 rounded-full bg-cyber-pink/20 flex items-center justify-center relative">
+                <FaHeart className="text-4xl text-cyber-pink" />
+                <div className="absolute inset-0 rounded-full border-2 border-cyber-pink/50 animate-pulse"></div>
+              </div>
             </div>
-            <div className="p-4 text-center">
-              <div className="font-medium text-gray-700">Compare Images</div>
-              <div className="text-sm text-gray-500 mt-1">Select your favorite</div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-2">Compare</h3>
+              <p className="text-white/70">Head-to-head matches to find your favorites</p>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:scale-105 transform">
-            <div className="h-40 bg-gradient-to-br from-purple-400 to-indigo-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <motion.div 
+            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="h-40 flex items-center justify-center mb-4">
+              <div className="w-24 h-24 rounded-full bg-cyber-purple/20 flex items-center justify-center relative">
+                <FaFire className="text-4xl text-cyber-purple" />
+                <div className="absolute inset-0 rounded-full border-2 border-cyber-purple/50 animate-pulse"></div>
+              </div>
             </div>
-            <div className="p-4 text-center">
-              <div className="font-medium text-gray-700">Pick Winners</div>
-              <div className="text-sm text-gray-500 mt-1">One-on-one matches</div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-2">Rate</h3>
+              <p className="text-white/70">Score and rate your favorite models</p>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:scale-105 transform">
-            <div className="h-40 bg-gradient-to-br from-indigo-400 to-blue-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+          <motion.div 
+            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="h-40 flex items-center justify-center mb-4">
+              <div className="w-24 h-24 rounded-full bg-cyber-blue/20 flex items-center justify-center relative">
+                <FaChartLine className="text-4xl text-cyber-blue" />
+                <div className="absolute inset-0 rounded-full border-2 border-cyber-blue/50 animate-pulse"></div>
+              </div>
             </div>
-            <div className="p-4 text-center">
-              <div className="font-medium text-gray-700">View Results</div>
-              <div className="text-sm text-gray-500 mt-1">Check the leaderboard</div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-2">Track</h3>
+              <p className="text-white/70">Follow rankings on the leaderboard</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </Layout>

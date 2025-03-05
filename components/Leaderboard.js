@@ -78,16 +78,18 @@ export default function Leaderboard() {
             
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-base sm:text-lg truncate">
-                {entry.name || 'Anonymous'}
-                {entry.modelName && (
-                  <span className="text-xs sm:text-sm font-normal text-gray-500 ml-1 sm:ml-2">
-                    ({entry.modelName})
-                  </span>
+                <div className="text-lg font-semibold">
+                  {entry.name}
+                  {entry.modelUsername && (
+                    <span className="text-sm text-gray-500 ml-2">
+                      ({entry.modelUsername})
+                    </span>
+                  )}
+                </div>
+                {entry.description && (
+                  <p className="text-gray-500 text-xs sm:text-sm truncate">{entry.description}</p>
                 )}
               </h3>
-              {entry.description && (
-                <p className="text-gray-500 text-xs sm:text-sm truncate">{entry.description}</p>
-              )}
             </div>
             
             <div className="text-right ml-2 flex-shrink-0">

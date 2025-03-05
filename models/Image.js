@@ -9,6 +9,7 @@ class Image {
     description = '',
     modelId = null,
     modelName = '',
+    modelUsername = '',
     createdAt = new Date(),
     isActive = true,
     averageScore = null,
@@ -25,6 +26,7 @@ class Image {
     this.description = description;
     this.modelId = modelId;
     this.modelName = modelName;
+    this.modelUsername = modelUsername;
     this.createdAt = createdAt;
     this.isActive = isActive;
     this.averageScore = averageScore;
@@ -43,6 +45,7 @@ class Image {
       description: this.description,
       modelId: this.modelId,
       modelName: this.modelName,
+      modelUsername: this.modelUsername,
       createdAt: this.createdAt,
       isActive: this.isActive,
       averageScore: this.averageScore,
@@ -59,10 +62,11 @@ class Image {
     return new Image({
       _id: doc._id,
       url: doc.url,
-      name: doc.name || '',
-      description: doc.description || '',
+      name: doc.name,
+      description: doc.description,
       modelId: doc.modelId,
       modelName: doc.modelName || '',
+      modelUsername: doc.modelUsername || doc.modelName || '', // Default to modelName if username not set
       createdAt: doc.createdAt,
       isActive: doc.isActive !== false,
       averageScore: doc.averageScore,

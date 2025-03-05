@@ -67,6 +67,7 @@ router.post(async (req, res) => {
       
       // Get model information if modelId is provided
       let modelName = '';
+      let modelUsername = '';
       const modelId = req.body.modelId;
       
       if (modelId) {
@@ -77,6 +78,7 @@ router.post(async (req, res) => {
           
           if (model) {
             modelName = model.name;
+            modelUsername = model.username || model.name; // Use username if available, fallback to name
             
             // Increment the image count for this model
             await db.collection('models').updateOne(
@@ -90,15 +92,21 @@ router.post(async (req, res) => {
         }
       }
       
-      // Create new image record
-      const newImage = new Image({
-        url: req.file.location, // S3 url from multer-s3
+      // Save image to database
+      const imageData = {
+        url: req.file.location,
+        key: req.file.key,
         name: req.body.name || '',
         description: req.body.description || '',
-        modelId: modelId || null,
+        modelId: modelId ? new ObjectId(modelId) : null,
         modelName: modelName,
-        uploadedAt: new Date(),
-      });
+        modelUsername: modelUsername, // Set the username from the model
+        createdAt: new Date(),
+        isActive: true
+      };
+
+      // Create new image record
+      const newImage = new Image(imageData);
 
       // Save to database
       const result = await db.collection('images').insertOne(newImage.toDatabase());

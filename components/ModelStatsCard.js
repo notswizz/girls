@@ -18,7 +18,7 @@ export default function ModelStatsCard({ model }) {
     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
         <h3 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-          {model.name} Statistics
+          {model.username || 'unknown'} statistics
         </h3>
         
         <div className="mt-2 sm:mt-0 flex space-x-2">

@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import AdminLayout from '../../components/AdminLayout';
 import { useRouter } from 'next/router';
+import { generateModelUsername, isValidModelUsername } from '../../utils/idGenerator';
 
 export default function AdminPage() {
   // Image upload state
@@ -16,6 +17,7 @@ export default function AdminPage() {
   
   // Model form state
   const [modelName, setModelName] = useState('');
+  const [modelUsername, setModelUsername] = useState('');
   const [isCreatingModel, setIsCreatingModel] = useState(false);
   const [modelMessage, setModelMessage] = useState(null);
   const [modelError, setModelError] = useState(null);
@@ -285,6 +287,11 @@ export default function AdminPage() {
     }
   };
 
+  // Generate a random username when the component mounts
+  useEffect(() => {
+    setModelUsername(generateModelUsername());
+  }, []);
+
   // Handle model form submission
   const handleModelSubmit = async (e) => {
     e.preventDefault();
@@ -294,10 +301,18 @@ export default function AdminPage() {
       return;
     }
     
+    if (!isValidModelUsername(modelUsername)) {
+      setModelError('Valid username is required (3 letters followed by 3 numbers)');
+      return;
+    }
+    
     try {
       setIsCreatingModel(true);
       setModelError(null);
       setModelMessage(null);
+      
+      // Format username to ensure correct format (capital letters + numbers)
+      const formattedUsername = modelUsername.substring(0, 3).toUpperCase() + modelUsername.substring(3);
       
       const response = await fetch('/api/models', {
         method: 'POST',
@@ -306,6 +321,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           name: modelName.trim(),
+          username: formattedUsername,
         }),
       });
       
@@ -317,6 +333,7 @@ export default function AdminPage() {
       
       // Reset form
       setModelName('');
+      setModelUsername(generateModelUsername()); // Generate new random username for next model
       setModelMessage('Model created successfully!');
       
       // Refresh models list
@@ -333,7 +350,7 @@ export default function AdminPage() {
   };
 
   return (
-    <AdminLayout title="Admin Dashboard">
+    <AdminLayout title="admin dashboard">
       <div className="max-w-4xl mx-auto py-8">
         {/* Mobile Tabs */}
         <div className="md:hidden mb-6 border-b border-gray-200">
@@ -415,11 +432,44 @@ export default function AdminPage() {
               </div>
               
               <div>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Username *</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={modelUsername}
+                    onChange={(e) => {
+                      // Convert to uppercase for letters and limit to 6 characters
+                      const formattedValue = e.target.value.slice(0, 6).replace(/[^A-Za-z0-9]/g, '');
+                      setModelUsername(formattedValue);
+                    }}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      !isValidModelUsername(modelUsername) && modelUsername ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    disabled={isCreatingModel}
+                    required
+                    placeholder="ABC123"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setModelUsername(generateModelUsername())}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200"
+                    disabled={isCreatingModel}
+                  >
+                    Generate
+                  </button>
+                </div>
+                {!isValidModelUsername(modelUsername) && modelUsername && (
+                  <p className="text-xs text-red-500 mt-1">Username must be 3 letters followed by 3 numbers (e.g. ABC123)</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">this 3-letter-3-number id will be displayed publicly in comparisons</p>
+              </div>
+              
+              <div>
                 <button
                   type="submit"
-                  disabled={isCreatingModel}
+                  disabled={isCreatingModel || !isValidModelUsername(modelUsername)}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-300 ${
-                    isCreatingModel
+                    isCreatingModel || !isValidModelUsername(modelUsername)
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-lg'
                   }`}
@@ -609,7 +659,7 @@ export default function AdminPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link href={`/admin/models/${model._id}`} className="flex items-center">
                             <div className="text-sm font-medium text-gray-900 hover:text-purple-600">
-                              {model.name}
+                              {model.username || 'unknown'}
                             </div>
                           </Link>
                         </td>

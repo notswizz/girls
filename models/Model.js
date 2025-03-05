@@ -5,6 +5,7 @@ class Model {
   constructor({
     _id = null,
     name = '',
+    username = '',
     description = '',
     instagram = '',
     twitter = '',
@@ -19,6 +20,7 @@ class Model {
   }) {
     this._id = _id;
     this.name = name;
+    this.username = username;
     this.description = description;
     this.instagram = instagram;
     this.twitter = twitter;
@@ -36,6 +38,7 @@ class Model {
   toDatabase() {
     return {
       name: this.name,
+      username: this.username,
       description: this.description,
       instagram: this.instagram,
       twitter: this.twitter,
@@ -54,6 +57,7 @@ class Model {
     return new Model({
       _id: doc._id,
       name: doc.name,
+      username: doc.username || '',
       description: doc.description,
       instagram: doc.instagram || '',
       twitter: doc.twitter || '',

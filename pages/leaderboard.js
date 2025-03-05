@@ -51,8 +51,8 @@ export default function LeaderboardPage() {
   return (
     <Layout>
       <Head>
-        <title>Leaderboard | Hot or Not</title>
-        <meta name="description" content="View the highest ranked models and images" />
+        <title>leaderboard | hot girl shit</title>
+        <meta name="description" content="view the highest ranked models and images" />
       </Head>
       
       <div className="min-h-screen bg-gray-50 pt-8 pb-12">
@@ -145,11 +145,11 @@ export default function LeaderboardPage() {
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
                                 <span className="text-purple-800 font-bold">
-                                  {model.name.substring(0, 1).toUpperCase()}
+                                  {model.username ? model.username.substring(0, 1) : '?'}
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{model.name}</div>
+                                <div className="text-sm font-medium text-gray-900">{model.username || 'unknown'}</div>
                                 {model.instagram && (
                                   <div className="text-sm text-gray-500">
                                     <a 
@@ -220,12 +220,12 @@ export default function LeaderboardPage() {
                       <div className="p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="text-sm font-medium text-gray-900">
-                            {image.modelName || 'Unknown Model'}
+                            {image.modelUsername || 'unknown'}
                           </div>
                           <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                            {image.wins && (image.wins + image.losses) > 0
-                              ? `${((image.wins / (image.wins + image.losses)) * 100).toFixed(1)}% wins`
-                              : 'No ratings'
+                            {((image.wins || 0) + (image.losses || 0)) > 0
+                              ? `${(((image.wins || 0) / ((image.wins || 0) + (image.losses || 0))) * 100).toFixed(1)}% wins`
+                              : '0% wins'
                             }
                           </div>
                         </div>

@@ -131,6 +131,14 @@ export default async function handler(req, res) {
         });
       }
       
+      // Log the images data for debugging
+      console.log('SELECTED IMAGES DATA:', selectedImages.map(img => ({
+        id: img._id.toString(),
+        modelName: img.modelName,
+        modelUsername: img.modelUsername || '[MISSING]',
+        url: img.url.substring(0, 50) + '...' // Truncate URL for readability
+      })));
+      
       return res.status(200).json({
         success: true,
         images: selectedImages

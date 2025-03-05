@@ -1,4 +1,4 @@
-# Hot or Not App
+# hot girl shit
 
 A web application for rating and comparing images from different models.
 
@@ -37,7 +37,7 @@ This repository includes a script to easily push your changes to GitHub. The scr
 If this is your first time using the script with a new repository:
 
 1. Create a repository on GitHub
-2. When prompted by the script, enter your GitHub repository URL (e.g., `https://github.com/username/hot-or-not.git`)
+2. When prompted by the script, enter your GitHub repository URL (e.g., `https://github.com/username/hot-girl-shit.git`)
 
 ## Application Features
 
@@ -89,7 +89,7 @@ Create a `.env.local` file in the root directory with the following variables:
 ```
 # MongoDB
 MONGODB_URI=your_mongodb_connection_string
-MONGODB_DB=hotornot
+MONGODB_DB=hotgirlshit
 
 # AWS S3
 AWS_ACCESS_KEY_ID=your_aws_access_key
@@ -120,32 +120,18 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ### Rating Images
 
 - Visit the homepage to start rating images
-- Rate each image on a scale of 1-3
-- Skip images you don't want to rate
+- Compare images side by side and choose your favorite
+- Watch ELO ratings update in real-time
 
 ### Viewing the Leaderboard
 
-- Navigate to the Leaderboard page to see the highest-rated images
+- Navigate to the Leaderboard page to see the highest-rated models and images
 
 ### Admin Dashboard
 
 - Access the admin dashboard at `/admin`
 - Upload new images with optional name and description
-
-## Deployment
-
-This application can be deployed to Vercel, Netlify, or any other Next.js-compatible hosting platform.
-
-## License
-
-MIT
-
-## Acknowledgements
-
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [MongoDB](https://www.mongodb.com/)
-- [AWS S3](https://aws.amazon.com/s3/)
+- Manage models and their social media profiles
 
 ## First-time Setup
 

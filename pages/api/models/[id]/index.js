@@ -57,64 +57,87 @@ export default async function handler(req, res) {
         
       // Update a model
       case 'PUT':
-        const { name, description, instagram, twitter, onlyfans } = req.body;
-        
-        // Validate input
-        if (!name) {
-          return res.status(400).json({ error: 'Model name is required' });
-        }
-        
-        // Check if the model exists
-        const existingModel = await db.collection('models').findOne({ _id: objectId });
-        if (!existingModel) {
-          return res.status(404).json({ error: 'Model not found' });
-        }
-        
-        // Check if name is changed and if new name already exists
-        if (name !== existingModel.name) {
-          const nameExists = await db.collection('models').findOne({ 
+        try {
+          const { id } = req.query;
+          
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid model ID format' });
+          }
+          
+          const { name, username, description, instagram, twitter, onlyfans } = req.body;
+          
+          // Validate required fields
+          if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Model name is required' });
+          }
+          
+          if (!username || username.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Username is required' });
+          }
+          
+          // Check if another model with this name exists (excluding this model)
+          const existingModel = await db.collection('models').findOne({ 
+            _id: { $ne: new ObjectId(id) },
             name: { $regex: new RegExp(`^${name}$`, 'i') },
-            _id: { $ne: objectId }
+            isActive: true
           });
           
-          if (nameExists) {
-            return res.status(400).json({ error: 'A model with this name already exists' });
+          if (existingModel) {
+            return res.status(400).json({ success: false, message: 'Another model with this name already exists' });
           }
-        }
-        
-        // Update model
-        const updatedModel = {
-          ...existingModel,
-          name,
-          description: description || '',
-          instagram: instagram || '',
-          twitter: twitter || '',
-          onlyfans: onlyfans || '',
-          updatedAt: new Date()
-        };
-        
-        // Update in database
-        const result = await db.collection('models').updateOne(
-          { _id: objectId },
-          { $set: updatedModel }
-        );
-        
-        if (result.modifiedCount === 0) {
-          return res.status(400).json({ error: 'Failed to update model' });
-        }
-        
-        // If model name was changed, update modelName in all associated images
-        if (name !== existingModel.name) {
-          await db.collection('images').updateMany(
-            { modelId: id },
-            { $set: { modelName: name } }
+          
+          // Get the current model to check if username has changed
+          const currentModel = await db.collection('models').findOne({ _id: new ObjectId(id) });
+          const usernameChanged = currentModel && currentModel.username !== username;
+          
+          // Update the model
+          const result = await db.collection('models').updateOne(
+            { _id: new ObjectId(id) },
+            { 
+              $set: { 
+                name,
+                username,
+                description: description || '',
+                instagram: instagram || '',
+                twitter: twitter || '',
+                onlyfans: onlyfans || '',
+                updatedAt: new Date()
+              } 
+            }
           );
+          
+          if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: 'Model not found' });
+          }
+          
+          // If username was changed, update all associated images
+          if (usernameChanged) {
+            const imageUpdateResult = await db.collection('images').updateMany(
+              { modelId: new ObjectId(id) },
+              { $set: { modelUsername: username } }
+            );
+            
+            console.log(`Updated modelUsername for ${imageUpdateResult.modifiedCount} images`);
+          }
+          
+          // If model name was changed, update modelName in all associated images
+          if (currentModel && currentModel.name !== name) {
+            const imageNameUpdateResult = await db.collection('images').updateMany(
+              { modelId: new ObjectId(id) },
+              { $set: { modelName: name } }
+            );
+            
+            console.log(`Updated modelName for ${imageNameUpdateResult.modifiedCount} images`);
+          }
+          
+          // Get the updated model
+          const updatedModel = await db.collection('models').findOne({ _id: new ObjectId(id) });
+          
+          return res.status(200).json({ success: true, model: updatedModel });
+        } catch (error) {
+          console.error('Error updating model:', error);
+          return res.status(500).json({ success: false, message: 'Failed to update model' });
         }
-        
-        res.status(200).json({ 
-          message: 'Model updated successfully',
-          model: updatedModel
-        });
         break;
         
       // Delete a model

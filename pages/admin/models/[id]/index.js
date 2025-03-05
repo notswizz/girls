@@ -122,8 +122,8 @@ export default function ModelDetailPage() {
         return [...images].sort((a, b) => (b.wins || 0) - (a.wins || 0));
       case 'best-win-rate':
         return [...images].sort((a, b) => {
-          const rateA = a.wins && (a.wins + a.losses) > 0 ? a.wins / (a.wins + a.losses) : 0;
-          const rateB = b.wins && (b.wins + b.losses) > 0 ? b.wins / (b.wins + b.losses) : 0;
+          const rateA = ((a.wins || 0) + (a.losses || 0)) > 0 ? (a.wins || 0) / ((a.wins || 0) + (a.losses || 0)) : 0;
+          const rateB = ((b.wins || 0) + (b.losses || 0)) > 0 ? (b.wins || 0) / ((b.wins || 0) + (b.losses || 0)) : 0;
           return rateB - rateA;
         });
       default:
@@ -203,7 +203,7 @@ export default function ModelDetailPage() {
   return (
     <AdminLayout>
       <Head>
-        <title>{model.name} | Model Details | Admin</title>
+        <title>{model.username || 'unknown'} | model details | admin</title>
       </Head>
       
       <div className="mb-6 flex items-center justify-between">
@@ -212,7 +212,8 @@ export default function ModelDetailPage() {
             ← Back to Models
           </Link>
           <h1 className="text-2xl font-bold mt-2">
-            {model.name}
+            {model.username || 'unknown'} 
+            <span className="text-sm font-normal text-gray-500 ml-2">({model.name})</span>
           </h1>
         </div>
         
@@ -333,8 +334,8 @@ export default function ModelDetailPage() {
                     <div>Wins: <span className="text-green-600 font-medium">{image.wins || 0}</span></div>
                     <div>Losses: <span className="text-red-600 font-medium">{image.losses || 0}</span></div>
                     <div>Win Rate: <span className="font-medium">
-                      {image.wins && (image.wins + image.losses) > 0
-                        ? `${((image.wins / (image.wins + image.losses)) * 100).toFixed(1)}%`
+                      {((image.wins || 0) + (image.losses || 0)) > 0
+                        ? `${(((image.wins || 0) / ((image.wins || 0) + (image.losses || 0))) * 100).toFixed(1)}%`
                         : 'N/A'}
                     </span></div>
                     <div>Rated: <span className="font-medium">{image.wins + image.losses || 0}</span></div>

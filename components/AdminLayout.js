@@ -3,23 +3,23 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 
-export default function AdminLayout({ children, title = 'Admin' }) {
+export default function AdminLayout({ children, title = 'admin' }) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Admin navigation items
   const navItems = [
-    { name: 'Dashboard', path: '/admin' },
-    { name: 'Upload', path: '/admin/upload' },
-    { name: 'Models', path: '/admin/models' },
-    { name: 'Site', path: '/' },
+    { name: 'dashboard', path: '/admin' },
+    { name: 'upload', path: '/admin/upload' },
+    { name: 'models', path: '/admin/models' },
+    { name: 'site', path: '/' },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Head>
-        <title>{title} | Admin | Hot or Not</title>
-        <meta name="description" content="Admin dashboard for Hot or Not app" />
+        <title>{title} | admin | hot girl shit</title>
+        <meta name="description" content="admin dashboard for hot girl shit" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -29,7 +29,7 @@ export default function AdminLayout({ children, title = 'Admin' }) {
           <div className="flex justify-between h-16">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/admin" className="font-bold text-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 bg-clip-text text-transparent">
-                Admin Dashboard
+                admin dashboard
               </Link>
             </div>
             
