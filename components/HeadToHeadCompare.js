@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 
 export default function HeadToHeadCompare() {
   const [images, setImages] = useState([]);
@@ -8,6 +9,8 @@ export default function HeadToHeadCompare() {
   const [error, setError] = useState(null);
   const [selectedImageId, setSelectedImageId] = useState(null);
   const [fullViewImage, setFullViewImage] = useState(null);
+  const [celebratingId, setCelebratingId] = useState(null);
+  const confettiCanvasRef = useRef(null);
 
   // Fetch images for comparison
   const fetchImages = async () => {
@@ -15,6 +18,7 @@ export default function HeadToHeadCompare() {
       setLoading(true);
       setError(null);
       setSelectedImageId(null);
+      setCelebratingId(null);
       
       const response = await fetch('/api/images/compare?count=2');
       
@@ -49,12 +53,59 @@ export default function HeadToHeadCompare() {
     fetchImages();
   }, []);
 
+  // Fire confetti and celebration effects
+  const fireCelebrationEffects = () => {
+    // Multiple confetti bursts
+    const duration = 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+    
+    const randomInRange = (min, max) => Math.random() * (max - min) + min;
+    
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+      
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+      
+      const particleCount = 50 * (timeLeft / duration);
+      
+      // Left side confetti
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: randomInRange(0.3, 0.7) },
+        colors: ['#FF00A0', '#9b30ff', '#4CC9F0']
+      });
+      
+      // Right side confetti
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: randomInRange(0.3, 0.7) },
+        colors: ['#F038FF', '#6EE7B7', '#3CFFE6']
+      });
+      
+      // Top center explosion
+      confetti({
+        ...defaults,
+        particleCount: particleCount * 0.5,
+        origin: { x: 0.5, y: 0.2 },
+        gravity: 1.2,
+        scalar: 1.2
+      });
+    }, 150);
+  };
+
   // Handle selection
   const handleSelect = async (winnerImageId) => {
     if (!winnerImageId || loading || images.length < 2) return;
     
-    setLoading(true);
+    // Trigger celebration effects instantly
+    setCelebratingId(winnerImageId);
     setSelectedImageId(winnerImageId);
+    fireCelebrationEffects();
     
     // Find the winner and loser images
     const winnerImage = images.find(img => img._id === winnerImageId);
@@ -62,7 +113,7 @@ export default function HeadToHeadCompare() {
     
     if (!winnerImage || !loserImage) {
       setError('Could not identify winner and loser');
-      setLoading(false);
+      setCelebratingId(null);
       return;
     }
     
@@ -84,14 +135,20 @@ export default function HeadToHeadCompare() {
         throw new Error(errorData.message || 'Failed to submit comparison');
       }
       
-      // Fetch new images after a delay
+      // Show celebration for a moment, then transition to loading state
       setTimeout(() => {
-        fetchImages();
-      }, 1500);
+        setLoading(true);
+        
+        // Finally, fetch new images after the transition
+        setTimeout(() => {
+          setCelebratingId(null);
+          fetchImages();
+        }, 300);
+      }, 900);
     } catch (err) {
       console.error('Error submitting comparison:', err);
       setError(err.message);
-      setLoading(false);
+      setCelebratingId(null);
     }
   };
 
@@ -124,8 +181,26 @@ export default function HeadToHeadCompare() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto pt-0">
-      {loading ? (
+    <div className="w-full max-w-6xl mx-auto pt-0 relative">
+      {/* Hidden canvas for confetti (needed for some browsers) */}
+      <canvas 
+        ref={confettiCanvasRef} 
+        className="fixed inset-0 pointer-events-none z-50 opacity-0" 
+        style={{ width: '100vw', height: '100vh' }}
+      />
+      
+      {/* Loading spinner overlaid during transition */}
+      {loading && celebratingId && (
+        <div className="absolute inset-0 flex justify-center items-center z-30 bg-black/30 backdrop-blur-sm">
+          <div className="relative">
+            <div className="w-16 h-16 border-t-4 border-b-4 border-cyber-pink rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-r-4 border-l-4 border-cyber-blue rounded-full animate-spin-slow absolute top-0 left-0"></div>
+            <div className="w-8 h-8 bg-gradient-to-br from-cyber-pink to-cyber-purple rounded-full absolute top-4 left-4 animate-pulse"></div>
+          </div>
+        </div>
+      )}
+      
+      {loading && !celebratingId ? (
         <div className="flex justify-center items-center h-[60vh]">
           <div className="relative">
             <div className="w-16 h-16 border-t-4 border-b-4 border-cyber-pink rounded-full animate-spin"></div>
@@ -148,24 +223,44 @@ export default function HeadToHeadCompare() {
                 key={image._id}
                 className={`relative md:flex-1 h-[60vh] md:h-[75vh] min-h-[400px] rounded-xl overflow-hidden transition-all duration-300 group mb-8 md:mb-0 ${
                   selectedImageId === image._id ? 'scale-105 z-10' : ''
-                }`}
+                } ${celebratingId === image._id ? 'celebration-glow' : ''}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.2 }}
                 whileHover={selectedImageId === null ? { scale: 1.03 } : {}}
                 onClick={() => !loading && handleSelect(image._id)}
               >
+                {/* Pulsing particles on celebrating image */}
+                {celebratingId === image._id && (
+                  <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                    {[...Array(20)].map((_, i) => (
+                      <div 
+                        key={i}
+                        className="absolute w-2 h-2 rounded-full bg-gradient-to-r from-cyber-pink to-cyber-blue animate-float-outward"
+                        style={{
+                          left: `${Math.random() * 100}%`,
+                          top: `${Math.random() * 100}%`,
+                          animationDelay: `${Math.random() * 1000}ms`,
+                          opacity: 0.7
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+                
                 {/* Image border effect */}
                 <div className={`absolute inset-0 rounded-xl p-1 ${
                   selectedImageId === image._id
-                    ? 'bg-gradient-to-r from-cyber-pink via-cyber-purple to-cyber-blue animate-shimmer' 
+                    ? 'bg-gradient-to-r from-cyber-pink via-cyber-purple to-cyber-blue animate-shimmer shadow-xl' 
                     : 'bg-gradient-to-r from-white/10 to-white/5'
                 }`}>
                   <div className="absolute inset-0 rounded-lg overflow-hidden">
                     <img 
                       src={image.url} 
                       alt={image.name || `Image ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover transition-all duration-300 ${
+                        celebratingId === image._id ? 'scale-105 brightness-110' : ''
+                      }`}
                     />
                   </div>
                 </div>
@@ -300,6 +395,39 @@ export default function HeadToHeadCompare() {
           </AnimatePresence>
         </div>
       )}
+      
+      <style jsx global>{`
+        .celebration-glow {
+          box-shadow: 0 0 15px 5px rgba(255, 0, 160, 0.5), 0 0 30px 15px rgba(76, 201, 240, 0.3);
+          animation: pulse-glow 1s infinite alternate;
+        }
+        
+        @keyframes pulse-glow {
+          from {
+            box-shadow: 0 0 15px 5px rgba(255, 0, 160, 0.5), 0 0 30px 15px rgba(76, 201, 240, 0.3);
+          }
+          to {
+            box-shadow: 0 0 25px 10px rgba(255, 0, 160, 0.6), 0 0 50px 25px rgba(76, 201, 240, 0.4);
+          }
+        }
+        
+        @keyframes float-outward {
+          0% {
+            transform: scale(0.5) translate(0, 0);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(2) translate(var(--x, 50px), var(--y, 50px));
+            opacity: 0;
+          }
+        }
+        
+        .animate-float-outward {
+          --x: ${Math.random() * 100 - 50}px;
+          --y: ${Math.random() * 100 - 50}px;
+          animation: float-outward 1.5s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 } 
