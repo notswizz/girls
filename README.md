@@ -1,6 +1,60 @@
-# Hot or Not - Image Rating App
+# Hot or Not App
 
-A modern web application built with Next.js, Tailwind CSS, MongoDB, and AWS S3 that allows users to rate images on a scale of 1-3.
+A web application for rating and comparing images from different models.
+
+## GitHub Push Script
+
+This repository includes a script to easily push your changes to GitHub. The script will:
+
+1. Check if you're in a git repository
+2. Show the current git status
+3. Ask for confirmation before proceeding
+4. Stage all changes
+5. Prompt you for a commit message
+6. Commit the changes
+7. Push to GitHub
+
+### How to Use the Script
+
+1. Make sure the script is executable:
+   ```bash
+   chmod +x push-to-github.sh
+   ```
+
+2. Run the script:
+   ```bash
+   ./push-to-github.sh
+   ```
+
+3. Follow the prompts:
+   - Confirm you want to push changes
+   - Enter a commit message
+   - If no remote is set up, you'll be asked to add one
+   - Choose which branch to push to
+
+### First-Time Setup
+
+If this is your first time using the script with a new repository:
+
+1. Create a repository on GitHub
+2. When prompted by the script, enter your GitHub repository URL (e.g., `https://github.com/username/hot-or-not.git`)
+
+## Application Features
+
+- Rate images individually or compare multiple images
+- Leaderboard to see the highest-rated models
+- Admin interface for managing models and uploading images
+- Mobile-friendly responsive design
+
+## Development
+
+To run the development server:
+
+```bash
+npm run dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Features
 
