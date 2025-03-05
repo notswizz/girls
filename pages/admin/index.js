@@ -22,8 +22,17 @@ export default function AdminPage() {
   const [models, setModels] = useState([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   
+  // Model images state
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [modelImages, setModelImages] = useState([]);
+  const [modelStats, setModelStats] = useState(null);
+  const [isLoadingModelImages, setIsLoadingModelImages] = useState(false);
+  const [imageActionMessage, setImageActionMessage] = useState(null);
+  const [imageActionError, setImageActionError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Tab state for mobile
-  const [activeTab, setActiveTab] = useState('upload'); // 'models', 'upload', 'list'
+  const [activeTab, setActiveTab] = useState('upload'); // 'models', 'upload', 'list', 'images'
 
   // Fetch models on component mount
   useEffect(() => {
@@ -47,6 +56,82 @@ export default function AdminPage() {
       console.error('Error fetching models:', err);
     } finally {
       setIsLoadingModels(false);
+    }
+  };
+
+  // Fetch images for a specific model
+  const fetchModelImages = async (modelId) => {
+    if (!modelId) return;
+    
+    try {
+      setIsLoadingModelImages(true);
+      setImageActionMessage(null);
+      setImageActionError(null);
+      
+      const response = await fetch(`/api/models/${modelId}/images`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch model images');
+      }
+      
+      const data = await response.json();
+      console.log('Fetched model images:', data);
+      
+      setSelectedModel(data.model);
+      setModelImages(data.images || []);
+      setModelStats(data.stats);
+      
+      // Switch to images tab on mobile
+      setActiveTab('images');
+    } catch (err) {
+      console.error('Error fetching model images:', err);
+      setImageActionError('Failed to load images for this model');
+    } finally {
+      setIsLoadingModelImages(false);
+    }
+  };
+
+  // Delete an image
+  const deleteImage = async (imageId) => {
+    if (!imageId || isDeleting) return;
+    
+    if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setIsDeleting(true);
+      setImageActionMessage(null);
+      setImageActionError(null);
+      
+      const response = await fetch(`/api/images/delete?id=${imageId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete image');
+      }
+      
+      // Remove the image from the list
+      setModelImages(modelImages.filter(img => img.id.toString() !== imageId.toString()));
+      
+      // Update stats
+      if (selectedModel && data.modelId === selectedModel.id) {
+        // Fetch updated model images to refresh stats
+        await fetchModelImages(data.modelId);
+      }
+      
+      setImageActionMessage('Image deleted successfully');
+      
+      // Refresh models list to update counts
+      fetchModels();
+    } catch (err) {
+      console.error('Error deleting image:', err);
+      setImageActionError(err.message || 'An error occurred while deleting the image');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -235,10 +320,10 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Mobile Tabs */}
         <div className="md:hidden mb-6 border-b border-gray-200">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveTab('models')}
-              className={`py-2 px-4 text-sm font-medium ${
+              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
                 activeTab === 'models'
                   ? 'text-pink-600 border-b-2 border-pink-500'
                   : 'text-gray-500 hover:text-gray-700'
@@ -248,7 +333,7 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab('upload')}
-              className={`py-2 px-4 text-sm font-medium ${
+              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
                 activeTab === 'upload'
                   ? 'text-pink-600 border-b-2 border-pink-500'
                   : 'text-gray-500 hover:text-gray-700'
@@ -258,7 +343,7 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab('list')}
-              className={`py-2 px-4 text-sm font-medium ${
+              className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
                 activeTab === 'list'
                   ? 'text-pink-600 border-b-2 border-pink-500'
                   : 'text-gray-500 hover:text-gray-700'
@@ -266,6 +351,18 @@ export default function AdminPage() {
             >
               Models List
             </button>
+            {selectedModel && (
+              <button
+                onClick={() => setActiveTab('images')}
+                className={`py-2 px-4 text-sm font-medium whitespace-nowrap ${
+                  activeTab === 'images'
+                    ? 'text-pink-600 border-b-2 border-pink-500'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Model Images
+              </button>
+            )}
           </div>
         </div>
         
@@ -478,6 +575,9 @@ export default function AdminPage() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Avg. Score
                       </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -494,6 +594,15 @@ export default function AdminPage() {
                             {model.averageScore ? model.averageScore.toFixed(2) : 'N/A'}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => fetchModelImages(model._id)}
+                            disabled={isLoadingModelImages}
+                            className="text-pink-600 hover:text-pink-900"
+                          >
+                            View Images
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -501,6 +610,113 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+          
+          {/* Model Images */}
+          {selectedModel && (
+            <div className={`bg-white rounded-2xl shadow-lg p-6 md:col-span-2 ${activeTab !== 'images' ? 'md:block hidden' : ''}`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                  Images for {selectedModel.name}
+                </h2>
+                <button
+                  onClick={() => fetchModelImages(selectedModel.id)}
+                  className="text-sm text-pink-600 hover:text-pink-700 flex items-center"
+                  disabled={isLoadingModelImages}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+              
+              {/* Statistics card */}
+              {modelStats && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <h3 className="text-md font-medium text-gray-700 mb-3">Model Statistics</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="text-sm text-gray-500">Total Images</div>
+                      <div className="text-xl font-semibold text-gray-800">{modelStats.totalImages}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="text-sm text-gray-500">Rated Images</div>
+                      <div className="text-xl font-semibold text-gray-800">{modelStats.ratedImages}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="text-sm text-gray-500">Average Score</div>
+                      <div className="text-xl font-semibold text-gray-800">
+                        {modelStats.averageScore ? modelStats.averageScore.toFixed(2) : 'N/A'}
+                      </div>
+                    </div>
+                    {modelStats.highestRated && (
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <div className="text-sm text-gray-500">Highest Score</div>
+                        <div className="text-xl font-semibold text-gray-800">
+                          {modelStats.highestRated.averageScore.toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {imageActionMessage && (
+                <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 text-sm">
+                  {imageActionMessage}
+                </div>
+              )}
+              
+              {imageActionError && (
+                <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 text-sm">
+                  {imageActionError}
+                </div>
+              )}
+              
+              {isLoadingModelImages ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-pink-500"></div>
+                  <p className="mt-2 text-gray-500 text-sm">Loading images...</p>
+                </div>
+              ) : modelImages.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No images found for this model.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {modelImages.map((image) => (
+                    <div key={image.id} className="relative group">
+                      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <img
+                          src={image.url}
+                          alt={image.name || 'Image'}
+                          className="w-full h-40 object-cover"
+                        />
+                        <div className="p-2">
+                          <div className="text-xs font-medium truncate">{image.name || 'Unnamed'}</div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-xs text-gray-500">
+                              Score: {image.averageScore ? image.averageScore.toFixed(2) : 'N/A'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Rated: {image.timesRated || 0}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteImage(image.id)}
+                            disabled={isDeleting}
+                            className="mt-2 w-full text-xs text-white bg-red-500 hover:bg-red-600 py-1 px-2 rounded transition-colors"
+                          >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Layout>

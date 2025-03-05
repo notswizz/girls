@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import RankingSwiper from '../components/RankingSwiper';
+import ComparisonSwiper from '../components/ComparisonSwiper';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function RatePage() {
@@ -16,7 +16,8 @@ export default function RatePage() {
     setSuccess(false);
     
     try {
-      const response = await fetch('/api/images?count=3');
+      // Now only get 2 images instead of 3
+      const response = await fetch('/api/images?count=2');
       
       if (!response.ok) {
         throw new Error('Failed to fetch images');
@@ -24,7 +25,7 @@ export default function RatePage() {
       
       const data = await response.json();
       
-      if (!data.images || data.images.length < 3) {
+      if (!data.images || data.images.length < 2) {
         throw new Error('Not enough images available');
       }
       
@@ -58,20 +59,20 @@ export default function RatePage() {
     fetchImages();
   }, []);
 
-  // Handle submission of rankings
-  const handleSubmitRankings = async (rankings) => {
+  // Handle submission of comparison
+  const handleSubmitComparison = async ({ winnerId, loserId }) => {
     try {
-      const response = await fetch('/api/scores/rank', {
+      const response = await fetch('/api/scores/compare', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ rankings }),
+        body: JSON.stringify({ winnerId, loserId }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit rankings');
+        throw new Error(errorData.message || 'Failed to submit comparison');
       }
       
       // Show success message
@@ -84,14 +85,23 @@ export default function RatePage() {
       }, 1000);
       
     } catch (err) {
-      console.error('Error submitting rankings:', err);
+      console.error('Error submitting comparison:', err);
       setError(err.message);
     }
   };
 
   return (
-    <Layout title="Rank">
+    <Layout title="Compare">
       <div className="w-full max-w-4xl mx-auto px-4 py-8 sm:py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2 text-gray-800">
+            Image Comparison
+          </h1>
+          <p className="text-gray-600 max-w-lg mx-auto">
+            Choose which image you prefer. Your selections help determine which models produce the most appealing results.
+          </p>
+        </div>
+        
         {loading ? (
           <div className="flex justify-center items-center h-80">
             <LoadingSpinner size="lg" />
@@ -117,9 +127,9 @@ export default function RatePage() {
             <LoadingSpinner size="lg" />
           </div>
         ) : (
-          <RankingSwiper 
+          <ComparisonSwiper 
             images={images} 
-            onSubmitRankings={handleSubmitRankings}
+            onSubmitComparison={handleSubmitComparison}
           />
         )}
       </div>
