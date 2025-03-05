@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../config';
-import Image from '../../../models/Image';
+import { calculateNewRatings } from '../../../utils/eloCalculator';
 
 export default async function handler(req, res) {
   // Only accept POST method
@@ -37,69 +37,65 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'One or both images not found' });
     }
     
-    // Update the winner's score
-    const winnerResult = await db.collection('images').updateOne(
+    // Calculate new ELO ratings
+    const newRatings = calculateNewRatings(winnerImage, loserImage);
+    
+    // Record match results and update ELO ratings
+    // Winner updates
+    await db.collection('images').updateOne(
       { _id: winnerObjectId },
       { 
         $inc: { 
           timesRated: 1,
-          winCount: 1 
+          wins: 1 
         },
         $set: { 
-          averageScore: ((winnerImage.averageScore || 0) * (winnerImage.timesRated || 0) + 1) / ((winnerImage.timesRated || 0) + 1)
+          elo: newRatings.winnerNewRating,
+          winRate: (winnerImage.wins + 1) / (winnerImage.wins + winnerImage.losses + 1)
+        },
+        $push: { 
+          lastOpponents: { 
+            id: loserImage._id.toString(),
+            modelId: loserImage.modelId,
+            elo: loserImage.elo,
+            result: 'win',
+            timestamp: new Date()
+          } 
         }
       }
     );
     
-    // Update the loser's score
-    const loserResult = await db.collection('images').updateOne(
+    // Loser updates
+    await db.collection('images').updateOne(
       { _id: loserObjectId },
       { 
         $inc: { 
           timesRated: 1,
-          loseCount: 1 
+          losses: 1 
         },
         $set: { 
-          averageScore: ((loserImage.averageScore || 0) * (loserImage.timesRated || 0)) / ((loserImage.timesRated || 0) + 1)
+          elo: newRatings.loserNewRating,
+          winRate: loserImage.wins / (loserImage.wins + loserImage.losses + 1)
+        },
+        $push: { 
+          lastOpponents: { 
+            id: winnerImage._id.toString(),
+            modelId: winnerImage.modelId,
+            elo: winnerImage.elo,
+            result: 'loss',
+            timestamp: new Date()
+          } 
         }
       }
     );
     
-    // Now update the model scores
+    // Now update the model stats
     if (winnerImage.modelId) {
-      // Calculate updated model average score
-      const winnerModelStats = await db.collection('images').aggregate([
-        { $match: { modelId: winnerImage.modelId, isActive: true } },
-        { $group: { 
-          _id: "$modelId", 
-          averageScore: { $avg: "$averageScore" } 
-        }}
-      ]).toArray();
-      
-      if (winnerModelStats.length > 0) {
-        await db.collection('models').updateOne(
-          { _id: new ObjectId(winnerImage.modelId) },
-          { $set: { averageScore: winnerModelStats[0].averageScore } }
-        );
-      }
+      await updateModelStats(db, winnerImage.modelId);
     }
     
     if (loserImage.modelId && loserImage.modelId !== winnerImage.modelId) {
-      // Calculate updated model average score
-      const loserModelStats = await db.collection('images').aggregate([
-        { $match: { modelId: loserImage.modelId, isActive: true } },
-        { $group: { 
-          _id: "$modelId", 
-          averageScore: { $avg: "$averageScore" } 
-        }}
-      ]).toArray();
-      
-      if (loserModelStats.length > 0) {
-        await db.collection('models').updateOne(
-          { _id: new ObjectId(loserImage.modelId) },
-          { $set: { averageScore: loserModelStats[0].averageScore } }
-        );
-      }
+      await updateModelStats(db, loserImage.modelId);
     }
     
     res.status(200).json({
@@ -107,16 +103,54 @@ export default async function handler(req, res) {
       winner: {
         id: winnerImage._id,
         modelId: winnerImage.modelId,
-        modelName: winnerImage.modelName
+        modelName: winnerImage.modelName,
+        newElo: newRatings.winnerNewRating,
+        eloDelta: newRatings.winnerDelta
       },
       loser: {
         id: loserImage._id,
         modelId: loserImage.modelId,
-        modelName: loserImage.modelName
+        modelName: loserImage.modelName,
+        newElo: newRatings.loserNewRating,
+        eloDelta: newRatings.loserDelta
       }
     });
   } catch (error) {
     console.error('Error recording comparison:', error);
     res.status(500).json({ error: 'Failed to record comparison' });
+  }
+}
+
+// Helper function to update model stats
+async function updateModelStats(db, modelId) {
+  try {
+    // Calculate updated model stats
+    const modelStats = await db.collection('images').aggregate([
+      { $match: { modelId: modelId, isActive: true } },
+      { $group: { 
+        _id: "$modelId", 
+        totalWins: { $sum: "$wins" },
+        totalLosses: { $sum: "$losses" },
+        averageElo: { $avg: "$elo" }
+      }}
+    ]).toArray();
+    
+    if (modelStats.length > 0) {
+      const stats = modelStats[0];
+      const totalMatches = stats.totalWins + stats.totalLosses;
+      const winRate = totalMatches > 0 ? stats.totalWins / totalMatches : 0;
+      
+      await db.collection('models').updateOne(
+        { _id: new ObjectId(modelId) },
+        { $set: { 
+          wins: stats.totalWins,
+          losses: stats.totalLosses,
+          winRate: winRate,
+          elo: stats.averageElo
+        }}
+      );
+    }
+  } catch (error) {
+    console.error('Error updating model stats:', error);
   }
 } 

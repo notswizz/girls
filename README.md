@@ -58,11 +58,13 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Features
 
-- **Image Rating**: Users can rate images on a scale of 1-3
-- **Leaderboard**: View the highest-rated images
-- **Admin Dashboard**: Upload and manage images
-- **Responsive Design**: Optimized for mobile and desktop
-- **Modern UI**: Clean, sleek design with Tailwind CSS
+- **Head-to-Head Image Rating System** - Compare two images side by side and choose your favorite.
+- **ELO Rating System** - Images and models are rated using the ELO system, similar to chess rankings.
+- **Model Leaderboard** - View top-rated models and see their statistics.
+- **Model Management** - Add, edit, and manage models, including social media links.
+- **Image Management** - Upload, view, and delete images associated with models.
+- **Detailed Statistics** - Track wins, losses, win rates, and ELO ratings for both models and images.
+- **Mobile-Friendly Design** - Works great on desktop and mobile devices.
 
 ## Tech Stack
 
@@ -144,3 +146,36 @@ MIT
 - [Tailwind CSS](https://tailwindcss.com/)
 - [MongoDB](https://www.mongodb.com/)
 - [AWS S3](https://aws.amazon.com/s3/)
+
+## First-time Setup
+
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Run `npm run dev` to start the development server
+4. Open [http://localhost:3000](http://localhost:3000) to view the app
+
+If you need to install the additional packages for the rating system:
+```bash
+./install-deps.sh
+```
+
+## Rating System
+
+The app uses an ELO rating system to rank models and images based on head-to-head comparisons:
+
+- Each image starts with an ELO rating of 1200
+- When two images are compared, the winner gains points and the loser loses points
+- The amount of points gained/lost depends on the relative ratings of the two images
+- Beating a higher-rated image yields more points than beating a lower-rated one
+- Models' ELO ratings are calculated as the average of their images' ratings
+
+## Admin Features
+
+The admin page allows you to:
+
+- Create and edit models with social media links (Instagram, Twitter, OnlyFans)
+- View detailed statistics for each model
+- Upload images for models
+- Delete images and models
+- View all images for a specific model
+- Sort images by various criteria (newest, highest ELO, win rate, etc.)

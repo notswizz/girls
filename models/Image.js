@@ -2,19 +2,89 @@
  * Image model representing the girls in the hot or not game
  */
 class Image {
-  constructor(data) {
-    this.id = data.id;
-    this.url = data.url;
-    this.name = data.name || '';
-    this.description = data.description || '';
-    this.modelId = data.modelId || null; // Reference to the model
-    this.modelName = data.modelName || ''; // For convenience
-    this.uploadedAt = data.uploadedAt || new Date();
-    this.ratings = data.ratings || [];
-    this.totalScore = data.totalScore || 0;
-    this.averageScore = data.averageScore || 0;
-    this.timesRated = data.timesRated || 0;
-    this.isActive = data.isActive !== undefined ? data.isActive : true;
+  constructor({
+    _id = null,
+    url = '',
+    name = '',
+    description = '',
+    modelId = null,
+    modelName = '',
+    createdAt = new Date(),
+    isActive = true,
+    averageScore = null,
+    timesRated = 0,
+    wins = 0,
+    losses = 0,
+    winRate = 0,
+    elo = 1200, // Starting ELO rating
+    lastOpponents = [] // Track recent opponents for analysis
+  }) {
+    this._id = _id;
+    this.url = url;
+    this.name = name;
+    this.description = description;
+    this.modelId = modelId;
+    this.modelName = modelName;
+    this.createdAt = createdAt;
+    this.isActive = isActive;
+    this.averageScore = averageScore;
+    this.timesRated = timesRated;
+    this.wins = wins;
+    this.losses = losses;
+    this.winRate = winRate;
+    this.elo = elo;
+    this.lastOpponents = lastOpponents;
+  }
+
+  toDatabase() {
+    return {
+      url: this.url,
+      name: this.name,
+      description: this.description,
+      modelId: this.modelId,
+      modelName: this.modelName,
+      createdAt: this.createdAt,
+      isActive: this.isActive,
+      averageScore: this.averageScore,
+      timesRated: this.timesRated,
+      wins: this.wins,
+      losses: this.losses,
+      winRate: this.winRate,
+      elo: this.elo,
+      lastOpponents: this.lastOpponents
+    };
+  }
+
+  static fromDatabase(doc) {
+    return new Image({
+      _id: doc._id,
+      url: doc.url,
+      name: doc.name || '',
+      description: doc.description || '',
+      modelId: doc.modelId,
+      modelName: doc.modelName || '',
+      createdAt: doc.createdAt,
+      isActive: doc.isActive !== false,
+      averageScore: doc.averageScore,
+      timesRated: doc.timesRated || 0,
+      wins: doc.wins || 0,
+      losses: doc.losses || 0,
+      winRate: doc.winRate || 0,
+      elo: doc.elo || 1200,
+      lastOpponents: doc.lastOpponents || []
+    });
+  }
+
+  // Calculate win rate
+  calculateWinRate() {
+    const totalMatches = this.wins + this.losses;
+    return totalMatches > 0 ? (this.wins / totalMatches) : 0;
+  }
+
+  // Update win rate
+  updateWinRate() {
+    this.winRate = this.calculateWinRate();
+    return this.winRate;
   }
 
   // Calculate the average score
@@ -50,23 +120,6 @@ class Image {
     
     // Recalculate score
     this.calculateScore();
-  }
-
-  // Format for database insertion
-  toDatabase() {
-    return {
-      url: this.url,
-      name: this.name,
-      description: this.description,
-      modelId: this.modelId,
-      modelName: this.modelName,
-      uploadedAt: this.uploadedAt,
-      ratings: this.ratings,
-      totalScore: this.totalScore,
-      averageScore: this.averageScore,
-      timesRated: this.timesRated,
-      isActive: this.isActive
-    };
   }
 }
 

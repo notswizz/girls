@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Layout from '../../components/Layout';
+import Link from 'next/link';
+import AdminLayout from '../../components/AdminLayout';
+import { useRouter } from 'next/router';
 
 export default function AdminPage() {
   // Image upload state
@@ -31,8 +33,23 @@ export default function AdminPage() {
   const [imageActionError, setImageActionError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Tab state for mobile
-  const [activeTab, setActiveTab] = useState('upload'); // 'models', 'upload', 'list', 'images'
+  // Active tab state (for mobile view)
+  const [activeTab, setActiveTab] = useState('models');
+  
+  const router = useRouter();
+  const { tab, modelId } = router.query;
+  
+  // Set active tab based on query parameter
+  useEffect(() => {
+    if (tab && ['models', 'upload', 'create'].includes(tab)) {
+      setActiveTab(tab);
+      
+      // If modelId is provided and tab is upload, set the selected model
+      if (tab === 'upload' && modelId) {
+        setSelectedModelId(modelId);
+      }
+    }
+  }, [tab, modelId]);
 
   // Fetch models on component mount
   useEffect(() => {
@@ -316,8 +333,8 @@ export default function AdminPage() {
   };
 
   return (
-    <Layout title="Admin">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <AdminLayout title="Admin Dashboard">
+      <div className="max-w-4xl mx-auto py-8">
         {/* Mobile Tabs */}
         <div className="md:hidden mb-6 border-b border-gray-200">
           <div className="flex space-x-2 overflow-x-auto pb-1">
@@ -567,41 +584,69 @@ export default function AdminPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
+                        Model
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Images
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Avg. Score
+                        ELO Rating
                       </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Win/Loss
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Win Rate
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {models.map((model) => (
-                      <tr key={model._id} className="hover:bg-gray-50">
+                    {models.map((model, index) => (
+                      <tr key={model._id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{model.name}</div>
+                          <Link href={`/admin/models/${model._id}`} className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900 hover:text-purple-600">
+                              {model.name}
+                            </div>
+                          </Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{model.imageCount || 0}</div>
+                          <div className="text-sm text-gray-900">{model.imageCount || 0}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {model.averageScore ? model.averageScore.toFixed(2) : 'N/A'}
+                          <div className="text-sm text-gray-900">
+                            {model.elo ? Math.round(model.elo) : 'N/A'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => fetchModelImages(model._id)}
-                            disabled={isLoadingModelImages}
-                            className="text-pink-600 hover:text-pink-900"
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {model.wins || 0}/{model.losses || 0}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {model.winRate !== undefined 
+                              ? `${(model.winRate * 100).toFixed(1)}%` 
+                              : 'N/A'
+                            }
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <Link 
+                            href={`/admin/models/${model._id}`} 
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
                           >
-                            View Images
-                          </button>
+                            View
+                          </Link>
+                          <Link 
+                            href={`/admin/upload?modelId=${model._id}`} 
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Upload
+                          </Link>
                         </td>
                       </tr>
                     ))}
@@ -719,6 +764,6 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 } 
