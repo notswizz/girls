@@ -9,38 +9,41 @@ export default function Layout({ children, title = 'Hot or Not' }) {
   
   // Navigation items
   const navItems = [
-    { name: 'Rate', path: '/' },
+    { name: 'Home', path: '/' },
+    { name: 'Rate', path: '/rate' },
     { name: 'Leaderboard', path: '/leaderboard' },
-    { name: 'About', path: '/about' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Head>
         <title>{title} | Hot or Not</title>
-        <meta name="description" content="Rate images in this fun Hot or Not game" />
+        <meta name="description" content="Rate images in this Hot or Not app" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="font-bold text-xl sm:text-2xl bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+              <Link href="/" className="font-bold text-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
                 Hot or Not
               </Link>
             </div>
             
             {/* Desktop navigation */}
-            <nav className="hidden md:flex items-center space-x-4">
+            <nav className="hidden md:flex items-center space-x-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                     router.pathname === item.path
-                      ? 'bg-pink-100 text-pink-700'
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -53,7 +56,7 @@ export default function Layout({ children, title = 'Hot or Not' }) {
             <div className="md:hidden flex items-center">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
+                className="inline-flex items-center justify-center p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 aria-expanded="false"
               >
                 <span className="sr-only">Open main menu</span>
@@ -91,9 +94,9 @@ export default function Layout({ children, title = 'Hot or Not' }) {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                className={`block px-3 py-2 rounded-full text-base font-medium ${
                   router.pathname === item.path
-                    ? 'bg-pink-100 text-pink-700'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -101,42 +104,13 @@ export default function Layout({ children, title = 'Hot or Not' }) {
                 {item.name}
               </Link>
             ))}
-            <Link
-              href="/admin"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:bg-gray-100"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Admin
-            </Link>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="py-6">
         {children}
       </main>
-
-      <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-500 text-sm mb-4 md:mb-0">
-              &copy; {new Date().getFullYear()} Hot or Not. All rights reserved.
-            </div>
-            
-            <div className="flex flex-wrap justify-center space-x-4 sm:space-x-6">
-              <Link href="/privacy" className="text-gray-500 hover:text-gray-700 text-sm">
-                Privacy
-              </Link>
-              <Link href="/terms" className="text-gray-500 hover:text-gray-700 text-sm">
-                Terms
-              </Link>
-              <Link href="/admin" className="text-gray-500 hover:text-gray-700 text-sm md:hidden">
-                Admin
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 } 
