@@ -41,6 +41,7 @@ export default function AdminPage() {
       }
       
       const data = await response.json();
+      console.log('Fetched models:', data.models);
       setModels(data.models || []);
     } catch (err) {
       console.error('Error fetching models:', err);
@@ -105,6 +106,10 @@ export default function AdminPage() {
       return;
     }
     
+    // Find the selected model name for display purposes
+    const selectedModel = models.find(model => model._id === selectedModelId);
+    const modelName = selectedModel ? selectedModel.name : 'Unknown Model';
+    
     try {
       setIsUploading(true);
       setUploadError(null);
@@ -122,17 +127,23 @@ export default function AdminPage() {
         formData.append('name', file.name.split('.')[0]); // Use filename without extension as the name
         formData.append('modelId', selectedModelId);
         
+        // Log to verify data being sent
+        console.log(`Uploading image ${i+1}/${totalFiles}: ${file.name} for model: ${modelName} (ID: ${selectedModelId})`);
+        
         try {
           const response = await fetch('/api/images/upload', {
             method: 'POST',
             body: formData,
           });
           
+          const data = await response.json();
+          
           if (!response.ok) {
-            console.error(`Failed to upload ${file.name}`);
+            console.error(`Failed to upload ${file.name}:`, data.error || 'Unknown error');
             continue;
           }
           
+          console.log(`Successfully uploaded ${file.name}:`, data);
           successCount++;
         } catch (err) {
           console.error(`Error uploading ${file.name}:`, err);
@@ -156,10 +167,13 @@ export default function AdminPage() {
       if (successCount === 0) {
         setUploadError('Failed to upload any images');
       } else if (successCount < totalFiles) {
-        setUploadMessage(`Successfully uploaded ${successCount} out of ${totalFiles} images`);
+        setUploadMessage(`Successfully uploaded ${successCount} out of ${totalFiles} images to model: ${modelName}`);
       } else {
-        setUploadMessage(`Successfully uploaded all ${totalFiles} images!`);
+        setUploadMessage(`Successfully uploaded all ${totalFiles} images to model: ${modelName}!`);
       }
+      
+      // Refresh the models list to update image counts
+      fetchModels();
     } catch (err) {
       console.error('Upload error:', err);
       setUploadError(err.message || 'An unknown error occurred');

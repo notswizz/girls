@@ -28,6 +28,22 @@ export default function RatePage() {
         throw new Error('Not enough images available');
       }
       
+      // Log the images to verify they're from different models
+      console.log('Fetched images:', data.images);
+      
+      // Check if we have duplicate models
+      const modelIds = data.images.map(img => img.modelId);
+      const uniqueModelIds = [...new Set(modelIds)];
+      
+      if (uniqueModelIds.length < modelIds.length) {
+        console.warn('Warning: Some images are from the same model', {
+          modelIds,
+          uniqueModelIds
+        });
+      } else {
+        console.log('Success: All images are from different models');
+      }
+      
       setImages(data.images);
     } catch (err) {
       console.error('Error fetching images:', err);

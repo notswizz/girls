@@ -10,22 +10,52 @@ export default async function handler(req, res) {
     // Get all models
     case 'GET':
       try {
+        // Get all models
         const models = await db
           .collection('models')
           .find({})
           .sort({ name: 1 })
           .toArray();
         
-        // Map to add the MongoDB _id as id
-        const mappedModels = models.map(model => ({
-          id: model._id,
-          name: model.name,
-          description: model.description,
-          createdAt: model.createdAt,
-          isActive: model.isActive,
-          imageCount: model.imageCount,
-          averageScore: model.averageScore
-        }));
+        // Get image counts for each model
+        const imageCounts = await db
+          .collection('images')
+          .aggregate([
+            { $match: { isActive: true } },
+            { $group: { 
+              _id: "$modelId", 
+              count: { $sum: 1 },
+              averageScore: { $avg: "$averageScore" }
+            }}
+          ])
+          .toArray();
+        
+        // Create a map of model ID to image count
+        const imageCountMap = {};
+        const scoreMap = {};
+        
+        imageCounts.forEach(item => {
+          if (item._id) {
+            imageCountMap[item._id.toString()] = item.count;
+            if (item.averageScore) {
+              scoreMap[item._id.toString()] = item.averageScore;
+            }
+          }
+        });
+        
+        // Map to add the MongoDB _id as id and include image counts
+        const mappedModels = models.map(model => {
+          const modelId = model._id.toString();
+          return {
+            _id: model._id,
+            name: model.name,
+            description: model.description || '',
+            createdAt: model.createdAt,
+            isActive: model.isActive !== false,
+            imageCount: imageCountMap[modelId] || 0,
+            averageScore: scoreMap[modelId] || model.averageScore || null
+          };
+        });
         
         res.status(200).json({ models: mappedModels });
       } catch (error) {
@@ -57,7 +87,9 @@ export default async function handler(req, res) {
         const newModel = new Model({
           name,
           description: description || '',
-          createdAt: new Date()
+          createdAt: new Date(),
+          imageCount: 0,
+          averageScore: null
         });
         
         // Save to database
@@ -67,7 +99,7 @@ export default async function handler(req, res) {
         res.status(201).json({ 
           message: 'Model created successfully',
           model: {
-            id: result.insertedId,
+            _id: result.insertedId,
             ...newModel.toDatabase()
           }
         });
