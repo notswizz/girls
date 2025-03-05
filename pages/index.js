@@ -31,9 +31,7 @@ export default function Home() {
             </div>
           </div>
           
-          <p className="text-xl sm:text-2xl mb-10 max-w-2xl mx-auto text-white/70">
-            The <span className="text-cyber-pink font-bold">hottest</span> way to rank, rate, and compare beautiful models
-          </p>
+        
           
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
             <motion.div
