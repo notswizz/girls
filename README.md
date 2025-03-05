@@ -1,40 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Hot or Not - Image Rating App
+
+A modern web application built with Next.js, Tailwind CSS, MongoDB, and AWS S3 that allows users to rate images on a scale of 1-3.
+
+## Features
+
+- **Image Rating**: Users can rate images on a scale of 1-3
+- **Leaderboard**: View the highest-rated images
+- **Admin Dashboard**: Upload and manage images
+- **Responsive Design**: Optimized for mobile and desktop
+- **Modern UI**: Clean, sleek design with Tailwind CSS
+
+## Tech Stack
+
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: MongoDB
+- **Storage**: AWS S3
+- **Authentication**: JWT (for admin access)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 14+ and npm
+- MongoDB (local or Atlas)
+- AWS S3 bucket
+
+### Environment Setup
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```
+# MongoDB
+MONGODB_URI=your_mongodb_connection_string
+MONGODB_DB=hotornot
+
+# AWS S3
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=your_aws_region
+AWS_BUCKET_NAME=your_bucket_name
+
+# Authentication
+JWT_SECRET=your_jwt_secret
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Run the development server:
+   ```
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+## Usage
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+### Rating Images
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Visit the homepage to start rating images
+- Rate each image on a scale of 1-3
+- Skip images you don't want to rate
 
-## Learn More
+### Viewing the Leaderboard
 
-To learn more about Next.js, take a look at the following resources:
+- Navigate to the Leaderboard page to see the highest-rated images
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+### Admin Dashboard
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Access the admin dashboard at `/admin`
+- Upload new images with optional name and description
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This application can be deployed to Vercel, Netlify, or any other Next.js-compatible hosting platform.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+## License
+
+MIT
+
+## Acknowledgements
+
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [MongoDB](https://www.mongodb.com/)
+- [AWS S3](https://aws.amazon.com/s3/)
