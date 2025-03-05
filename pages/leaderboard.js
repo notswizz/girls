@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Layout from '../components/Layout';
+import Image from 'next/image';
 
 export default function LeaderboardPage() {
   const [models, setModels] = useState([]);
   const [topImages, setTopImages] = useState([]);
+  const [modelImages, setModelImages] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTab, setSelectedTab] = useState('models');
@@ -35,8 +37,22 @@ export default function LeaderboardPage() {
           .filter(model => model.elo) // Only include models with an ELO rating
           .sort((a, b) => (b.elo || 0) - (a.elo || 0));
         
+        // Get one image for each model for the avatar
+        const modelImagesMap = {};
+        const allImages = imagesData.images || [];
+        
+        // Create a map of modelId -> imageUrl
+        sortedModels.forEach(model => {
+          // Find the first image for this model
+          const modelImage = allImages.find(img => img.modelId === model._id);
+          if (modelImage) {
+            modelImagesMap[model._id] = modelImage.url;
+          }
+        });
+        
         setModels(sortedModels);
         setTopImages(imagesData.images || []);
+        setModelImages(modelImagesMap);
       } catch (err) {
         console.error('Error fetching leaderboard data:', err);
         setError(err.message);
@@ -143,10 +159,23 @@ export default function LeaderboardPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <span className="text-purple-800 font-bold">
-                                  {model.username ? model.username.substring(0, 1) : '?'}
-                                </span>
+                              <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
+                                {modelImages[model._id] ? (
+                                  <div className="relative h-10 w-10">
+                                    <Image 
+                                      src={modelImages[model._id]} 
+                                      alt={model.username || 'Model'} 
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <span className="text-purple-800 font-bold">
+                                      {model.username ? model.username.substring(0, 1) : '?'}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{model.username || 'unknown'}</div>

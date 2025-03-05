@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import HeadToHeadCompare from '../components/HeadToHeadCompare';
-import { motion } from 'framer-motion';
 
 export default function RatePage() {
   return (

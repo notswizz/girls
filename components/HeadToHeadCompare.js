@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronLeft, FaChevronRight, FaHeart, FaStar, FaFire, FaCrown } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HeadToHeadCompare() {
@@ -7,6 +7,7 @@ export default function HeadToHeadCompare() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImageId, setSelectedImageId] = useState(null);
+  const [fullViewImage, setFullViewImage] = useState(null);
 
   // Fetch images for comparison
   const fetchImages = async () => {
@@ -94,6 +95,12 @@ export default function HeadToHeadCompare() {
     }
   };
 
+  // Handle full view toggle
+  const toggleFullView = (e, image) => {
+    e.stopPropagation(); // Prevent selecting the image
+    setFullViewImage(image === fullViewImage ? null : image);
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
@@ -140,11 +147,7 @@ export default function HeadToHeadCompare() {
               <motion.div 
                 key={image._id}
                 className={`relative md:flex-1 h-[60vh] md:h-[75vh] min-h-[400px] rounded-xl overflow-hidden transition-all duration-300 group mb-8 md:mb-0 ${
-                  selectedImageId === image._id
-                    ? 'scale-105 z-10' 
-                    : selectedImageId !== null 
-                      ? 'opacity-60 blur-sm'
-                      : ''
+                  selectedImageId === image._id ? 'scale-105 z-10' : ''
                 }`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -156,9 +159,7 @@ export default function HeadToHeadCompare() {
                 <div className={`absolute inset-0 rounded-xl p-1 ${
                   selectedImageId === image._id
                     ? 'bg-gradient-to-r from-cyber-pink via-cyber-purple to-cyber-blue animate-shimmer' 
-                    : selectedImageId !== null 
-                      ? 'bg-cyber-dark/50'
-                      : 'bg-gradient-to-r from-white/10 to-white/5'
+                    : 'bg-gradient-to-r from-white/10 to-white/5'
                 }`}>
                   <div className="absolute inset-0 rounded-lg overflow-hidden">
                     <img 
@@ -169,27 +170,30 @@ export default function HeadToHeadCompare() {
                   </div>
                 </div>
                 
-                {/* Glass panel with info */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-cyber-dark/90 to-transparent p-4 md:p-6 backdrop-blur-sm">
-                  <h3 className="font-bold text-xl text-white flex items-center gap-2">
-                    {image.modelUsername || 'unknown'}
-                    <FaStar className="text-cyber-yellow text-sm" />
-                  </h3>
-                  
-                  {image.elo && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="text-sm px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
-                        ELO: {Math.round(image.elo)}
-                      </div>
-                      {image.elo > 1500 && (
-                        <div className="text-sm px-3 py-1 bg-gradient-to-r from-cyber-pink/20 to-cyber-purple/20 rounded-full backdrop-blur-sm flex items-center gap-1">
-                          <FaFire className="text-cyber-pink" />
-                          Hot
-                        </div>
-                      )}
-                    </div>
-                  )}
+                {/* Username in top left (discreet) */}
+                <div className="absolute top-3 left-3">
+                  <div className="px-3 py-1 bg-black/30 backdrop-blur-sm rounded-md text-sm font-medium">
+                    <span className="text-white/90">{image.modelUsername || 'unknown'}</span>
+                  </div>
                 </div>
+                
+                {/* ELO badge in top right */}
+                {image.elo && (
+                  <div className="absolute top-3 right-3">
+                    <div className={`
+                      w-auto min-w-[40px] h-[40px] rounded-full flex items-center justify-center p-1
+                      ${image.elo > 1500 
+                        ? 'bg-gradient-to-br from-cyber-pink/60 to-cyber-purple/60 shadow-neon' 
+                        : 'bg-gradient-to-br from-cyber-blue/50 to-cyber-dark/40'} 
+                      backdrop-blur-md border border-white/20 group-hover:shadow-neon transition-all duration-300`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <span className="text-white font-bold">{Math.round(image.elo)}</span>
+                        {image.elo > 1500 && <FaFire className="text-cyber-yellow text-xs ml-1" />}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Winner effect */}
                 <AnimatePresence>
@@ -206,6 +210,14 @@ export default function HeadToHeadCompare() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                
+                {/* Full view button (bottom right) */}
+                <button
+                  className="absolute bottom-3 right-3 p-2 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-black/70 transition-all z-10"
+                  onClick={(e) => toggleFullView(e, image)}
+                >
+                  <FaExpand size={16} />
+                </button>
                 
                 {/* Mobile-friendly selection buttons */}
                 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 md:px-0">
@@ -238,6 +250,54 @@ export default function HeadToHeadCompare() {
               </motion.div>
             ))}
           </div>
+          
+          {/* Full image modal */}
+          <AnimatePresence>
+            {fullViewImage && (
+              <motion.div 
+                className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={(e) => toggleFullView(e, fullViewImage)}
+              >
+                <button 
+                  className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white"
+                  onClick={(e) => toggleFullView(e, fullViewImage)}
+                >
+                  <FaTimes size={24} />
+                </button>
+                
+                <motion.div
+                  className="w-full max-w-4xl max-h-[90vh] relative"
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0.9 }}
+                >
+                  <img 
+                    src={fullViewImage.url} 
+                    alt={fullViewImage.modelUsername || 'Full view'}
+                    className="w-full h-full object-contain"
+                  />
+                  
+                  <div className="absolute top-3 left-0 right-0 flex justify-between px-4">
+                    <div className="px-4 py-2 bg-black/40 backdrop-blur-sm rounded-lg">
+                      <span className="text-white font-medium">
+                        {fullViewImage.modelUsername || 'Unknown'}
+                      </span>
+                    </div>
+                    
+                    {fullViewImage.elo && (
+                      <div className="px-4 py-2 bg-gradient-to-r from-cyber-pink/40 to-cyber-purple/40 backdrop-blur-sm rounded-lg flex items-center">
+                        <span className="text-white font-bold mr-1">{Math.round(fullViewImage.elo)}</span>
+                        {fullViewImage.elo > 1500 && <FaFire className="text-cyber-yellow" />}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>
