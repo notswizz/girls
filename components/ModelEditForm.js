@@ -122,7 +122,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
             disabled={isSubmitting}
             required
             placeholder="model's real name (private)"
@@ -137,7 +137,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+              className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 ${
                 usernameError ? 'border-red-300' : 'border-gray-300'
               }`}
               disabled={isSubmitting}
@@ -164,7 +164,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
             name="description"
             value={formData.description}
             onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
             disabled={isSubmitting}
             placeholder="description (optional)"
             rows="3"
@@ -190,7 +190,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
                 name="instagram"
                 value={formData.instagram}
                 onChange={handleChange}
-                className="w-full pl-8 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full pl-8 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
                 disabled={isSubmitting}
                 placeholder="username"
               />
@@ -215,7 +215,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
                 name="twitter"
                 value={formData.twitter}
                 onChange={handleChange}
-                className="w-full pl-8 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full pl-8 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
                 disabled={isSubmitting}
                 placeholder="username"
               />
@@ -237,7 +237,7 @@ export default function ModelEditForm({ model, onSubmit, onCancel }) {
               name="onlyfans"
               value={formData.onlyfans}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
               disabled={isSubmitting}
               placeholder="onlyfans link or username"
             />

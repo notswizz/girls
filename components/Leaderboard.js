@@ -90,19 +90,28 @@ export default function Leaderboard() {
               {index === 0 && (
                 <div className="absolute -top-1 -left-1 -right-1 -bottom-1 rounded-full border border-cyber-yellow animate-pulse"></div>
               )}
-              {entry.rank}
+              {entry.rank || '-'}
             </div>
             
             {/* Profile image */}
             <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden mr-3 sm:mr-4 flex-shrink-0 border-2 border-white/20">
               <div className="absolute inset-0 bg-gradient-to-br from-cyber-purple/30 to-cyber-pink/30 z-10 mix-blend-overlay"></div>
-              <Image
-                src={entry.url}
-                alt={entry.name || `Rank #${entry.rank}`}
-                fill
-                sizes="(max-width: 768px) 48px, 64px"
-                className="object-cover"
-              />
+              {entry.url ? (
+                <Image
+                  src={entry.url}
+                  alt={entry.name || `Rank #${entry.rank || '?'}`}
+                  fill
+                  sizes="(max-width: 768px) 48px, 64px"
+                  className="object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-cyber-dark">
+                  <span className="text-cyber-blue text-2xl">?</span>
+                </div>
+              )}
               {index < 3 && (
                 <div className="absolute inset-0 border-2 rounded-full border-cyber-blue animate-pulse"></div>
               )}
@@ -112,7 +121,7 @@ export default function Leaderboard() {
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-base sm:text-lg truncate">
                 <div className="text-lg font-semibold text-white group-hover:text-cyber-blue transition-colors duration-300">
-                  {entry.name}
+                  {entry.name || 'Untitled'}
                   {entry.modelUsername && (
                     <span className="text-sm text-white/50 ml-2">
                       @{entry.modelUsername}
@@ -133,11 +142,13 @@ export default function Leaderboard() {
                   index === 1 ? 'text-white' : 
                   index === 2 ? 'text-cyber-pink' : 'text-cyber-blue'
                 }`}>
-                  {entry.averageScore.toFixed(1)}
+                  {entry.averageScore !== null && entry.averageScore !== undefined 
+                    ? entry.averageScore.toFixed(1) 
+                    : '0.0'}
                 </span>
               </div>
               <div className="text-xs text-white/50">
-                {entry.timesRated} {entry.timesRated === 1 ? 'rating' : 'ratings'}
+                {entry.timesRated || 0} {(!entry.timesRated || entry.timesRated === 1) ? 'rating' : 'ratings'}
               </div>
             </div>
 

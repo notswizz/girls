@@ -12,6 +12,7 @@ export default function AdminLayout({ children, title = 'admin' }) {
     { name: 'dashboard', path: '/admin' },
     { name: 'upload', path: '/admin/upload' },
     { name: 'models', path: '/admin/models' },
+    { name: 'leaderboard', path: '/admin/leaderboard' },
     { name: 'site', path: '/' },
   ];
 

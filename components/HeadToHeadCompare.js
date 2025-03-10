@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes, FaLock, FaGoogle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { useSession, signIn } from 'next-auth/react';
 
 export default function HeadToHeadCompare() {
   const [images, setImages] = useState([]);
@@ -11,6 +12,41 @@ export default function HeadToHeadCompare() {
   const [fullViewImage, setFullViewImage] = useState(null);
   const [celebratingId, setCelebratingId] = useState(null);
   const confettiCanvasRef = useRef(null);
+  const { data: session } = useSession();
+  const [anonymousState, setAnonymousState] = useState({
+    remaining: 3,
+    showSignInPrompt: false
+  });
+
+  // Check anonymous access state
+  const checkAnonymousAccess = async () => {
+    try {
+      const response = await fetch('/api/auth/check-anonymous');
+      if (!response.ok) {
+        throw new Error('Failed to check access');
+      }
+      
+      const data = await response.json();
+      
+      // If not authenticated and remaining is 0, show sign-in prompt
+      if (!data.authenticated && data.remaining <= 0) {
+        setAnonymousState({
+          remaining: 0,
+          showSignInPrompt: true
+        });
+      } else {
+        setAnonymousState({
+          remaining: data.remaining,
+          showSignInPrompt: false
+        });
+      }
+      
+      return data.allowed;
+    } catch (error) {
+      console.error('Error checking anonymous access:', error);
+      return true; // Default to allowed in case of error
+    }
+  };
 
   // Fetch images for comparison
   const fetchImages = async () => {
@@ -19,6 +55,16 @@ export default function HeadToHeadCompare() {
       setError(null);
       setSelectedImageId(null);
       setCelebratingId(null);
+      
+      // Check if anonymous user is allowed to continue
+      if (!session) {
+        const isAllowed = await checkAnonymousAccess();
+        if (!isAllowed) {
+          setAnonymousState(prev => ({ ...prev, showSignInPrompt: true }));
+          setLoading(false);
+          return;
+        }
+      }
       
       const response = await fetch('/api/images/compare?count=2');
       
@@ -47,12 +93,13 @@ export default function HeadToHeadCompare() {
       setLoading(false);
     }
   };
-
+  
   // Initial fetch
   useEffect(() => {
     fetchImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+  
   // Fire confetti and celebration effects
   const fireCelebrationEffects = () => {
     // Multiple confetti bursts
@@ -97,42 +144,44 @@ export default function HeadToHeadCompare() {
       });
     }, 150);
   };
-
-  // Handle selection
-  const handleSelect = async (winnerImageId) => {
-    if (!winnerImageId || loading || images.length < 2) return;
-    
-    // Trigger celebration effects instantly
-    setCelebratingId(winnerImageId);
-    setSelectedImageId(winnerImageId);
-    fireCelebrationEffects();
-    
-    // Find the winner and loser images
-    const winnerImage = images.find(img => img._id === winnerImageId);
-    const loserImage = images.find(img => img._id !== winnerImageId);
-    
-    if (!winnerImage || !loserImage) {
-      setError('Could not identify winner and loser');
-      setCelebratingId(null);
-      return;
-    }
-    
+  
+  // Handle selection of a winner
+  const handleSelectWinner = async (winnerId, loserId) => {
     try {
-      // Submit the comparison result
-      const response = await fetch('/api/scores/compare', {
+      // First check if anonymous user has reached limit
+      if (!session) {
+        const isAllowed = await checkAnonymousAccess();
+        if (!isAllowed) {
+          setAnonymousState(prev => ({ ...prev, showSignInPrompt: true }));
+          return;
+        }
+      }
+      
+      setSelectedImageId(winnerId);
+      setCelebratingId(winnerId);
+      
+      // Trigger celebration effects
+      fireCelebrationEffects();
+      
+      // Submit the result with user identification if available
+      const payload = {
+        winnerId,
+        loserId,
+        // Include user ID if authenticated
+        ...(session?.user?.id && { userId: session.user.id })
+      };
+      
+      // Submit the matchup result
+      const response = await fetch('/api/scores/submit', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          winnerId: winnerImage._id,
-          loserId: loserImage._id,
-        }),
+        body: JSON.stringify(payload)
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit comparison');
+        throw new Error('Failed to submit matchup result');
       }
       
       // Show celebration for a moment, then transition to loading state
@@ -146,17 +195,61 @@ export default function HeadToHeadCompare() {
         }, 300);
       }, 900);
     } catch (err) {
-      console.error('Error submitting comparison:', err);
-      setError(err.message);
+      console.error('Error selecting winner:', err);
       setCelebratingId(null);
+      fetchImages();
     }
   };
-
+  
   // Handle full view toggle
   const toggleFullView = (e, image) => {
     e.stopPropagation(); // Prevent selecting the image
     setFullViewImage(image === fullViewImage ? null : image);
   };
+
+  // Listen for session changes to update UI
+  useEffect(() => {
+    if (session) {
+      // If user signs in, reset the sign-in prompt
+      setAnonymousState({
+        remaining: -1,
+        showSignInPrompt: false
+      });
+      
+      // Reload images if we were showing the sign-in prompt
+      if (anonymousState.showSignInPrompt) {
+        fetchImages();
+      }
+    } else {
+      // Check anonymous access when not signed in
+      checkAnonymousAccess();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  // Sign-in prompt component
+  const SignInPrompt = () => (
+    <div className="w-full max-w-md mx-auto p-6 card-neo bg-cyber-dark/70 rounded-xl backdrop-blur-md shadow-neon">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-cyber-pink/20 flex items-center justify-center">
+          <FaLock className="text-3xl text-cyber-pink" />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-white mb-2">Limited Access</h2>
+        <p className="text-white/80 mb-6">
+          You've reached the limit for anonymous comparisons. Sign in to continue rating and unlock full access.
+        </p>
+        
+        <button
+          onClick={() => signIn('google')}
+          className="btn-cyber px-6 py-3 font-bold flex items-center justify-center gap-2 mx-auto"
+        >
+          <FaGoogle className="text-lg" /> 
+          <span>Sign in with Google</span>
+        </button>
+      </div>
+    </div>
+  );
 
   if (error) {
     return (
@@ -169,7 +262,7 @@ export default function HeadToHeadCompare() {
           </div>
           <h3 className="font-bold text-xl mb-2 text-center">Error Detected</h3>
           <p className="text-white/70 text-center mb-6">{error}</p>
-          <button 
+          <button
             onClick={fetchImages}
             className="btn-cyber w-full flex items-center justify-center"
           >
@@ -180,8 +273,26 @@ export default function HeadToHeadCompare() {
     );
   }
 
+  // If showing sign-in prompt
+  if (anonymousState.showSignInPrompt) {
+    return <SignInPrompt />;
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto pt-0 relative">
+      {/* Anonymous usage counter - only show if not signed in and remaining counts exist */}
+      {!session && anonymousState.remaining > 0 && (
+        <div className="mb-4 p-3 rounded-md bg-cyber-dark/50 text-white/80 text-sm text-center">
+          <span className="font-medium">Anonymous mode:</span> {anonymousState.remaining} comparison{anonymousState.remaining !== 1 ? 's' : ''} remaining. 
+          <button 
+            onClick={() => signIn('google')} 
+            className="ml-2 text-cyber-pink underline hover:text-cyber-blue transition-colors"
+          >
+            Sign in for unlimited access.
+          </button>
+        </div>
+      )}
+    
       {/* Hidden canvas for confetti (needed for some browsers) */}
       <canvas 
         ref={confettiCanvasRef} 
@@ -216,10 +327,10 @@ export default function HeadToHeadCompare() {
               <span className="text-white font-bold text-xl">VS</span>
             </div>
           </div>
-          
+
           <div className="flex flex-col md:flex-row gap-8">
             {images.map((image, index) => (
-              <motion.div 
+              <motion.div
                 key={image._id}
                 className={`relative md:flex-1 h-[60vh] md:h-[75vh] min-h-[400px] rounded-xl overflow-hidden transition-all duration-300 group mb-8 md:mb-0 ${
                   selectedImageId === image._id ? 'scale-105 z-10' : ''
@@ -228,13 +339,13 @@ export default function HeadToHeadCompare() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.2 }}
                 whileHover={selectedImageId === null ? { scale: 1.03 } : {}}
-                onClick={() => !loading && handleSelect(image._id)}
+                onClick={() => !loading && handleSelectWinner(image._id, images.find(img => img._id !== image._id)._id)}
               >
                 {/* Pulsing particles on celebrating image */}
                 {celebratingId === image._id && (
                   <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
                     {[...Array(20)].map((_, i) => (
-                      <div 
+                      <div
                         key={i}
                         className="absolute w-2 h-2 rounded-full bg-gradient-to-r from-cyber-pink to-cyber-blue animate-float-outward"
                         style={{
@@ -247,7 +358,7 @@ export default function HeadToHeadCompare() {
                     ))}
                   </div>
                 )}
-                
+
                 {/* Image border effect */}
                 <div className={`absolute inset-0 rounded-xl p-1 ${
                   selectedImageId === image._id
@@ -255,8 +366,8 @@ export default function HeadToHeadCompare() {
                     : 'bg-gradient-to-r from-white/10 to-white/5'
                 }`}>
                   <div className="absolute inset-0 rounded-lg overflow-hidden">
-                    <img 
-                      src={image.url} 
+                    <img
+                      src={image.url}
                       alt={image.name || `Image ${index + 1}`}
                       className={`w-full h-full object-cover transition-all duration-300 ${
                         celebratingId === image._id ? 'scale-105 brightness-110' : ''
@@ -322,7 +433,7 @@ export default function HeadToHeadCompare() {
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      !loading && handleSelect(image._id);
+                      !loading && handleSelectWinner(image._id, images.find(img => img._id !== image._id)._id);
                     }}
                     disabled={loading}
                   >
@@ -335,7 +446,7 @@ export default function HeadToHeadCompare() {
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      !loading && handleSelect(image._id);
+                      !loading && handleSelectWinner(image._id, images.find(img => img._id !== image._id)._id);
                     }}
                     disabled={loading}
                   >
@@ -349,14 +460,14 @@ export default function HeadToHeadCompare() {
           {/* Full image modal */}
           <AnimatePresence>
             {fullViewImage && (
-              <motion.div 
+              <motion.div
                 className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={(e) => toggleFullView(e, fullViewImage)}
               >
-                <button 
+                <button
                   className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white"
                   onClick={(e) => toggleFullView(e, fullViewImage)}
                 >
@@ -369,8 +480,8 @@ export default function HeadToHeadCompare() {
                   animate={{ scale: 1 }}
                   exit={{ scale: 0.9 }}
                 >
-                  <img 
-                    src={fullViewImage.url} 
+                  <img
+                    src={fullViewImage.url}
                     alt={fullViewImage.modelUsername || 'Full view'}
                     className="w-full h-full object-contain"
                   />

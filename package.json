@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "^3.8.0",
     "@vercel/analytics": "^1.5.0",
     "@web3-react/core": "^8.2.3",
     "@web3-react/injected-connector": "^6.0.7",
@@ -23,6 +24,7 @@
     "multer": "^1.4.5-lts.1",
     "multer-s3": "^2.10.0",
     "next": "15.2.1",
+    "next-auth": "^4.24.11",
     "next-connect": "^1.0.0",
     "react": "^19.0.0",
     "react-confetti": "^6.4.0",

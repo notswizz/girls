@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import { FaFire, FaStar, FaTrophy, FaBars, FaTimes } from 'react-icons/fa';
+import AuthButton from './AuthButton';
 
 export default function Layout({ children, title = 'hot girl shit' }) {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function Layout({ children, title = 'hot girl shit' }) {
   const navItems = [
     { name: 'home', path: '/', icon: <FaFire className="mr-2" /> },
     { name: 'rate', path: '/rate', icon: <FaStar className="mr-2" /> },
-    { name: 'leaderboard', path: '/leaderboard', icon: <FaTrophy className="mr-2" /> },
   ];
 
   return (
@@ -67,13 +67,17 @@ export default function Layout({ children, title = 'hot girl shit' }) {
                   {item.name}
                 </Link>
               ))}
+              
+              {/* Auth Button */}
+              <AuthButton />
             </nav>
             
             {/* Mobile menu button */}
             <div className="md:hidden flex items-center">
+              <AuthButton />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className={`inline-flex items-center justify-center p-3 rounded-full transition-all duration-300 ${
+                className={`inline-flex items-center justify-center p-3 rounded-full transition-all duration-300 ml-2 ${
                   mobileMenuOpen 
                     ? 'bg-cyber-pink text-white rotate-90' 
                     : 'text-white hover:bg-white/10'

@@ -31,33 +31,19 @@ export default function Home() {
             </div>
           </div>
           
-        
-          
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
+              className="w-full sm:w-auto"
             >
               <Link 
                 href="/rate"
-                className="group btn-cyber flex items-center justify-center gap-2"
+                className="group btn-cyber flex items-center justify-center gap-2 px-12 py-4 text-lg font-bold shadow-neon"
               >
-                <FaFire className="text-cyber-pink" /> 
-                <span>start rating</span>
+                <FaFire className="text-cyber-pink text-xl" /> 
+                <span>START RATING</span>
                 <FaArrowRight className="ml-2 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
-              </Link>
-            </motion.div>
-            
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Link 
-                href="/leaderboard"
-                className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-md font-medium hover:bg-white/15 hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <FaCrown className="text-cyber-yellow" /> 
-                <span>view leaderboard</span>
               </Link>
             </motion.div>
           </div>
