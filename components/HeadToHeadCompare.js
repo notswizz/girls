@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes, FaLock, FaGoogle } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaFire, FaCrown, FaExpand, FaTimes, FaLock, FaGoogle, FaInstagram, FaCreditCard, FaQuestion } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useSession, signIn } from 'next-auth/react';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import PaymentForm from './PaymentForm';
+
+// Load Stripe outside of component render to avoid recreating it on each render
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+
+// Get the cost from environment variable or default to $1
+const REVEAL_COST = parseFloat(process.env.NEXT_PUBLIC_INSTAGRAM_REVEAL_COST || '1').toFixed(2);
+const REVEAL_COST_DISPLAY = `$${REVEAL_COST}`;
 
 export default function HeadToHeadCompare() {
   const [images, setImages] = useState([]);
@@ -16,6 +26,20 @@ export default function HeadToHeadCompare() {
   const [anonymousState, setAnonymousState] = useState({
     remaining: 3,
     showSignInPrompt: false
+  });
+  
+  // Instagram reveal modal state
+  const [instagramModal, setInstagramModal] = useState({
+    open: false,
+    modelId: null,
+    modelName: '',
+    modelUsername: '',
+    instagram: '',
+    paid: false,
+    clientSecret: null,
+    loading: false,
+    error: null,
+    amount: REVEAL_COST_DISPLAY
   });
 
   // Check anonymous access state
@@ -79,13 +103,46 @@ export default function HeadToHeadCompare() {
         throw new Error('Not enough images for comparison');
       }
       
-      console.log('Images loaded successfully:', data.images.map(img => ({
+      // Fetch model data for each image if needed
+      const imagesWithModelData = await Promise.all(data.images.map(async (img) => {
+        // If the image already has model data with Instagram, just return it
+        if (img.modelData && img.modelData.instagram) {
+          return img;
+        }
+        
+        // If the image has a modelId, fetch the model data
+        if (img.modelId) {
+          try {
+            // Ensure modelId is valid format (24 character hex string)
+            const modelId = String(img.modelId);
+            if (!modelId.match(/^[0-9a-fA-F]{24}$/)) {
+              console.warn(`Invalid model ID format: ${modelId}`);
+              return img;
+            }
+            
+            const modelResponse = await fetch(`/api/models/${modelId}`);
+            if (modelResponse.ok) {
+              const modelData = await modelResponse.json();
+              return { ...img, modelData: modelData.model };
+            } else {
+              console.warn(`Failed to fetch model data: ${modelResponse.status}`);
+            }
+          } catch (e) {
+            console.error('Error fetching model data:', e);
+          }
+        }
+        
+        return img;
+      }));
+      
+      console.log('Images loaded successfully:', imagesWithModelData.map(img => ({
         id: img._id,
         modelName: img.modelName,
-        modelUsername: img.modelUsername
+        modelUsername: img.modelUsername,
+        hasInstagram: !!img.modelData?.instagram
       })));
       
-      setImages(data.images);
+      setImages(imagesWithModelData);
     } catch (err) {
       console.error('Error fetching images:', err);
       setError(err.message);
@@ -206,7 +263,91 @@ export default function HeadToHeadCompare() {
     e.stopPropagation(); // Prevent selecting the image
     setFullViewImage(image === fullViewImage ? null : image);
   };
-
+  
+  // Handle Instagram reveal button click
+  const handleInstagramReveal = async (e, image) => {
+    e.stopPropagation(); // Prevent selecting the image
+    
+    // Get model data (either from the image or fetch it)
+    const modelData = image.modelData;
+    
+    setInstagramModal({
+      open: true,
+      modelId: image.modelId,
+      modelName: modelData?.name || image.modelName || 'This model',
+      modelUsername: image.modelUsername || modelData?.username || 'this model',
+      instagram: modelData?.instagram || '',
+      paid: false,
+      clientSecret: null,
+      loading: true,
+      error: null,
+      amount: REVEAL_COST_DISPLAY
+    });
+    
+    try {
+      console.log('Creating payment intent for model:', image.modelId);
+      
+      // Create a payment intent
+      const response = await fetch('/api/payments/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          modelId: image.modelId,
+          modelName: modelData?.name || image.modelName || 'Unknown'
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Payment intent creation failed:', data);
+        throw new Error(data.message || 'Failed to create payment intent');
+      }
+      
+      console.log('Payment intent created successfully');
+      
+      setInstagramModal(prev => ({
+        ...prev,
+        clientSecret: data.clientSecret,
+        loading: false,
+        amount: data.formatted_amount || REVEAL_COST_DISPLAY
+      }));
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      setInstagramModal(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message || 'Failed to initialize payment. Please try again later.'
+      }));
+    }
+  };
+  
+  // Handle payment success
+  const handlePaymentSuccess = (paymentIntent) => {
+    // In a production app, you would verify the payment on the server
+    // For now, we just set paid to true to reveal the Instagram handle
+    setInstagramModal(prev => ({
+      ...prev,
+      paid: true,
+      clientSecret: null
+    }));
+    
+    // In a production app, here you would:
+    // 1. Verify the payment was successful via server
+    // 2. Record the transaction in your database
+    // 3. Update user's access rights to this content
+  };
+  
+  // Handle payment error
+  const handlePaymentError = (error) => {
+    setInstagramModal(prev => ({
+      ...prev,
+      error: error.message || 'Payment failed'
+    }));
+  };
+  
   // Listen for session changes to update UI
   useEffect(() => {
     if (session) {
@@ -250,6 +391,154 @@ export default function HeadToHeadCompare() {
       </div>
     </div>
   );
+  
+  // Instagram Reveal Modal
+  const renderInstagramModal = () => {
+    const { open, modelUsername, instagram, paid, clientSecret, loading, error, amount } = instagramModal;
+    
+    if (!open) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 overflow-y-auto">
+        <div className="relative bg-cyber-dark border-2 border-cyber-blue/50 rounded-lg w-full max-w-md p-4 shadow-xl max-h-[90vh] overflow-y-auto my-8">
+          <button
+            onClick={() => setInstagramModal(prev => ({ ...prev, open: false }))}
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-white/60 hover:text-white bg-cyber-dark/80 rounded-full z-10"
+          >
+            <FaTimes />
+          </button>
+          
+          <div className="text-center mb-4">
+            <div className="h-12 w-12 mx-auto bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-full flex items-center justify-center mb-2">
+              <FaInstagram className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Instagram Reveal</h3>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin h-8 w-8 border-4 border-cyber-blue border-t-transparent rounded-full mx-auto mb-3"></div>
+              <p className="text-white">Initializing payment...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-4">
+              <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-3 mb-3">
+                <p className="text-red-300 text-sm">{error}</p>
+              </div>
+              <button
+                onClick={() => setInstagramModal(prev => ({ ...prev, open: false }))}
+                className="btn-cyber bg-gradient-to-r from-cyber-blue to-cyber-purple px-6 py-2"
+              >
+                Close
+              </button>
+            </div>
+          ) : paid ? (
+            <div className="text-center">
+              <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-pink-500/40 rounded-lg p-4 mb-4">
+                <div className="flex flex-col items-center">
+                  <div className="mb-3 text-white text-sm">
+                    Check out <span className="font-bold text-cyber-success">@{modelUsername}</span> on Instagram!
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 p-0.5 rounded-lg w-full mb-4">
+                    <div className="bg-cyber-dark-lighter p-3 rounded-md flex items-center justify-center">
+                      <FaInstagram className="text-pink-500 text-xl mr-2" />
+                      <span className="font-bold text-xl text-white break-all">@{instagram}</span>
+                    </div>
+                  </div>
+                  
+                  <a
+                    href={`https://instagram.com/${instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-cyber bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2 flex items-center justify-center w-full mb-2"
+                  >
+                    <FaInstagram className="mr-2" />
+                    Visit Instagram Profile
+                  </a>
+                  
+                  <div className="text-xs text-white/60 mt-2">
+                    You can now follow and connect with this model on Instagram.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setInstagramModal(prev => ({ ...prev, open: false }))}
+                className="btn-cyber bg-gradient-to-r from-cyber-blue to-cyber-purple px-6 py-2"
+              >
+                Close
+              </button>
+            </div>
+          ) : clientSecret ? (
+            <div>
+              <div className="mb-3">
+                <p className="text-white mb-3 text-sm">
+                  Unlock <span className="font-bold text-cyber-pink">@{modelUsername}'s</span> Instagram handle for a one-time fee.
+                </p>
+                <div className="bg-cyber-dark/50 border border-white/10 rounded-lg p-3 mb-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-white/80 text-sm">Reveal fee:</span>
+                    <span className="text-cyber-pink font-bold">{amount}</span>
+                  </div>
+                  <div className="text-xs text-white/60">
+                    One-time payment to reveal this model's Instagram.
+                  </div>
+                </div>
+              </div>
+            
+              <Elements 
+                stripe={stripePromise} 
+                options={{ 
+                  clientSecret,
+                  appearance: {
+                    theme: 'night',
+                    variables: {
+                      colorPrimary: '#4CC9F0',
+                      colorBackground: '#0F1223',
+                      colorText: '#FFFFFF',
+                      colorDanger: '#FF0080',
+                      fontFamily: 'system-ui, sans-serif',
+                      spacingUnit: '4px',
+                      borderRadius: '8px'
+                    }
+                  }
+                }}
+              >
+                <PaymentForm 
+                  clientSecret={clientSecret} 
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  amount={amount}
+                />
+              </Elements>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-white mb-3 text-sm">
+                Unlock <span className="font-bold text-cyber-pink">@{modelUsername}'s</span> Instagram handle for a one-time fee.
+              </p>
+              <div className="bg-cyber-dark/50 border border-white/10 rounded-lg p-3 mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-white/80 text-sm">Reveal fee:</span>
+                  <span className="text-cyber-pink font-bold">{amount}</span>
+                </div>
+                <div className="text-xs text-white/60">
+                  One-time payment to reveal this model's Instagram.
+                </div>
+              </div>
+              <button
+                onClick={() => handleInstagramReveal({ stopPropagation: () => {} }, { modelId: instagramModal.modelId, modelName: instagramModal.modelName, modelUsername: instagramModal.modelUsername })}
+                className="btn-cyber bg-gradient-to-r from-cyber-blue to-cyber-purple w-full py-2 flex items-center justify-center text-sm"
+              >
+                <FaCreditCard className="mr-2" />
+                Pay {amount} to Reveal
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   if (error) {
     return (
@@ -401,6 +690,19 @@ export default function HeadToHeadCompare() {
                   </div>
                 )}
                 
+                {/* "Who is she?" button - Only show if the model has an Instagram */}
+                {image.modelData && image.modelData.instagram && (
+                  <div className="absolute bottom-3 left-3 z-20">
+                    <button
+                      className="px-3 py-2 bg-gradient-to-r from-cyber-pink/80 to-cyber-purple/80 backdrop-blur-sm rounded-lg text-sm font-medium text-white flex items-center hover:shadow-neon transition-all duration-300"
+                      onClick={(e) => handleInstagramReveal(e, image)}
+                    >
+                      <FaQuestion className="mr-2" />
+                      Who is she?
+                    </button>
+                  </div>
+                )}
+                
                 {/* Winner effect */}
                 <AnimatePresence>
                   {selectedImageId === image._id && (
@@ -504,6 +806,9 @@ export default function HeadToHeadCompare() {
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {/* Instagram Reveal Modal */}
+          {renderInstagramModal()}
         </div>
       )}
       
