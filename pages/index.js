@@ -58,56 +58,95 @@ export default function Home() {
         {/* Features Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
           <motion.div 
-            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            className="relative group p-6 hover:-translate-y-2 transition-all duration-500"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            <div className="h-40 flex items-center justify-center mb-4">
-              <div className="w-24 h-24 rounded-full bg-cyber-pink/20 flex items-center justify-center relative">
-                <FaHeart className="text-4xl text-cyber-pink" />
-                <div className="absolute inset-0 rounded-full border-2 border-cyber-pink/50 animate-pulse"></div>
+            {/* Animated border container */}
+            <div className="absolute inset-0 rounded-xl border-2 border-cyber-pink/60 z-0 animate-pulse-slow"></div>
+            
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-cyber-pink/20 blur-md rounded-xl z-0 group-hover:bg-cyber-blue/20 transition-all duration-700"></div>
+            
+            {/* Cyber corner accent */}
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyber-blue z-20"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyber-pink z-20"></div>
+            
+            {/* Card content */}
+            <div className="relative z-10">
+              <div className="h-40 flex items-center justify-center mb-4">
+                <div className="w-24 h-24 rounded-full bg-cyber-pink/20 flex items-center justify-center relative">
+                  <FaHeart className="text-4xl text-cyber-pink" />
+                  <div className="absolute inset-0 rounded-full border-2 border-cyber-pink/50 animate-pulse"></div>
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-white mb-2">Compare</h3>
-              <p className="text-white/70">Head-to-head matches to find your favorites</p>
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-white mb-2">Compare</h3>
+                <p className="text-white/70">Head-to-head matches to find your favorites</p>
+              </div>
             </div>
           </motion.div>
           
           <motion.div 
-            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            className="relative group p-6 hover:-translate-y-2 transition-all duration-500"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
           >
-            <div className="h-40 flex items-center justify-center mb-4">
-              <div className="w-24 h-24 rounded-full bg-cyber-purple/20 flex items-center justify-center relative">
-                <FaFire className="text-4xl text-cyber-purple" />
-                <div className="absolute inset-0 rounded-full border-2 border-cyber-purple/50 animate-pulse"></div>
+            {/* Animated border container */}
+            <div className="absolute inset-0 rounded-xl border-2 border-cyber-pink/60 z-0 animate-pulse-slow"></div>
+            
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-cyber-pink/20 blur-md rounded-xl z-0 group-hover:bg-cyber-blue/20 transition-all duration-700"></div>
+            
+            {/* Cyber corner accent */}
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyber-blue z-20"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyber-pink z-20"></div>
+            
+            {/* Card content */}
+            <div className="relative z-10">
+              <div className="h-40 flex items-center justify-center mb-4">
+                <div className="w-24 h-24 rounded-full bg-cyber-purple/20 flex items-center justify-center relative">
+                  <FaFire className="text-4xl text-cyber-purple" />
+                  <div className="absolute inset-0 rounded-full border-2 border-cyber-purple/50 animate-pulse"></div>
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-white mb-2">Rate</h3>
-              <p className="text-white/70">Score and rate your favorite models</p>
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-white mb-2">Rate</h3>
+                <p className="text-white/70">Score and rate your favorite models</p>
+              </div>
             </div>
           </motion.div>
           
           <motion.div 
-            className="card-neo p-6 hover:shadow-neon transition-all duration-500 hover:-translate-y-2"
+            className="relative group p-6 hover:-translate-y-2 transition-all duration-500"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <div className="h-40 flex items-center justify-center mb-4">
-              <div className="w-24 h-24 rounded-full bg-cyber-blue/20 flex items-center justify-center relative">
-                <FaChartLine className="text-4xl text-cyber-blue" />
-                <div className="absolute inset-0 rounded-full border-2 border-cyber-blue/50 animate-pulse"></div>
+            {/* Animated border container */}
+            <div className="absolute inset-0 rounded-xl border-2 border-cyber-pink/60 z-0 animate-pulse-slow"></div>
+            
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-cyber-pink/20 blur-md rounded-xl z-0 group-hover:bg-cyber-blue/20 transition-all duration-700"></div>
+            
+            {/* Cyber corner accent */}
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyber-blue z-20"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyber-pink z-20"></div>
+            
+            {/* Card content */}
+            <div className="relative z-10">
+              <div className="h-40 flex items-center justify-center mb-4">
+                <div className="w-24 h-24 rounded-full bg-cyber-blue/20 flex items-center justify-center relative">
+                  <FaChartLine className="text-4xl text-cyber-blue" />
+                  <div className="absolute inset-0 rounded-full border-2 border-cyber-blue/50 animate-pulse"></div>
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-white mb-2">Track</h3>
-              <p className="text-white/70">Follow rankings on the leaderboard</p>
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-white mb-2">Track</h3>
+                <p className="text-white/70">Follow rankings on the leaderboard</p>
+              </div>
             </div>
           </motion.div>
         </div>
