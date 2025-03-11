@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Head from 'next/head';
 import { FaFire, FaCrown, FaChartLine, FaHeart, FaArrowRight } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import RandomImages from '../components/ModelGallery';
 
 export default function Home() {
   return (
@@ -46,6 +47,11 @@ export default function Home() {
                 <FaArrowRight className="ml-2 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
               </Link>
             </motion.div>
+          </div>
+          
+          {/* Random Model Images */}
+          <div className="mt-10">
+            <RandomImages />
           </div>
         </motion.div>
         
