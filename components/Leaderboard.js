@@ -1,23 +1,61 @@
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useMemo } from 'react';
+import { FaTrophy, FaFire, FaCrown, FaStar, FaChartLine, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
+  const [modelLeaderboard, setModelLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sortField, setSortField] = useState('elo');
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [activeTab, setActiveTab] = useState('images'); // 'models', 'images'
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/scores/leaderboard');
+        // Fetch images leaderboard
+        const imageResponse = await fetch('/api/scores/leaderboard');
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch leaderboard');
+        if (!imageResponse.ok) {
+          throw new Error('Failed to fetch image leaderboard');
         }
         
-        const data = await response.json();
-        setLeaderboard(data.leaderboard || []);
+        const imageData = await imageResponse.json();
+        
+        // Add type field to image entries to distinguish them
+        const imageEntries = (imageData.leaderboard || []).map(item => ({
+          ...item,
+          type: 'image',
+          // If the API doesn't provide these fields, add default values
+          wins: item.wins || 0,
+          losses: item.losses || 0,
+          winRate: item.winRate || 0,
+          elo: item.elo || 1200
+        }));
+        
+        setLeaderboard(imageEntries);
+        
+        // Fetch model stats
+        const modelResponse = await fetch('/api/scores/rank');
+        
+        if (modelResponse.ok) {
+          const modelData = await modelResponse.json();
+          
+          // Add type field to model entries to distinguish them
+          const modelEntries = (modelData.models || []).map(model => ({
+            id: model._id || model.id,
+            name: model.name,
+            type: 'model',
+            elo: model.elo || 1200,
+            wins: model.wins || 0,
+            losses: model.losses || 0,
+            winRate: model.winRate || 0,
+            imageCount: model.imageCount
+          }));
+          
+          setModelLeaderboard(modelEntries);
+        }
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
         setError(err.message);
@@ -28,6 +66,69 @@ export default function Leaderboard() {
 
     fetchLeaderboard();
   }, []);
+
+  // Handle sort click
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field) => {
+    if (sortField !== field) return <FaSort className="text-gray-400" />;
+    return sortDirection === 'asc' ? <FaSortUp className="text-cyber-blue" /> : <FaSortDown className="text-cyber-blue" />;
+  };
+
+  // Get current data based on active tab
+  const currentData = useMemo(() => {
+    const data = activeTab === 'images' ? leaderboard : modelLeaderboard;
+    
+    // Sort data
+    return [...data].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+      
+      // Handle special cases
+      if (sortField === 'createdAt' || sortField === 'lastLoginAt') {
+        aValue = aValue ? new Date(aValue).getTime() : 0;
+        bValue = bValue ? new Date(bValue).getTime() : 0;
+      }
+      
+      // Handle null/undefined values
+      if (aValue === undefined || aValue === null) aValue = sortDirection === 'asc' ? Infinity : -Infinity;
+      if (bValue === undefined || bValue === null) bValue = sortDirection === 'asc' ? Infinity : -Infinity;
+      
+      // Compare values
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [activeTab, leaderboard, modelLeaderboard, sortField, sortDirection]);
+
+  // Get ELO rank color class
+  const getEloRankColor = (elo) => {
+    if (!elo) return 'text-gray-400';
+    if (elo >= 1800) return 'text-amber-400'; // Gold
+    if (elo >= 1600) return 'text-purple-400'; // Purple
+    if (elo >= 1400) return 'text-cyan-400'; // Cyan
+    return 'text-gray-300'; // Default
+  };
+
+  // Get ELO rank name
+  const getEloRankName = (elo) => {
+    if (!elo) return 'Unranked';
+    if (elo >= 1800) return 'Elite';
+    if (elo >= 1600) return 'Pro';
+    if (elo >= 1400) return 'Expert';
+    if (elo >= 1200) return 'Advanced';
+    return 'Beginner';
+  };
 
   if (loading) {
     return (
@@ -50,118 +151,170 @@ export default function Leaderboard() {
     );
   }
 
-  if (leaderboard.length === 0) {
+  if (
+    (activeTab === 'images' && !leaderboard.length) || 
+    (activeTab === 'models' && !modelLeaderboard.length)
+  ) {
     return (
-      <div className="card-neo p-6 rounded-lg text-center border border-cyber-blue/30">
-        <div className="text-cyber-blue text-xl mb-2">Leaderboard Empty</div>
-        <div className="text-white/70">No entries in the leaderboard yet. Start rating to see results!</div>
+      <div className="card-neo p-6 rounded-lg text-center">
+        <div className="text-white mb-2">No data available for {activeTab}</div>
+        <div className="text-white/60 text-sm">Check back after more ratings have been submitted</div>
       </div>
     );
   }
 
   return (
-    <div className="card-neo rounded-xl overflow-hidden relative backdrop-blur-lg">
-      {/* Decorative elements */}
-      <div className="absolute -top-6 -right-6 w-12 h-12 rounded-full bg-cyber-pink/20 blur-xl"></div>
-      <div className="absolute -bottom-6 -left-6 w-12 h-12 rounded-full bg-cyber-blue/20 blur-xl"></div>
-
-      {/* Header */}
-      <h2 className="text-xl sm:text-2xl font-bold text-center py-4 bg-gradient-to-r from-cyber-purple to-cyber-pink text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-glitter opacity-10"></div>
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-blue to-transparent"></div>
-        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyber-blue to-transparent"></div>
-        <span className="relative z-10 text-shadow-neon">TOP RATED</span>
-      </h2>
-      
-      <div className="divide-y divide-white/10">
-        {leaderboard.map((entry, index) => (
-          <div 
-            key={entry.id} 
-            className={`flex items-center p-3 sm:p-4 hover:bg-white/5 transition-all duration-300 relative ${
-              index === 0 ? 'bg-gradient-to-r from-cyber-yellow/10 to-transparent' : ''
-            }`}
-          >
-            {/* Rank indicator */}
-            <div className={`font-bold text-xl sm:text-2xl w-10 sm:w-12 text-center relative ${
-              index === 0 ? 'text-cyber-yellow' : 
-              index === 1 ? 'text-white' : 
-              index === 2 ? 'text-cyber-pink' : 'text-white/70'
-            }`}>
-              {index === 0 && (
-                <div className="absolute -top-1 -left-1 -right-1 -bottom-1 rounded-full border border-cyber-yellow animate-pulse"></div>
-              )}
-              {entry.rank || '-'}
-            </div>
-            
-            {/* Profile image */}
-            <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden mr-3 sm:mr-4 flex-shrink-0 border-2 border-white/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyber-purple/30 to-cyber-pink/30 z-10 mix-blend-overlay"></div>
-              {entry.url ? (
-                <Image
-                  src={entry.url}
-                  alt={entry.name || `Rank #${entry.rank || '?'}`}
-                  fill
-                  sizes="(max-width: 768px) 48px, 64px"
-                  className="object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-cyber-dark">
-                  <span className="text-cyber-blue text-2xl">?</span>
-                </div>
-              )}
-              {index < 3 && (
-                <div className="absolute inset-0 border-2 rounded-full border-cyber-blue animate-pulse"></div>
-              )}
-            </div>
-            
-            {/* Name and info */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-base sm:text-lg truncate">
-                <div className="text-lg font-semibold text-white group-hover:text-cyber-blue transition-colors duration-300">
-                  {entry.name || 'Untitled'}
-                  {entry.modelUsername && (
-                    <span className="text-sm text-white/50 ml-2">
-                      @{entry.modelUsername}
-                    </span>
-                  )}
-                </div>
-                {entry.description && (
-                  <p className="text-white/60 text-xs sm:text-sm truncate">{entry.description}</p>
-                )}
-              </h3>
-            </div>
-            
-            {/* Score */}
-            <div className="text-right ml-2 flex-shrink-0">
-              <div className="text-xl sm:text-2xl font-bold">
-                <span className={`${
-                  index === 0 ? 'text-cyber-yellow' : 
-                  index === 1 ? 'text-white' : 
-                  index === 2 ? 'text-cyber-pink' : 'text-cyber-blue'
-                }`}>
-                  {entry.averageScore !== null && entry.averageScore !== undefined 
-                    ? entry.averageScore.toFixed(1) 
-                    : '0.0'}
-                </span>
-              </div>
-              <div className="text-xs text-white/50">
-                {entry.timesRated || 0} {(!entry.timesRated || entry.timesRated === 1) ? 'rating' : 'ratings'}
-              </div>
-            </div>
-
-            {/* Special effects for top entries */}
-            {index === 0 && (
-              <div className="absolute top-0 right-0 bottom-0 w-1 bg-gradient-to-b from-cyber-yellow via-transparent to-cyber-yellow"></div>
-            )}
-          </div>
-        ))}
+    <div className="space-y-4">
+      {/* Tabs for filtering */}
+      <div className="flex space-x-2 mb-4">
+        <button
+          onClick={() => setActiveTab('models')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'models' 
+              ? 'bg-gradient-to-r from-cyber-blue to-cyber-purple text-white' 
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <FaCrown className="inline-block mr-2" />
+          Models
+        </button>
+        <button
+          onClick={() => setActiveTab('images')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'images' 
+              ? 'bg-gradient-to-r from-cyber-pink to-cyber-purple text-white' 
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <FaStar className="inline-block mr-2" />
+          Images
+        </button>
       </div>
 
-      {/* Bottom decorative line */}
-      <div className="h-1 w-full bg-gradient-to-r from-cyber-purple via-cyber-blue to-cyber-pink"></div>
+      <div className="bg-gray-900 rounded-lg overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-800">
+            <thead className="bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-16">
+                  Rank
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  {activeTab === 'models' ? 'Model' : 'Image'}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('elo')}
+                >
+                  <div className="flex items-center">
+                    <span>ELO</span>
+                    <span className="ml-1">{getSortIcon('elo')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('winRate')}
+                >
+                  <div className="flex items-center">
+                    <span>Win Rate</span>
+                    <span className="ml-1">{getSortIcon('winRate')}</span>
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('wins')}
+                >
+                  <div className="flex items-center">
+                    <span>W/L</span>
+                    <span className="ml-1">{getSortIcon('wins')}</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-gray-900 divide-y divide-gray-800">
+              {currentData.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-400">
+                    No data available
+                  </td>
+                </tr>
+              ) : (
+                currentData.map((item, index) => (
+                  <tr key={item.id} className="hover:bg-gray-800 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {index < 3 ? (
+                        <div className="flex justify-center">
+                          {index === 0 && <FaTrophy className="text-amber-400 text-lg" />}
+                          {index === 1 && <FaTrophy className="text-gray-300 text-lg" />}
+                          {index === 2 && <FaTrophy className="text-amber-700 text-lg" />}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-400">{index + 1}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {item.url && (
+                          <div className="flex-shrink-0 h-10 w-10 mr-3">
+                            <div className="h-10 w-10 rounded overflow-hidden bg-gray-700">
+                              <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                            </div>
+                          </div>
+                        )}
+                        {!item.url && (
+                          <div className="flex-shrink-0 h-10 w-10 mr-3 rounded bg-gray-700 flex items-center justify-center">
+                            {item.type === 'model' ? (
+                              <FaCrown className="text-gray-400" />
+                            ) : (
+                              <FaStar className="text-gray-400" />
+                            )}
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-white">
+                            {item.name || 'Unknown'}
+                          </div>
+                          {activeTab === 'models' && item.imageCount !== undefined && (
+                            <div className="text-xs text-gray-400">
+                              {item.imageCount} {item.imageCount === 1 ? 'image' : 'images'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <div className={`text-lg font-bold ${getEloRankColor(item.elo)}`}>
+                          {Math.round(item.elo || 1200)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {getEloRankName(item.elo)}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="w-full bg-gray-700 rounded-full h-2.5">
+                        <div
+                          className="bg-gradient-to-r from-cyber-pink to-cyber-purple h-2.5 rounded-full"
+                          style={{ width: `${Math.round((item.winRate || 0) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-300 mt-1">
+                        {Math.round((item.winRate || 0) * 100)}%
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <span className="text-green-400">{item.wins || 0}</span>
+                      <span className="mx-1">/</span>
+                      <span className="text-red-400">{item.losses || 0}</span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 } 

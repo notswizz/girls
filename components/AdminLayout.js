@@ -10,8 +10,7 @@ export default function AdminLayout({ children, title = 'admin' }) {
   // Admin navigation items
   const navItems = [
     { name: 'dashboard', path: '/admin' },
-    { name: 'upload', path: '/admin/upload' },
-    { name: 'models', path: '/admin/models' },
+    { name: 'community', path: '/admin/users' },
     { name: 'leaderboard', path: '/admin/leaderboard' },
     { name: 'site', path: '/' },
   ];
