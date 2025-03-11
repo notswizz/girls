@@ -5,6 +5,20 @@ import { useEffect, useState } from 'react';
 // Load Stripe outside of component render to avoid recreating it on each render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
+// Default appearance for Stripe Elements
+const appearance = {
+  theme: 'night',
+  variables: {
+    colorPrimary: '#4CC9F0',
+    colorBackground: '#0F1223',
+    colorText: '#FFFFFF',
+    colorDanger: '#FF0080',
+    fontFamily: 'system-ui, sans-serif',
+    spacingUnit: '4px',
+    borderRadius: '8px'
+  }
+};
+
 export default function StripeProvider({ children }) {
   const [stripeLoaded, setStripeLoaded] = useState(false);
 
@@ -18,16 +32,18 @@ export default function StripeProvider({ children }) {
     }
   }, []);
 
+  // Basic options that won't conflict with specific Element instances
+  const elementsOptions = {
+    appearance,
+    loader: 'auto'
+  };
+
   if (!stripeLoaded) {
-    return (
-      <>
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={elementsOptions}>
       {children}
     </Elements>
   );

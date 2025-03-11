@@ -27,8 +27,9 @@ export default async function handler(req, res) {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: REVEAL_COST_CENTS, // Amount in cents from environment variable
         currency: 'usd',
-        // Specify allowed payment methods - simplified to just card for now
-        payment_method_types: ['card'],
+        // Use explicit payment method types approach (option 1)
+        payment_method_types: ['card', 'cashapp'],
+        // Note: We're NOT using automatic_payment_methods here to avoid the conflict
         metadata: {
           modelId,
           modelName,

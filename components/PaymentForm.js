@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   PaymentElement,
   useStripe,
@@ -10,6 +10,33 @@ export default function PaymentForm({ clientSecret, onSuccess, onError, amount =
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [paymentMethodsAvailable, setPaymentMethodsAvailable] = useState({
+    applePay: false,
+    cashApp: false
+  });
+
+  // Check for available payment methods
+  useEffect(() => {
+    if (!stripe || !elements) return;
+    
+    const checkPaymentMethods = async () => {
+      try {
+        // Check if Apple Pay is available on this device
+        if (window.ApplePaySession && stripe.applePay) {
+          const canUseApplePay = await stripe.applePay.checkAvailability();
+          setPaymentMethodsAvailable(prev => ({
+            ...prev,
+            applePay: canUseApplePay
+          }));
+          console.log('Apple Pay available:', canUseApplePay);
+        }
+      } catch (err) {
+        console.error('Error checking Apple Pay availability:', err);
+      }
+    };
+    
+    checkPaymentMethods();
+  }, [stripe, elements]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,7 +86,23 @@ export default function PaymentForm({ clientSecret, onSuccess, onError, amount =
           id="payment-element" 
           options={{
             layout: 'tabs',
-            // Let Stripe handle billing details collection automatically
+            defaultValues: {
+              billingDetails: {
+                name: 'Instagram Reveal',
+              }
+            },
+            paymentMethodOrder: ['card', 'cashapp'],
+            // Show all available payment methods in their own tab
+            paymentMethodTypes: {
+              card: {
+                // Always show card as an option
+                enabled: true
+              },
+              cashapp: {
+                // Show Cash App if available
+                enabled: true
+              }
+            }
           }}
         />
       </div>
