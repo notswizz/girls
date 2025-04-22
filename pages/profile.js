@@ -1,4 +1,3 @@
-import Head from 'next/head';
 import { useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
 import UserProfile from '../components/UserProfile';
@@ -8,13 +7,16 @@ export default function ProfilePage() {
   const { status } = useSession();
   const loading = status === 'loading';
 
-  return (
-    <Layout title="profile">
-      <Head>
-        <title>profile | hot girl shit</title>
-        <meta name="description" content="Your profile on hot girl shit" />
-      </Head>
+  // SEO metadata for profile page
+  const seoProps = {
+    title: "User Profile - Manage Your Account",
+    description: "Access your profile information, view your voting history, and manage your account settings on hot girl shit.",
+    keywords: "olivia ponton, jordyn jones, fapello, onlyfans, boutinella, livvy dunne, madison pettis, jasmine skye, millie bobby brown, hannah ann sluss, user profile, model rating history, account settings",
+    ogType: "profile"
+  };
 
+  return (
+    <Layout {...seoProps}>
       <div className="w-full max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6 p-4 bg-cyber-blue/20 border border-cyber-blue/40 rounded-lg text-white">
           <div className="flex items-start">

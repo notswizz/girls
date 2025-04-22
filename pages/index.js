@@ -1,18 +1,20 @@
 import Link from 'next/link';
 import Layout from '../components/Layout';
-import Head from 'next/head';
 import { FaFire, FaCrown, FaChartLine, FaHeart, FaArrowRight } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import RandomImages from '../components/ModelGallery';
 
 export default function Home() {
+  // SEO metadata for homepage
+  const seoProps = {
+    title: "hot girl shit - Rate and Compare Models Head-to-Head",
+    description: "Discover, rate and compare models in head-to-head matchups on our cyberpunk-inspired platform. Join the community and help rank the hottest content.",
+    keywords: "olivia ponton, jordyn jones, fapello, onlyfans, boutinella, livvy dunne, madison pettis, jasmine skye, millie bobby brown, hannah ann sluss, hot girls, model rating, influencers, instagram models, tiktok stars, social rating app",
+    ogType: "website"
+  };
+
   return (
-    <Layout title="home">
-      <Head>
-        <title>home | hot girl shit</title>
-        <meta name="description" content="rate and compare hot girl shit" />
-      </Head>
-      
+    <Layout {...seoProps}>
       <div className="w-full max-w-5xl mx-auto px-4 py-8 sm:py-16">
         {/* Hero Section */}
         <motion.div 
@@ -41,6 +43,7 @@ export default function Home() {
               <Link 
                 href="/rate"
                 className="group btn-cyber flex items-center justify-center gap-2 px-12 py-4 text-lg font-bold shadow-neon"
+                aria-label="Start rating models"
               >
                 <FaFire className="text-cyber-pink text-xl" /> 
                 <span>START RATING</span>
