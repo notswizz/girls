@@ -90,7 +90,12 @@ export default function AuthButton() {
                     {userStats?.ratingsCount || 0} Ratings
                   </span>
                 </div>
-                
+                <div className="flex items-center mb-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-2" />
+                  <span className="text-white text-sm font-semibold">
+                    {userStats?.tokens ?? 0} Tokens
+                  </span>
+                </div>
                 <div className="flex items-center">
                   <FaCalendarAlt className="text-cyber-blue mr-2" />
                   <span className="text-white text-sm">

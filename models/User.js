@@ -15,6 +15,9 @@ class User {
     // Track user activity and preferences
     ratingsCount = 0,
     lastLoginAt = null,
+    // Token system fields
+    tokens = 0, // spendable tokens, default 0
+    revealHistory = [], // array of { modelId, timestamp, cost }
   }) {
     this._id = _id;
     this.name = name;
@@ -27,6 +30,8 @@ class User {
     this.updatedAt = updatedAt;
     this.ratingsCount = ratingsCount;
     this.lastLoginAt = lastLoginAt;
+    this.tokens = tokens;
+    this.revealHistory = revealHistory;
   }
 
   // Format for database insertion
@@ -42,6 +47,8 @@ class User {
       updatedAt: this.updatedAt,
       ratingsCount: this.ratingsCount,
       lastLoginAt: this.lastLoginAt,
+      tokens: this.tokens,
+      revealHistory: this.revealHistory,
     };
   }
 
@@ -60,6 +67,8 @@ class User {
       updatedAt: doc.updatedAt || new Date(),
       ratingsCount: doc.ratingsCount || 0,
       lastLoginAt: doc.lastLoginAt || null,
+      tokens: doc.tokens || 0,
+      revealHistory: doc.revealHistory || [],
     });
   }
 
