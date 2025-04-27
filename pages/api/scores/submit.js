@@ -49,11 +49,11 @@ export default async function handler(req, res) {
       if (user) {
         authenticatedUserId = user._id;
         
-        // Update the user's ratings count
+        // Update the user's ratings count AND tokens
         await db.collection('users').updateOne(
           { _id: user._id },
-          { 
-            $inc: { ratingsCount: 1 },
+          {
+            $inc: { ratingsCount: 1, tokens: 1 },
             $set: { updatedAt: new Date() }
           }
         );
@@ -121,10 +121,34 @@ export default async function handler(req, res) {
     // Update model stats if model IDs are available
     if (winnerImage.modelId) {
       await updateModelStats(db, winnerImage.modelId);
+      // Add new elo point to model's eloHistory
+      await db.collection('models').updateOne(
+        { _id: typeof winnerImage.modelId === 'string' ? new ObjectId(winnerImage.modelId) : winnerImage.modelId },
+        {
+          $push: {
+            eloHistory: {
+              $each: [{ elo: winnerNewRating, timestamp: new Date() }],
+              $slice: -100 // Keep last 100 points
+            }
+          }
+        }
+      );
     }
-    
+
     if (loserImage.modelId) {
       await updateModelStats(db, loserImage.modelId);
+      // Add new elo point to model's eloHistory
+      await db.collection('models').updateOne(
+        { _id: typeof loserImage.modelId === 'string' ? new ObjectId(loserImage.modelId) : loserImage.modelId },
+        {
+          $push: {
+            eloHistory: {
+              $each: [{ elo: loserNewRating, timestamp: new Date() }],
+              $slice: -100 // Keep last 100 points
+            }
+          }
+        }
+      );
     }
     
     return res.status(200).json({ 

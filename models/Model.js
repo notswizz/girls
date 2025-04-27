@@ -17,7 +17,8 @@ class Model {
     wins = 0,
     losses = 0,
     winRate = 0,
-    elo = 1200 // Starting ELO rating
+    elo = 1200, // Starting ELO rating
+    eloHistory = []
   }) {
     this._id = _id;
     this.name = name;
@@ -34,6 +35,8 @@ class Model {
     this.losses = losses;
     this.winRate = winRate;
     this.elo = elo;
+    // Add price/elo history for market graph
+    this.eloHistory = Array.isArray(eloHistory) ? eloHistory : [];
   }
 
   // Format for database insertion
@@ -52,7 +55,8 @@ class Model {
       wins: this.wins,
       losses: this.losses,
       winRate: this.winRate,
-      elo: this.elo
+      elo: this.elo,
+      eloHistory: this.eloHistory
     };
   }
 
@@ -72,7 +76,8 @@ class Model {
       wins: doc.wins || 0,
       losses: doc.losses || 0,
       winRate: doc.winRate || 0,
-      elo: doc.elo || 1200
+      elo: doc.elo || 1200,
+      eloHistory: doc.eloHistory || []
     });
   }
 }
