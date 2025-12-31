@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useSession, signIn } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { FaUpload, FaGoogle, FaArrowRight } from 'react-icons/fa';
 
 const RandomImages = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     const fetchRandomImages = async () => {
@@ -29,9 +32,9 @@ const RandomImages = () => {
     };
 
     fetchRandomImages();
-  }, []);
+  }, [session]); // Refetch when session changes
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return (
       <div className="flex justify-center gap-4">
         {[...Array(6)].map((_, i) => (
@@ -45,8 +48,41 @@ const RandomImages = () => {
     );
   }
   
+  // Show call to action if not logged in or no images
   if (images.length === 0) {
-    return null;
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-8 px-4"
+      >
+        <div className="max-w-md mx-auto">
+          {!session ? (
+            <>
+              <p className="text-white/60 mb-4">Sign in to create your personal gallery</p>
+              <button
+                onClick={() => signIn('google')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-colors border border-white/10"
+              >
+                <FaGoogle />
+                Get Started
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-white/60 mb-4">Upload photos to start rating</p>
+              <Link href="/manage">
+                <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all">
+                  <FaUpload />
+                  Upload Photos
+                  <FaArrowRight className="text-sm" />
+                </button>
+              </Link>
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
   }
 
   return (

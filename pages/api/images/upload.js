@@ -3,6 +3,8 @@ import multer from 'multer';
 import multerS3 from 'multer-s3';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase, s3 } from '../../../config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 import Image from '../../../models/Image';
 
 // Configure multer for S3 upload
@@ -50,6 +52,15 @@ const authenticateAdmin = async (req, res, next) => {
 
 // POST endpoint for uploading images
 router.post(async (req, res) => {
+  // Get the user session
+  const session = await getServerSession(req, res, authOptions);
+  
+  if (!session || !session.user) {
+    return res.status(401).json({ error: 'You must be logged in to upload images' });
+  }
+  
+  const userId = session.user.id;
+  
   uploadMiddleware(req, res, async function (err) {
     if (err) {
       console.error('Upload middleware error:', err);
@@ -62,6 +73,7 @@ router.post(async (req, res) => {
       }
 
       console.log('File uploaded successfully:', req.file);
+      console.log('Uploading for user:', userId);
       
       const { db } = await connectToDatabase();
       
@@ -111,6 +123,7 @@ router.post(async (req, res) => {
         modelId: modelId ? new ObjectId(modelId) : null,
         modelName: modelName,
         modelUsername: modelUsername, // Set the username from the model
+        userId: userId, // Associate with the uploading user
         createdAt: new Date(),
         isActive: true
       };

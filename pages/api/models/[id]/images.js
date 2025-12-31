@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../../config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../auth/[...nextauth]';
 
 export default async function handler(req, res) {
   const { method } = req;
@@ -12,6 +14,9 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
+    
+    // Get user session
+    const session = await getServerSession(req, res, authOptions);
 
     // Validate ObjectId
     let modelId;
@@ -21,22 +26,34 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid model ID format' });
     }
 
-    // Check if model exists
-    const model = await db.collection('models').findOne({ _id: modelId });
+    // Check if model exists and belongs to user
+    const modelQuery = { _id: modelId };
+    if (session?.user?.id) {
+      modelQuery.userId = session.user.id;
+    }
+    
+    const model = await db.collection('models').findOne(modelQuery);
     if (!model) {
       return res.status(404).json({ error: 'Model not found' });
     }
 
-    // Get images for this model - try both ObjectId and string for backwards compatibility
+    // Get images for this model - filter by user
+    const imageQuery = { 
+      $or: [
+        { modelId: modelId },
+        { modelId: id }
+      ],
+      isActive: true 
+    };
+    
+    // Filter by user if logged in
+    if (session?.user?.id) {
+      imageQuery.userId = session.user.id;
+    }
+    
     const images = await db
       .collection('images')
-      .find({ 
-        $or: [
-          { modelId: modelId },
-          { modelId: id }
-        ],
-        isActive: true 
-      })
+      .find(imageQuery)
       .sort({ createdAt: -1 })
       .toArray();
 

@@ -163,11 +163,115 @@ const calculatePercentile = (rating, allRatings) => {
   return Math.round((position / sortedRatings.length) * 100);
 };
 
+/**
+ * Wilson Score Lower Bound
+ * 
+ * A statistically fair way to rank items with few votes.
+ * Returns a "confidence lower bound" - what we're 95% sure the true score is at least.
+ * This prevents items with 1 win / 1 loss from ranking higher than items with 100 wins / 50 losses.
+ * 
+ * @param {Number} wins - Number of wins
+ * @param {Number} losses - Number of losses
+ * @param {Number} z - Z-score for confidence level (1.96 for 95% confidence)
+ * @returns {Number} - Wilson score between 0 and 1
+ */
+const calculateWilsonScore = (wins, losses, z = 1.96) => {
+  const n = wins + losses;
+  if (n === 0) return 0;
+  
+  const p = wins / n;
+  const denominator = 1 + (z * z) / n;
+  const centre = p + (z * z) / (2 * n);
+  const spread = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
+  
+  return (centre - spread) / denominator;
+};
+
+/**
+ * Calculate a model's score based on their top N images
+ * This ensures adding more pics doesn't hurt or help unfairly
+ * 
+ * @param {Array} images - All images for the model
+ * @param {Number} topN - Number of top images to consider (default 3)
+ * @returns {Object} - Model score data
+ */
+const calculateModelScore = (images, topN = 3) => {
+  if (!images || images.length === 0) {
+    return {
+      score: 0,
+      wilsonScore: 0,
+      avgElo: BASE_RATING,
+      topElo: BASE_RATING,
+      totalWins: 0,
+      totalLosses: 0,
+      winRate: 0,
+      confidence: 0,
+      imagesUsed: 0
+    };
+  }
+  
+  // Filter to only rated images
+  const ratedImages = images.filter(img => (img.wins || 0) + (img.losses || 0) > 0);
+  
+  if (ratedImages.length === 0) {
+    return {
+      score: 0,
+      wilsonScore: 0,
+      avgElo: BASE_RATING,
+      topElo: BASE_RATING,
+      totalWins: 0,
+      totalLosses: 0,
+      winRate: 0,
+      confidence: 0,
+      imagesUsed: 0
+    };
+  }
+  
+  // Sort by ELO descending
+  const sortedByElo = [...ratedImages].sort((a, b) => (b.elo || BASE_RATING) - (a.elo || BASE_RATING));
+  
+  // Take top N images
+  const topImages = sortedByElo.slice(0, Math.min(topN, sortedByElo.length));
+  
+  // Calculate aggregate stats from top images only
+  const totalWins = topImages.reduce((sum, img) => sum + (img.wins || 0), 0);
+  const totalLosses = topImages.reduce((sum, img) => sum + (img.losses || 0), 0);
+  const totalMatches = totalWins + totalLosses;
+  
+  const winRate = totalMatches > 0 ? totalWins / totalMatches : 0;
+  const wilsonScore = calculateWilsonScore(totalWins, totalLosses);
+  
+  // Average ELO of top images
+  const avgElo = topImages.reduce((sum, img) => sum + (img.elo || BASE_RATING), 0) / topImages.length;
+  const topElo = topImages[0]?.elo || BASE_RATING;
+  
+  // Confidence based on number of matches (0-1 scale)
+  const confidence = Math.min(1, totalMatches / 50);
+  
+  // Combined score: Wilson score * 1000 for a nice readable number
+  // Wilson score naturally handles the sample size problem
+  const score = Math.round(wilsonScore * 1000);
+  
+  return {
+    score,
+    wilsonScore,
+    avgElo: Math.round(avgElo),
+    topElo: Math.round(topElo),
+    totalWins,
+    totalLosses,
+    winRate,
+    confidence,
+    imagesUsed: topImages.length
+  };
+};
+
 export { 
   calculateNewRatings, 
   getExpectedScore, 
   getMatchQuality, 
   getRatingTier,
   calculatePercentile,
+  calculateWilsonScore,
+  calculateModelScore,
   BASE_RATING
 }; 

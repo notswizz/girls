@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 import Model from '../../../models/Model';
 
 export default async function handler(req, res) {
@@ -7,6 +9,9 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
+    
+    // Get user session
+    const session = await getServerSession(req, res, authOptions);
 
     switch (method) {
       case 'GET':
@@ -15,11 +20,26 @@ export default async function handler(req, res) {
           // Add logging to trace request
           console.log('GET /api/models - Fetching models');
           
-          // Find all models, including those without isActive set (for backward compatibility)
-          // Models specifically marked as inactive (isActive: false) will still be excluded
+          // Build query - filter by user if logged in
+          const query = { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
+          
+          // If user is logged in, only show their models
+          if (session?.user?.id) {
+            query.userId = session.user.id;
+            console.log(`Filtering models for user: ${session.user.id}`);
+          } else {
+            // If not logged in, don't return any models (user-specific data)
+            return res.status(200).json({ 
+              success: true, 
+              models: [],
+              message: 'Login to see your models'
+            });
+          }
+          
+          // Find all models belonging to the user
           const models = await db
             .collection('models')
-            .find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] })
+            .find(query)
             .sort({ name: 1 })
             .toArray();
           
@@ -38,9 +58,13 @@ export default async function handler(req, res) {
             await Promise.all(updatePromises);
           }
           
-          // Get the count of images for each model
+          // Get the count of images for each model (only user's images)
+          const imageQuery = { isActive: true };
+          if (session?.user?.id) {
+            imageQuery.userId = session.user.id;
+          }
           const modelImagesCount = await db.collection('images').aggregate([
-            { $match: { isActive: true } },
+            { $match: imageQuery },
             { $group: { 
                 _id: '$modelId', 
                 count: { $sum: 1 },
@@ -123,7 +147,14 @@ export default async function handler(req, res) {
       case 'POST':
         // Create a new model
         try {
-          console.log('POST /api/models - Creating new model');
+          // Require authentication to create models
+          if (!session || !session.user) {
+            return res.status(401).json({ success: false, message: 'You must be logged in to create models' });
+          }
+          
+          const userId = session.user.id;
+          
+          console.log('POST /api/models - Creating new model for user:', userId);
           const { name, username, description, instagram, twitter, onlyfans } = req.body;
           
           // Log request body
@@ -133,14 +164,15 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'Model name is required' });
           }
           
-          // Check if a model with this name already exists
+          // Check if a model with this name already exists FOR THIS USER
           const existingModel = await db.collection('models').findOne({ 
             name: { $regex: new RegExp(`^${name}$`, 'i') },
+            userId: userId,
             isActive: true
           });
           
           if (existingModel) {
-            return res.status(400).json({ success: false, message: 'A model with this name already exists' });
+            return res.status(400).json({ success: false, message: 'You already have a model with this name' });
           }
           
           // Format username if provided, or generate a default one
@@ -162,6 +194,7 @@ export default async function handler(req, res) {
             instagram: instagram || '',
             twitter: twitter || '',
             onlyfans: onlyfans || '',
+            userId: userId, // Associate with the creating user
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),

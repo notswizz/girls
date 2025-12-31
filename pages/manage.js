@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaUpload, FaTrash, FaSync, FaChevronDown, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaUpload, FaTrash, FaSync, FaChevronDown, FaCheck, FaTimes, FaGoogle } from 'react-icons/fa';
 import { generateModelUsername, isValidModelUsername } from '../utils/idGenerator';
 
 export default function ManagePage() {
+  const { data: session, status } = useSession();
   // Models state
   const [models, setModels] = useState([]);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
@@ -197,6 +199,47 @@ export default function ManagePage() {
       console.error('Error deleting:', err);
     }
   };
+
+  // Show loading state while session is being fetched
+  if (status === 'loading') {
+    return (
+      <Layout title="Manage">
+        <div className="h-[calc(100vh-100px)] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!session) {
+    return (
+      <Layout title="Manage">
+        <div className="h-[calc(100vh-100px)] flex items-center justify-center">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-md mx-auto px-6"
+          >
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
+              <FaUpload className="text-3xl text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">Manage Your Gallery</h1>
+            <p className="text-white/60 mb-8">
+              Sign in to create your personal gallery, upload photos, and start rating your own hot girl shit.
+            </p>
+            <button
+              onClick={() => signIn('google')}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+            >
+              <FaGoogle className="text-xl" />
+              Sign in with Google
+            </button>
+          </motion.div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Manage">

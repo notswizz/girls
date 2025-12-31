@@ -10,6 +10,7 @@ class Image {
     modelId = null,
     modelName = '',
     modelUsername = '',
+    userId = null, // User who uploaded this image
     createdAt = new Date(),
     isActive = true,
     averageScore = null,
@@ -27,6 +28,7 @@ class Image {
     this.modelId = modelId;
     this.modelName = modelName;
     this.modelUsername = modelUsername;
+    this.userId = userId;
     this.createdAt = createdAt;
     this.isActive = isActive;
     this.averageScore = averageScore;
@@ -46,6 +48,7 @@ class Image {
       modelId: this.modelId,
       modelName: this.modelName,
       modelUsername: this.modelUsername,
+      userId: this.userId,
       createdAt: this.createdAt,
       isActive: this.isActive,
       averageScore: this.averageScore,
@@ -67,6 +70,7 @@ class Image {
       modelId: doc.modelId,
       modelName: doc.modelName || '',
       modelUsername: doc.modelUsername || doc.modelName || '', // Default to modelName if username not set
+      userId: doc.userId || null,
       createdAt: doc.createdAt,
       isActive: doc.isActive !== false,
       averageScore: doc.averageScore,

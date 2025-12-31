@@ -31,13 +31,19 @@ export const fetchComparisonImages = async () => {
   
   if (!response.ok) {
     const errorData = await response.json();
+    
+    // Handle auth required
+    if (response.status === 401 || errorData.requiresAuth) {
+      throw new Error('AUTH_REQUIRED');
+    }
+    
     throw new Error(errorData.message || 'Failed to fetch images');
   }
   
   const data = await response.json();
   
   if (!data.success || !data.images || data.images.length < 2) {
-    throw new Error('Not enough images for comparison');
+    throw new Error('NEED_MORE_IMAGES');
   }
   
   return data.images;

@@ -10,6 +10,7 @@ class Model {
     instagram = '',
     twitter = '',
     onlyfans = '',
+    userId = null, // User who owns this model
     isActive = true,
     createdAt = new Date(),
     imageCount = 0,
@@ -27,6 +28,7 @@ class Model {
     this.instagram = instagram;
     this.twitter = twitter;
     this.onlyfans = onlyfans;
+    this.userId = userId;
     this.isActive = isActive;
     this.createdAt = createdAt;
     this.imageCount = imageCount;
@@ -48,6 +50,7 @@ class Model {
       instagram: this.instagram,
       twitter: this.twitter,
       onlyfans: this.onlyfans,
+      userId: this.userId,
       isActive: this.isActive,
       createdAt: this.createdAt,
       imageCount: this.imageCount,
@@ -69,6 +72,7 @@ class Model {
       instagram: doc.instagram || '',
       twitter: doc.twitter || '',
       onlyfans: doc.onlyfans || '',
+      userId: doc.userId || null,
       isActive: doc.isActive !== undefined ? doc.isActive : true,
       createdAt: doc.createdAt,
       imageCount: doc.imageCount,

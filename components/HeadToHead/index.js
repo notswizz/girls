@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Link from 'next/link';
+import { FaUpload, FaGoogle } from 'react-icons/fa';
 
 // Utils
 import { checkAnonymousAccess, fetchComparisonImages, submitWinnerSelection } from './utils/api';
@@ -22,7 +24,7 @@ const HeadToHeadCompare = () => {
   const [fullViewImage, setFullViewImage] = useState(null);
   const [celebratingId, setCelebratingId] = useState(null);
   const confettiCanvasRef = useRef(null);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [anonymousState, setAnonymousState] = useState({
     remaining: 3,
     showSignInPrompt: false
@@ -34,19 +36,6 @@ const HeadToHeadCompare = () => {
       setError(null);
       setSelectedImageId(null);
       setCelebratingId(null);
-      
-      if (!session) {
-        const accessData = await checkAnonymousAccess();
-        if (!accessData.allowed) {
-          setAnonymousState(prev => ({ ...prev, showSignInPrompt: true }));
-          setLoading(false);
-          return;
-        }
-        setAnonymousState({
-          remaining: accessData.remaining,
-          showSignInPrompt: false
-        });
-      }
       
       const fetchedImages = await fetchComparisonImages();
       setImages(fetchedImages);
@@ -67,14 +56,6 @@ const HeadToHeadCompare = () => {
     try {
       const loserId = images.find(img => img._id !== winnerId)?._id;
       if (!loserId) return;
-      
-      if (!session) {
-        const accessData = await checkAnonymousAccess();
-        if (!accessData.allowed) {
-          setAnonymousState(prev => ({ ...prev, showSignInPrompt: true }));
-          return;
-        }
-      }
       
       setSelectedImageId(winnerId);
       setCelebratingId(winnerId);
@@ -108,32 +89,69 @@ const HeadToHeadCompare = () => {
   
   useEffect(() => {
     if (session) {
-      setAnonymousState({
-        remaining: -1,
-        showSignInPrompt: false
-      });
-      if (anonymousState.showSignInPrompt) {
-        fetchImages();
-      }
-    } else {
-      checkAnonymousAccess()
-        .then(data => {
-          if (!data.authenticated && data.remaining <= 0) {
-            setAnonymousState({ remaining: 0, showSignInPrompt: true });
-          } else {
-            setAnonymousState({ remaining: data.remaining, showSignInPrompt: false });
-          }
-        });
+      // Refetch when user logs in
+      fetchImages();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  if (error) {
-    return <ErrorDisplay error={error} onRetry={fetchImages} />;
+  // Show login prompt if auth is required
+  if (error === 'AUTH_REQUIRED' || (!session && status !== 'loading')) {
+    return (
+      <div className="w-full max-w-xl mx-auto px-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12"
+        >
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
+            <FaGoogle className="text-3xl text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Sign in to Rate</h2>
+          <p className="text-white/60 mb-8">
+            Create your personal gallery and start rating your own hot girl shit collection.
+          </p>
+          <button
+            onClick={() => signIn('google')}
+            className="inline-flex items-center gap-3 px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+          >
+            <FaGoogle className="text-xl" />
+            Sign in with Google
+          </button>
+        </motion.div>
+      </div>
+    );
   }
 
-  if (anonymousState.showSignInPrompt) {
-    return <SignInPrompt />;
+  // Show prompt to upload more images
+  if (error === 'NEED_MORE_IMAGES') {
+    return (
+      <div className="w-full max-w-xl mx-auto px-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12"
+        >
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center">
+            <FaUpload className="text-3xl text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Need More Photos</h2>
+          <p className="text-white/60 mb-8">
+            You need at least 2 models with photos to start comparing. Upload some pics to your gallery first!
+          </p>
+          <Link href="/manage">
+            <button className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+              <FaUpload className="text-xl" />
+              Go to Gallery
+            </button>
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorDisplay error={error} onRetry={fetchImages} />;
   }
 
   return (
@@ -152,22 +170,6 @@ const HeadToHeadCompare = () => {
         </p>
       </motion.div>
 
-      {/* Anonymous usage counter */}
-      {!session && anonymousState.remaining > 0 && (
-        <motion.div 
-          className="mb-4 p-2 sm:p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 text-white/80 text-xs sm:text-sm text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <span className="font-medium text-pink-400">{anonymousState.remaining}</span> free vote{anonymousState.remaining !== 1 ? 's' : ''} left
-          <button 
-            onClick={() => signIn('google')} 
-            className="ml-2 text-cyan-400 hover:text-cyan-300 underline transition-colors font-medium"
-          >
-            Sign in for unlimited
-          </button>
-        </motion.div>
-      )}
     
       <canvas 
         ref={confettiCanvasRef} 

@@ -1,10 +1,25 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { db } = await connectToDatabase();
+      
+      // Get user session - user must be logged in to compare their own images
+      const session = await getServerSession(req, res, authOptions);
+      
+      if (!session || !session.user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'You must be logged in to compare images',
+          requiresAuth: true
+        });
+      }
+      
+      const userId = session.user.id;
       
       // Parse query parameters
       const { count = 2, exclude = '' } = req.query;
@@ -30,15 +45,19 @@ export default async function handler(req, res) {
         }).map(id => new ObjectId(id));
       }
       
-      // Build query object
-      const query = { isActive: true };
+      // Build query object - only show user's own images
+      const query = { isActive: true, userId: userId };
       
       // Add exclusions if provided
       if (excludedIds.length > 0) {
         query._id = { $nin: excludedIds };
       }
       
-      // Get all models that have at least one image
+      // Debug: Count total images for this user
+      const totalImagesForUser = await db.collection('images').countDocuments(query);
+      console.log(`Total images for user ${userId}: ${totalImagesForUser}`);
+      
+      // Get all models that have at least one image belonging to this user
       const modelsWithImages = await db
         .collection('images')
         .aggregate([
@@ -64,7 +83,7 @@ export default async function handler(req, res) {
         ])
         .toArray();
       
-      console.log(`Found ${modelsWithImages.length} models with images`);
+      console.log(`Found ${modelsWithImages.length} models with images for user ${userId}`);
       
       // Check if we have enough models to compare
       if (modelsWithImages.length < countNum) {
@@ -87,13 +106,14 @@ export default async function handler(req, res) {
         // Add model ID to our logging array
         modelIdsForLogging.push(model.modelId.toString());
         
-        // Select a random image from this model
+        // Select a random image from this model (user's own images only)
         const images = await db
           .collection('images')
           .aggregate([
             { $match: { 
                 modelId: model.modelId, 
                 isActive: true,
+                userId: userId,
                 ...(excludedIds.length > 0 && { _id: { $nin: excludedIds } })
               } 
             },

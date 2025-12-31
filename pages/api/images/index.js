@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../config';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 
 export default async function handler(req, res) {
   const { method } = req;
@@ -9,11 +11,20 @@ export default async function handler(req, res) {
       try {
         const { db } = await connectToDatabase();
         
+        // Get user session
+        const session = await getServerSession(req, res, authOptions);
+        
         // Parse query parameters
-        const { modelId, limit = 100, offset = 0, sort = 'newest' } = req.query;
+        const { modelId, limit = 100, offset = 0, sort = 'newest', allUsers = 'false' } = req.query;
         
         // Build query object
         const query = { isActive: true };
+        
+        // Filter by user unless allUsers is explicitly requested (for public views)
+        // If user is logged in and not requesting all users, filter by their userId
+        if (session?.user?.id && allUsers !== 'true') {
+          query.userId = session.user.id;
+        }
         
         // Add modelId filter if provided
         if (modelId) {
