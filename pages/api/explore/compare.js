@@ -16,11 +16,13 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: 'Must be logged in to rate' });
     }
 
-    // Get all PUBLIC models only (explicitly exclude private models)
+    // Get all PUBLIC models only (explicitly exclude private models and AI models)
     // Include legacy models without isPublic field, but EXCLUDE isPublic: false
     const publicModels = await db.collection('models').find({
       isActive: true,
-      isPublic: { $ne: false } // This includes true AND undefined/missing
+      isPublic: { $ne: false }, // This includes true AND undefined/missing
+      isAIModel: { $ne: true }, // Exclude AI models
+      excludeFromRatings: { $ne: true } // Exclude models marked for no ratings
     }).toArray();
 
     if (publicModels.length === 0) {
@@ -35,10 +37,12 @@ export default async function handler(req, res) {
     const publicModelIdsObj = publicModels.map(m => m._id);
     const publicModelIdsStr = publicModels.map(m => m._id.toString());
 
-    // Get all images from public models
+    // Get all images from public models (excluding AI generated content)
     // Match on modelId as both ObjectId and string (different storage formats)
     const allImages = await db.collection('images').find({
       isActive: true,
+      isAIGenerated: { $ne: true }, // Exclude AI generated images
+      excludeFromRatings: { $ne: true }, // Exclude images marked for no ratings
       $or: [
         { modelId: { $in: publicModelIdsObj } },
         { modelId: { $in: publicModelIdsStr } }

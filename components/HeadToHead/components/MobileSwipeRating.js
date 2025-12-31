@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCrown, FaHeart, FaSearchPlus, FaTrophy, FaImages } from 'react-icons/fa';
+import { FaCrown, FaHeart, FaSearchPlus, FaTrophy, FaImages, FaImage, FaVideo, FaMagic } from 'react-icons/fa';
+import AIGenerateModal from './AIGenerateModal';
 
 const MobileSwipeRating = ({
   images,
@@ -14,6 +15,32 @@ const MobileSwipeRating = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  
+  // AI Generation state
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiMode, setAiMode] = useState('image'); // 'image' or 'video'
+  const [aiReferenceImage, setAiReferenceImage] = useState(null);
+  const [showAiSuccess, setShowAiSuccess] = useState(false);
+  
+  const handleOpenAiModal = (e, image, mode) => {
+    e.stopPropagation();
+    setAiReferenceImage(image.url);
+    setAiMode(mode);
+    setAiModalOpen(true);
+  };
+  
+  const [aiSuccessMessage, setAiSuccessMessage] = useState('');
+  
+  const handleAiSaved = (data) => {
+    console.log('AI content saved:', data);
+    if (data?.downloaded) {
+      setAiSuccessMessage('Video downloaded!');
+    } else {
+      setAiSuccessMessage('AI content saved to gallery!');
+    }
+    setShowAiSuccess(true);
+    setTimeout(() => setShowAiSuccess(false), 3000);
+  };
 
   // Reset scroll when images change
   useEffect(() => {
@@ -63,8 +90,9 @@ const MobileSwipeRating = ({
           return (
             <div
               key={image._id}
-              className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center px-3 py-2"
+              className="w-full h-full flex-shrink-0 snap-center flex flex-col items-center justify-center px-3 py-2"
             >
+              {/* Image Card */}
               <motion.div
                 className={`
                   relative rounded-2xl overflow-hidden cursor-pointer
@@ -86,7 +114,7 @@ const MobileSwipeRating = ({
                 <div className="absolute -inset-[2px] rounded-3xl bg-gradient-to-br from-pink-500/50 via-purple-500/50 to-cyan-500/50 -z-10 blur-sm" />
                 
                 {/* Image container - taller aspect ratio for bigger images */}
-                <div className="relative aspect-[9/14] bg-black/20">
+                <div className="relative aspect-[9/13] bg-black/20">
                   <img
                     src={image.url}
                     alt=""
@@ -155,6 +183,29 @@ const MobileSwipeRating = ({
                   )}
                 </AnimatePresence>
               </motion.div>
+
+              {/* AI Buttons below image */}
+              <div className="flex items-center justify-center gap-3 mt-3 w-full max-w-md">
+                <motion.button
+                  onClick={(e) => handleOpenAiModal(e, image, 'image')}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl text-white font-medium flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-pink-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaImage size={14} />
+                  <span className="text-sm">AI Photo</span>
+                </motion.button>
+                
+                <motion.button
+                  onClick={(e) => handleOpenAiModal(e, image, 'video')}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-medium flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaVideo size={14} />
+                  <span className="text-sm">AI Video</span>
+                </motion.button>
+              </div>
             </div>
           );
         })}
@@ -187,6 +238,30 @@ const MobileSwipeRating = ({
       <AnimatePresence>
         {showLeaderboard && (
           <GalleryLeaderboardModal onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* AI Generate Modal */}
+      <AIGenerateModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        mode={aiMode}
+        referenceImageUrl={aiReferenceImage}
+        onSaved={handleAiSaved}
+      />
+
+      {/* AI Success Toast */}
+      <AnimatePresence>
+        {showAiSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg flex items-center gap-3"
+          >
+            <FaMagic className="text-white" />
+            <span className="text-white font-medium">{aiSuccessMessage}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 

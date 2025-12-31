@@ -45,8 +45,13 @@ export default async function handler(req, res) {
         }).map(id => new ObjectId(id));
       }
       
-      // Build query object - only show user's own images
-      const query = { isActive: true, userId: userId };
+      // Build query object - only show user's own images, exclude AI generated content
+      const query = { 
+        isActive: true, 
+        userId: userId,
+        isAIGenerated: { $ne: true }, // Exclude AI generated images
+        excludeFromRatings: { $ne: true } // Exclude images marked for no ratings
+      };
       
       // Add exclusions if provided
       if (excludedIds.length > 0) {
@@ -106,7 +111,7 @@ export default async function handler(req, res) {
         // Add model ID to our logging array
         modelIdsForLogging.push(model.modelId.toString());
         
-        // Select a random image from this model (user's own images only)
+        // Select a random image from this model (user's own images only, excluding AI)
         const images = await db
           .collection('images')
           .aggregate([
@@ -114,6 +119,8 @@ export default async function handler(req, res) {
                 modelId: model.modelId, 
                 isActive: true,
                 userId: userId,
+                isAIGenerated: { $ne: true },
+                excludeFromRatings: { $ne: true },
                 ...(excludedIds.length > 0 && { _id: { $nin: excludedIds } })
               } 
             },
