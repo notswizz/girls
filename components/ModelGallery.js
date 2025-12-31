@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const RandomImages = () => {
   const [images, setImages] = useState([]);
@@ -9,23 +10,16 @@ const RandomImages = () => {
     const fetchRandomImages = async () => {
       try {
         setLoading(true);
-        // Fetch directly from images API
         const response = await fetch('/api/images');
         const data = await response.json();
         
         if (data.success && data.images && data.images.length > 0) {
-          // Get all active images
           const activeImages = data.images.filter(img => img.isActive && img.url);
           
           if (activeImages.length > 0) {
-            // Shuffle and pick 4 random images
             const shuffled = activeImages.sort(() => 0.5 - Math.random());
-            setImages(shuffled.slice(0, 4));
-          } else {
-            console.log('No active images found');
+            setImages(shuffled.slice(0, 6));
           }
-        } else {
-          console.log('Failed to fetch images or no images returned');
         }
       } catch (error) {
         console.error('Error fetching random images:', error);
@@ -38,49 +32,84 @@ const RandomImages = () => {
   }, []);
 
   if (loading) {
-    return null; // Don't show anything during loading
+    return (
+      <div className="flex justify-center gap-4">
+        {[...Array(6)].map((_, i) => (
+          <div 
+            key={i} 
+            className="w-24 h-32 sm:w-32 sm:h-40 rounded-2xl bg-white/5 animate-pulse"
+            style={{ animationDelay: `${i * 0.1}s` }}
+          />
+        ))}
+      </div>
+    );
   }
   
   if (images.length === 0) {
-    return null; // Don't show anything if no images
+    return null;
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 justify-center mx-auto w-full max-w-3xl">
-      {images.map((image, index) => (
-        <motion.div
-          key={image._id}
-          initial={{ opacity: 0, scale: 0.8, rotate: -6 + index * 6 }}
-          animate={{ opacity: 1, scale: 1, rotate: 0 }}
-          transition={{ 
-            duration: 0.6, 
-            delay: index * 0.13,
-            ease: [0.22, 1, 0.36, 1]
-          }}
-          className="relative group flex justify-center"
-        >
-          {/* Cyberpunk animated border and glass effect */}
-          <div className="absolute inset-0 animated-border glass z-0 pointer-events-none"></div>
-          {/* Image container with cyber styling */}
-          <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-xl overflow-hidden border-2 border-white/10 z-10 shadow-lg card-glass-hover transition-transform duration-700 group-hover:scale-105 group-hover:rotate-1">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent z-10"></div>
-            {/* Cyber corner accent */}
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyber-blue z-20"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyber-pink z-20"></div>
-            {/* Animated scan line effect */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyber-blue/10 to-transparent opacity-0 group-hover:opacity-30 z-20 animate-scan"></div>
-            <span className="absolute left-1/2 top-1/2 w-10 h-10 bg-cyber-yellow rounded-full opacity-0 group-hover:opacity-40 blur-lg pointer-events-none animate-pulse" style={{transform:'translate(-50%,-50%)'}}></span>
-            <img
-              src={image.url}
-              alt="Random model"
-              width={176}
-              height={176}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:saturate-150"
-              loading="lazy"
-            />
-          </div>
-        </motion.div>
-      ))}
+    <div className="relative">
+      {/* Gradient fade on edges */}
+      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#050215] to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#050215] to-transparent z-10 pointer-events-none" />
+      
+      <div className="flex justify-center gap-3 sm:gap-4 overflow-hidden px-4">
+        {images.map((image, index) => (
+          <Link href="/rate" key={image._id}>
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                duration: 0.5, 
+                delay: index * 0.08,
+                ease: [0.22, 1, 0.36, 1]
+              }}
+              whileHover={{ y: -8, scale: 1.05 }}
+              className="relative group cursor-pointer"
+            >
+              {/* Glow effect on hover */}
+              <div className="absolute -inset-2 bg-gradient-to-r from-pink-500/50 to-purple-500/50 rounded-2xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
+              
+              {/* Image container */}
+              <div className="relative w-24 h-32 sm:w-32 sm:h-40 md:w-36 md:h-48 rounded-2xl overflow-hidden border-2 border-white/10 group-hover:border-pink-500/50 transition-all duration-300 shadow-xl">
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
+                
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20" />
+                
+                {/* Image */}
+                <img
+                  src={image.url}
+                  alt="Model"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  loading="lazy"
+                />
+                
+                {/* Username badge */}
+                {image.modelUsername && (
+                  <div className="absolute bottom-2 left-2 right-2 z-20">
+                    <span className="text-[10px] sm:text-xs text-white/80 font-medium truncate block">
+                      @{image.modelUsername}
+                    </span>
+                  </div>
+                )}
+                
+                {/* ELO badge */}
+                {image.elo && (
+                  <div className="absolute top-2 right-2 z-20">
+                    <span className="text-[10px] px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded text-white/90 font-bold">
+                      {Math.round(image.elo)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 };

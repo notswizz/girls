@@ -486,3 +486,17 @@ body::before {
   0% { transform: translateY(0); }
   100% { transform: translateY(-12px); }
 }
+
+/* Animated gradient for buttons */
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Shimmer animation utility */
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}

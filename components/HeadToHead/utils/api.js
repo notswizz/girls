@@ -92,28 +92,3 @@ export const submitWinnerSelection = async (winnerId, loserId, userId = null) =>
   
   return await response.json();
 };
-
-/**
- * Create payment intent for Instagram reveal
- */
-export const createPaymentIntent = async (modelId, modelName) => {
-  const response = await fetch('/api/payments/create-payment-intent', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      modelId,
-      modelName: modelName || 'Unknown'
-    }),
-  });
-  
-  const data = await response.json();
-  
-  if (!response.ok) {
-    console.error('Payment intent creation failed:', data);
-    throw new Error(data.message || 'Failed to create payment intent');
-  }
-  
-  return data;
-};

@@ -1,10 +1,7 @@
 import React from 'react';
-import { FaFire, FaExpand, FaQuestion, FaChevronLeft, FaChevronRight, FaCrown } from 'react-icons/fa';
+import { FaFire, FaExpand, FaCrown, FaHeart } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * Component for displaying an individual image in the comparison
- */
 const ImageCard = ({
   image,
   index,
@@ -13,152 +10,139 @@ const ImageCard = ({
   loading,
   onSelectWinner,
   onToggleFullView,
-  onInstagramReveal,
-  totalImages
+  totalImages,
+  position
 }) => {
+  const isSelected = selectedImageId === image._id;
+  const isCelebrating = celebratingId === image._id;
+  const isLoser = selectedImageId && selectedImageId !== image._id;
+  
   return (
     <motion.div
-      key={image._id}
-      className={`relative md:flex-1 h-[60vh] md:h-[75vh] min-h-[400px] rounded-xl overflow-hidden transition-all duration-300 group mb-8 md:mb-0 ${
-        selectedImageId === image._id ? 'scale-105 z-10' : ''
-      } ${celebratingId === image._id ? 'celebration-glow' : ''}`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.2 }}
-      whileHover={selectedImageId === null ? { scale: 1.03 } : {}}
-      onClick={() => !loading && onSelectWinner(image._id)}
+      className="flex-1 relative"
+      initial={{ opacity: 0, x: position === 'left' ? -30 : 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
     >
-      {/* Pulsing particles on celebrating image */}
-      {celebratingId === image._id && (
-        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 rounded-full bg-gradient-to-r from-cyber-pink to-cyber-blue animate-float-outward"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 1000}ms`,
-                opacity: 0.7
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Image border effect */}
-      <div className={`absolute inset-0 rounded-xl p-1 ${
-        selectedImageId === image._id
-          ? 'bg-gradient-to-r from-cyber-pink via-cyber-purple to-cyber-blue animate-shimmer shadow-xl' 
-          : 'bg-gradient-to-r from-white/10 to-white/5'
-      }`}>
-        <div className="absolute inset-0 rounded-lg overflow-hidden">
+      <motion.div
+        className={`
+          relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer
+          transition-all duration-500 ease-out
+          ${isSelected ? 'ring-4 ring-green-400 shadow-[0_0_40px_rgba(74,222,128,0.4)]' : ''}
+          ${isLoser ? 'opacity-30 scale-95 grayscale' : ''}
+          ${!selectedImageId ? 'active:scale-[0.98]' : ''}
+        `}
+        whileHover={!selectedImageId && !loading ? { scale: 1.02 } : {}}
+        onClick={() => !loading && !selectedImageId && onSelectWinner(image._id)}
+      >
+        {/* Image container with aspect ratio for full image display */}
+        <div className="relative w-full" style={{ paddingBottom: '133%' }}>
           <img
             src={image.url}
-            alt={image.name || `Image ${index + 1}`}
-            className={`w-full h-full object-cover transition-all duration-300 ${
-              celebratingId === image._id ? 'scale-105 brightness-110' : ''
-            }`}
+            alt={`Contestant ${index + 1}`}
+            className={`
+              absolute inset-0 w-full h-full object-cover transition-all duration-500
+              ${isCelebrating ? 'scale-105 brightness-110' : ''}
+            `}
           />
+          
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
         </div>
-      </div>
-      
-      {/* Username in top left (discreet) */}
-      <div className="absolute top-3 left-3">
-        <div className="px-3 py-1 bg-black/30 backdrop-blur-sm rounded-md text-sm font-medium">
-          <span className="text-white/90">{image.modelUsername || 'unknown'}</span>
-        </div>
-      </div>
-      
-      {/* ELO badge in top right */}
-      {image.elo && (
-        <div className="absolute top-3 right-3">
-          <div className={`
-            w-auto min-w-[40px] h-[40px] rounded-full flex items-center justify-center p-1
-            ${image.elo > 1500 
-              ? 'bg-gradient-to-br from-cyber-pink/60 to-cyber-purple/60 shadow-neon' 
-              : 'bg-gradient-to-br from-cyber-blue/50 to-cyber-dark/40'} 
-            backdrop-blur-md border border-white/20 group-hover:shadow-neon transition-all duration-300`}
+        
+        {/* Celebration overlay */}
+        <AnimatePresence>
+          {isCelebrating && (
+            <motion.div
+              className="absolute inset-0 z-20 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20" />
+              
+              <motion.div
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", bounce: 0.6 }}
+                className="relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full blur-2xl opacity-60" />
+                <div className="relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 rounded-full p-4 sm:p-6 shadow-2xl">
+                  <FaCrown className="text-white text-3xl sm:text-5xl drop-shadow-lg" />
+                </div>
+              </motion.div>
+              
+              {/* Floating hearts */}
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute"
+                  initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+                  animate={{ 
+                    opacity: [0, 1, 0],
+                    scale: [0.5, 1.2, 0.5],
+                    x: (Math.random() - 0.5) * 150,
+                    y: -80 - Math.random() * 80
+                  }}
+                  transition={{ duration: 0.8, delay: i * 0.08 }}
+                >
+                  <FaHeart className="text-pink-500 text-lg sm:text-2xl" />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Top info bar */}
+        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 z-20 flex justify-between items-start">
+          {/* Username */}
+          <motion.div 
+            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            <div className="flex items-center justify-center">
-              <span className="text-white font-bold">{Math.round(image.elo)}</span>
-              {image.elo > 1500 && <FaFire className="text-cyber-yellow text-xs ml-1" />}
-            </div>
-          </div>
+            <span className="text-white font-medium text-xs sm:text-sm">
+              @{image.modelUsername || 'unknown'}
+            </span>
+          </motion.div>
+          
+          {/* ELO score */}
+          {image.elo && (
+            <motion.div 
+              className={`
+                px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full backdrop-blur-md border flex items-center gap-1.5
+                ${image.elo > 1400 
+                  ? 'bg-gradient-to-r from-amber-500/40 to-orange-500/40 border-amber-500/50' 
+                  : 'bg-black/50 border-white/10'}
+              `}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <span className={`font-bold text-xs sm:text-sm ${image.elo > 1400 ? 'text-amber-400' : 'text-white'}`}>
+                {Math.round(image.elo)}
+              </span>
+              {image.elo > 1400 && <FaFire className="text-amber-400 text-xs" />}
+            </motion.div>
+          )}
         </div>
-      )}
-      
-      {/* "Who is she?" button - Only show if the model has an Instagram */}
-      {image.modelData && image.modelData.instagram && (
-        <div className="absolute bottom-3 left-3 z-20">
-          <button
-            className="px-3 py-2 bg-gradient-to-r from-cyber-pink/80 to-cyber-purple/80 backdrop-blur-sm rounded-lg text-sm font-medium text-white flex items-center hover:shadow-neon transition-all duration-300"
+        
+        {/* Bottom expand button */}
+        <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 z-20">
+          <motion.button
+            className="p-2 sm:p-2.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white/80 hover:bg-black/60 hover:text-white transition-all"
+            whileTap={{ scale: 0.9 }}
             onClick={(e) => {
               e.stopPropagation();
-              onInstagramReveal(e, image);
+              onToggleFullView(e, image);
             }}
           >
-            <FaQuestion className="mr-2" />
-            Who is she?
-          </button>
+            <FaExpand size={12} className="sm:w-3.5 sm:h-3.5" />
+          </motion.button>
         </div>
-      )}
-      
-      {/* Winner effect */}
-      <AnimatePresence>
-        {selectedImageId === image._id && (
-          <motion.div 
-            className="absolute inset-0 flex items-center justify-center"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-          >
-            <div className="bg-gradient-to-r from-cyber-pink to-cyber-purple text-white rounded-full p-5 shadow-neon-strong animate-pulse-fast">
-              <FaCrown size={40} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Full view button (bottom right) */}
-      <button
-        className="absolute bottom-3 right-3 p-2 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-black/70 transition-all z-10"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFullView(e, image);
-        }}
-      >
-        <FaExpand size={16} />
-      </button>
-      
-      {/* Mobile-friendly selection buttons */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 md:px-0">
-        <button
-          className={`bg-white/10 hover:bg-white/20 backdrop-blur-lg p-3 md:p-4 rounded-lg text-white shadow-lg ${
-            index === 1 || loading ? 'opacity-0 pointer-events-none' : ''
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            !loading && onSelectWinner(image._id);
-          }}
-          disabled={loading}
-        >
-          <FaChevronLeft size={24} className="text-cyber-pink drop-shadow-md" />
-        </button>
-        
-        <button
-          className={`bg-white/10 hover:bg-white/20 backdrop-blur-lg p-3 md:p-4 rounded-lg text-white shadow-lg ${
-            index === 0 || loading ? 'opacity-0 pointer-events-none' : ''
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            !loading && onSelectWinner(image._id);
-          }}
-          disabled={loading}
-        >
-          <FaChevronRight size={24} className="text-cyber-pink drop-shadow-md" />
-        </button>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };

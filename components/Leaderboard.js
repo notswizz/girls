@@ -1,44 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FaTrophy, FaFire, FaCrown, FaStar, FaChartLine, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaTrophy, FaCrown, FaStar, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
-export default function Leaderboard({ marketMode = false }) {
+export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [modelLeaderboard, setModelLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortField, setSortField] = useState('elo');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [activeTab, setActiveTab] = useState(marketMode ? 'models' : 'images'); 
-  const [userStats, setUserStats] = useState(null);
-  const [revealPending, setRevealPending] = useState(null); 
-
-  // --- Market Reveal Logic ---
-  const [revealedInstagram, setRevealedInstagram] = useState({}); // { [modelId]: handle }
-  const [revealLoading, setRevealLoading] = useState(false);
-  const [revealError, setRevealError] = useState('');
-
-  // Reveal Instagram API call
-  const handleReveal = async (model) => {
-    setRevealLoading(true);
-    setRevealError('');
-    try {
-      const res = await fetch('/api/reveal-instagram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modelId: model.id || model._id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to reveal');
-      setRevealedInstagram((prev) => ({ ...prev, [model.id || model._id]: data.instagram }));
-      // Update tokens in userStats
-      setUserStats((prev) => prev ? { ...prev, tokens: data.tokens ?? prev.tokens } : prev);
-      setRevealPending(null);
-    } catch (err) {
-      setRevealError(err.message);
-    } finally {
-      setRevealLoading(false);
-    }
-  };
+  const [activeTab, setActiveTab] = useState('models');
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -96,19 +66,6 @@ export default function Leaderboard({ marketMode = false }) {
 
     fetchLeaderboard();
   }, []);
-
-  // Fetch user stats for market mode
-  useEffect(() => {
-    if (!marketMode) return;
-    const fetchStats = async () => {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUserStats(data.user);
-      }
-    };
-    fetchStats();
-  }, [marketMode]);
 
   // Handle sort click
   const handleSort = (field) => {
@@ -173,9 +130,6 @@ export default function Leaderboard({ marketMode = false }) {
     return 'Beginner';
   };
 
-  // Elo-based price formula
-  const getRevealPrice = (elo) => Math.ceil((elo - 1200) / 80) + 2;
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
@@ -211,17 +165,6 @@ export default function Leaderboard({ marketMode = false }) {
 
   return (
     <div className="space-y-4">
-      {marketMode && userStats && (
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-          <div className="text-white text-lg font-bold">
-            Token Balance: <span className="inline-block w-3 h-3 rounded-full bg-yellow-400 mr-2 align-middle" />
-            <span className="text-2xl font-extrabold align-middle">{userStats.tokens ?? 0}</span>
-          </div>
-          <div className="text-white/80 text-sm mt-2 sm:mt-0">
-            Swipes: <span className="font-semibold">{userStats.ratingsCount ?? 0}</span>
-          </div>
-        </div>
-      )}
       {/* Tabs for filtering */}
       <div className="flex space-x-2 mb-4">
         <button
@@ -286,17 +229,12 @@ export default function Leaderboard({ marketMode = false }) {
                     <span className="ml-1">{getSortIcon('wins')}</span>
                   </div>
                 </th>
-                {marketMode && activeTab === 'models' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Reveal
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody className="bg-gray-900 divide-y divide-gray-800">
               {currentData.length === 0 ? (
                 <tr>
-                  <td colSpan={marketMode && activeTab === 'models' ? 6 : 5} className="px-6 py-4 text-center text-gray-400">
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
                     No data available
                   </td>
                 </tr>
@@ -341,12 +279,6 @@ export default function Leaderboard({ marketMode = false }) {
                               {item.imageCount} {item.imageCount === 1 ? 'image' : 'images'}
                             </div>
                           )}
-                          {marketMode && activeTab === 'models' && item.instagram && (
-                            <div className="text-xs text-pink-400 flex items-center gap-1">
-                              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" className="inline-block"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.974.976 1.246 2.244 1.308 3.608.058 1.266.069 1.646.069 4.851s-.011 3.584-.069 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.976-2.242 1.246-3.608 1.308-1.266.058-1.646.069-4.85.069s-3.584-.011-4.85-.069c-1.366-.062-2.633-.332-3.608-1.308-.976-.975-1.246-2.242-1.308-3.608C2.175 15.647 2.163 15.267 2.163 12s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.976 2.242-1.246 3.608-1.308C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.012 7.052.07c-1.676.077-3.165.637-4.35 1.822C1.637 3.165 1.077 4.654 1 6.33.942 7.61.93 8.019.93 12c0 3.981.012 4.39.07 5.67.077 1.676.637 3.165 1.822 4.35 1.185 1.185 2.674 1.745 4.35 1.822C8.332 23.988 8.741 24 12 24s3.668-.012 4.948-.07c1.676-.077 3.165-.637 4.35-1.822 1.185-1.185 1.745-2.674 1.822-4.35.058-1.28.07-1.689.07-5.67 0-3.981-.012-4.39-.07-5.67-.077-1.676-.637-3.165-1.822-4.35C20.165 1.637 18.676 1.077 17 1c-1.28-.058-1.689-.07-5.67-.07zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a3.999 3.999 0 1 1 0-7.998 3.999 3.999 0 0 1 0 7.998zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-                              Instagram Available
-                            </div>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -370,56 +302,6 @@ export default function Leaderboard({ marketMode = false }) {
                       <span className="mx-1">/</span>
                       <span className="text-red-400">{item.losses || 0}</span>
                     </td>
-                    {marketMode && activeTab === 'models' && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {item.instagram ? (
-                          revealedInstagram[item.id] ? (
-                            <span className="text-pink-400 font-bold">@{revealedInstagram[item.id]}</span>
-                          ) : (
-                            <>
-                              <span className="text-yellow-300 font-bold mr-2">{getRevealPrice(item.elo)} tokens</span>
-                              <button
-                                className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={!userStats || userStats.tokens < getRevealPrice(item.elo) || revealLoading}
-                                onClick={() => setRevealPending(item.id)}
-                              >
-                                Reveal Instagram
-                              </button>
-                              {/* Confirmation Dialog */}
-                              {revealPending === item.id && (
-                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-                                  <div className="bg-cyber-dark border-2 border-cyber-blue/40 rounded-lg p-6 shadow-xl max-w-sm w-full">
-                                    <h3 className="text-xl font-bold text-white mb-4">Reveal Instagram?</h3>
-                                    <p className="text-white/80 mb-4">
-                                      Spend <span className="text-yellow-300 font-bold">{getRevealPrice(item.elo)} tokens</span> to reveal <span className="font-semibold">{item.name}</span>'s Instagram?
-                                    </p>
-                                    {revealError && <div className="text-red-400 mb-2 text-sm">{revealError}</div>}
-                                    <div className="flex gap-4">
-                                      <button
-                                        className="flex-1 py-2 rounded bg-cyber-blue text-white font-bold hover:bg-cyber-pink transition"
-                                        onClick={() => handleReveal(item)}
-                                        disabled={revealLoading}
-                                      >
-                                        {revealLoading ? 'Revealing...' : 'Yes, Reveal'}
-                                      </button>
-                                      <button
-                                        className="flex-1 py-2 rounded bg-gray-700 text-white font-bold hover:bg-gray-500 transition"
-                                        onClick={() => setRevealPending(null)}
-                                        disabled={revealLoading}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )
-                        ) : (
-                          <span className="text-gray-500 italic">N/A</span>
-                        )}
-                      </td>
-                    )}
                   </tr>
                 ))
               )}
@@ -429,4 +311,4 @@ export default function Leaderboard({ marketMode = false }) {
       </div>
     </div>
   );
-} 
+}

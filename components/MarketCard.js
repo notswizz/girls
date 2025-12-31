@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart, LineElement, PointElement, LinearScale, CategoryScale, Tooltip } from 'chart.js';
-import { FaArrowTrendUp, FaArrowTrendDown, FaInstagram, FaCopy, FaStar, FaBolt } from 'react-icons/fa6';
+import { FaArrowTrendUp, FaArrowTrendDown, FaStar, FaBolt } from 'react-icons/fa6';
 import ModelStatsCard from './ModelStatsCard';
 
 Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip);
 
-export default function MarketCard({ model, onReveal }) {
-  const [showInstagram, setShowInstagram] = useState(false);
-  const [copied, setCopied] = useState(false);
+export default function MarketCard({ model }) {
   if (!model) return null;
 
   // Use username as main label
@@ -75,19 +73,6 @@ export default function MarketCard({ model, onReveal }) {
     else if (elo < prev) priceDelta = 'down';
   }
 
-  // Instagram reveal logic
-  const handleRevealClick = () => {
-    setShowInstagram(true);
-    if (onReveal) onReveal(model);
-  };
-  const handleCopy = () => {
-    if (model.instagram) {
-      navigator.clipboard.writeText(model.instagram);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    }
-  };
-
   return (
     <div className="bg-white/80 rounded-xl shadow-lg p-5 flex flex-col items-center market-card card-glass-hover transition-all duration-300 hover:scale-105 relative">
       <img src={profileImg} alt={username} className="w-20 h-20 rounded-full border-4 border-cyber mb-2 shimmer" />
@@ -114,24 +99,6 @@ export default function MarketCard({ model, onReveal }) {
       <div className="w-full mb-2">
         <ModelStatsCard model={model} />
       </div>
-      {!showInstagram ? (
-        <button
-          className="mt-2 px-4 py-2 btn-cyber text-white rounded-lg font-semibold hover:bg-cyber-dark transition"
-          onClick={handleRevealClick}
-        >
-          <FaInstagram className="inline mr-2" /> Reveal Instagram
-        </button>
-      ) : model.instagram ? (
-        <div className="flex items-center gap-2 mt-2 bg-gradient-to-r from-cyber-blue via-cyber-pink to-cyber-yellow px-4 py-2 rounded-lg text-black font-semibold">
-          @{model.instagram}
-          <button onClick={handleCopy} className="ml-2 text-cyber-blue hover:text-cyber-pink transition" title="Copy">
-            <FaCopy />
-          </button>
-          {copied && <span className="ml-2 text-cyber-pink text-xs">Copied!</span>}
-        </div>
-      ) : (
-        <div className="mt-2 text-gray-500 italic">No Instagram available</div>
-      )}
     </div>
   );
 }

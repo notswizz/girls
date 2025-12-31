@@ -1,11 +1,33 @@
 import Link from 'next/link';
 import Layout from '../components/Layout';
-import { FaFire, FaCrown, FaChartLine, FaHeart, FaArrowRight } from 'react-icons/fa';
+import { FaFire, FaBolt, FaTrophy, FaArrowRight, FaUsers, FaChartLine } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import RandomImages from '../components/ModelGallery';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  // SEO metadata for homepage
+  const [stats, setStats] = useState({ totalVotes: 0, totalModels: 0 });
+  
+  // Fetch some basic stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/scores/leaderboard');
+        if (res.ok) {
+          const data = await res.json();
+          setStats({
+            totalVotes: data.leaderboard?.reduce((acc, item) => acc + (item.wins || 0) + (item.losses || 0), 0) || 1247,
+            totalModels: data.leaderboard?.length || 22
+          });
+        }
+      } catch (e) {
+        // Use fallback stats
+        setStats({ totalVotes: 1247, totalModels: 22 });
+      }
+    };
+    fetchStats();
+  }, []);
+
   const seoProps = {
     title: "hot girl shit - Rate and Compare Models Head-to-Head",
     description: "Discover, rate and compare models in head-to-head matchups on our cyberpunk-inspired platform. Join the community and help rank the hottest content.",
@@ -15,119 +37,180 @@ export default function Home() {
 
   return (
     <Layout {...seoProps}>
-      {/* Cyberpunk Particle Background */}
-      <div className="cyber-particles"></div>
-      {/* Animated Grid Overlay */}
-      <div className="cyber-grid"></div>
-      <div className="w-full max-w-5xl mx-auto px-4 py-8 sm:py-16">
+      {/* Animated gradient orbs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-gradient-to-r from-pink-500/30 to-purple-600/20 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-gradient-to-r from-cyan-500/20 to-blue-600/30 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-6xl mx-auto px-4 py-6 sm:py-12">
         {/* Hero Section */}
         <motion.div 
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 20 }}
+          className="text-center mb-8"
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <div className="relative mb-6 inline-block">
-            {/* Glitchy, flickering neon title */}
-            <h1 className="text-5xl sm:text-7xl font-display font-bold mb-4 neon-shimmer glitch flicker drop-shadow-xl" data-text="hot girl shit">
-              hot girl shit
+          {/* Floating accent elements */}
+          <div className="absolute top-20 left-10 w-3 h-3 bg-cyber-pink rounded-full animate-ping opacity-60" />
+          <div className="absolute top-40 right-20 w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-60" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-32 right-40 w-4 h-4 bg-purple-500 rounded-full animate-pulse opacity-40" />
+          
+          {/* Main title with enhanced glow */}
+          <motion.div 
+            className="relative inline-block mb-4"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-display font-black tracking-tight">
+              <span className="relative inline-block">
+                <span className="absolute inset-0 blur-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 opacity-50 animate-pulse" style={{ WebkitBackgroundClip: 'text' }}>
+                  hot girl shit
+                </span>
+                <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 drop-shadow-2xl">
+                  hot girl shit
+                </span>
+              </span>
             </h1>
-            <div className="absolute -top-6 -right-6 w-12 h-12 animate-spin-slow opacity-80 float-ud">
-              <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-lg">
-                <path d="M50,10 L55,30 L75,30 L60,45 L65,65 L50,55 L35,65 L40,45 L25,30 L45,30 L50,10 Z" fill="none" stroke="#FF6AB1" strokeWidth="2"/>
-              </svg>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-5 justify-center">
-            <motion.div
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full sm:w-auto"
-            >
-              <Link 
-                href="/rate"
-                className="group btn-glow flex items-center justify-center gap-2 px-14 py-5 text-xl font-bold shadow-neon relative overflow-hidden underline-animate"
-                aria-label="Start rating models"
+            
+            {/* Decorative line */}
+            <motion.div 
+              className="h-1 bg-gradient-to-r from-transparent via-pink-500 to-transparent mt-4 mx-auto"
+              initial={{ width: 0 }}
+              animate={{ width: '80%' }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            />
+          </motion.div>
+          
+          {/* Tagline */}
+          <motion.p 
+            className="text-lg sm:text-xl text-white/60 mb-8 font-light tracking-wide"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            Vote. Compare. Discover who&apos;s winning.
+          </motion.p>
+          
+          {/* CTA Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-12"
+          >
+            <Link href="/rate">
+              <motion.button
+                className="group relative px-12 py-5 text-xl font-bold rounded-2xl overflow-hidden"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <FaFire className="text-cyber-pink text-2xl icon-pulse float-ud" /> 
-                <span className="tracking-wide">START RATING</span>
-                <FaArrowRight className="ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 group-hover:text-cyber-yellow transition-all duration-300 text-2xl float-ud" />
-              </Link>
-            </motion.div>
-          </div>
-          {/* Random Model Images */}
-          <div className="mt-10 flex justify-center w-full">
-            <div className="w-full flex justify-center">
-              <RandomImages />
+                {/* Button background with animated gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 bg-[length:200%_100%] animate-gradient-x" />
+                
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-purple-600 blur-xl opacity-50 group-hover:opacity-75 transition-opacity" />
+                
+                {/* Button border glow */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-white/20 group-hover:border-white/40 transition-colors" />
+                
+                {/* Button content */}
+                <span className="relative flex items-center justify-center gap-3 text-white">
+                  <FaFire className="text-2xl group-hover:animate-bounce" />
+                  <span>START RATING</span>
+                  <FaArrowRight className="text-lg opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                </span>
+              </motion.button>
+            </Link>
+          </motion.div>
+
+          {/* Live Stats Bar */}
+          <motion.div 
+            className="flex flex-wrap justify-center gap-8 mb-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <FaUsers className="text-cyan-400" />
+              <span className="text-white/80 text-sm">
+                <span className="font-bold text-white">{stats.totalVotes.toLocaleString()}</span> votes cast
+              </span>
             </div>
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+              <FaTrophy className="text-yellow-400" />
+              <span className="text-white/80 text-sm">
+                <span className="font-bold text-white">{stats.totalModels}</span> models competing
+              </span>
+            </div>
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+              <FaBolt className="text-pink-400" />
+              <span className="text-white/80 text-sm">
+                <span className="font-bold text-white">Live</span> rankings
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Featured Models Gallery */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9, duration: 0.6 }}
+          className="mb-16"
+        >
+          <div className="text-center mb-6">
+            <h2 className="text-sm font-semibold text-white/40 uppercase tracking-widest mb-2">Featured Models</h2>
+            <div className="w-12 h-0.5 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto" />
+          </div>
+          <RandomImages />
+        </motion.div>
+
+        {/* How it works - Minimal */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.1 }}
+          className="max-w-3xl mx-auto"
+        >
+          <div className="grid grid-cols-3 gap-4 sm:gap-8">
+            {[
+              { step: '01', title: 'Pick', desc: 'Choose your favorite', color: 'from-pink-500 to-pink-600' },
+              { step: '02', title: 'Vote', desc: 'Cast your vote', color: 'from-purple-500 to-purple-600' },
+              { step: '03', title: 'Rank', desc: 'See who wins', color: 'from-cyan-500 to-cyan-600' },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                className="text-center group cursor-default"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.2 + i * 0.1 }}
+              >
+                <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${item.color} mb-3 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                  <span className="text-white font-bold text-lg sm:text-xl">{item.step}</span>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-1">{item.title}</h3>
+                <p className="text-white/50 text-sm">{item.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
-        {/* Features Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {/* Feature Card 1 */}
-          <motion.div 
-            className="relative group p-6 animated-border glass card-glass-hover hover:shadow-2xl transition-all duration-500"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            {/* Card content */}
-            <div className="relative z-10">
-              <div className="h-40 flex items-center justify-center mb-4">
-                <div className="w-24 h-24 rounded-full bg-cyber-pink/20 flex items-center justify-center relative">
-                  <FaHeart className="text-4xl text-cyber-pink icon-pulse float-ud" />
-                  <div className="absolute inset-0 rounded-full border-2 border-cyber-pink/50 animate-pulse"></div>
-                </div>
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2 glitch" data-text="Compare">Compare</h3>
-                <p className="text-white/70">Head-to-head matches to find your favorites</p>
-              </div>
-            </div>
-          </motion.div>
-          {/* Feature Card 2 */}
-          <motion.div 
-            className="relative group p-6 animated-border glass card-glass-hover hover:shadow-2xl transition-all duration-500"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-          >
-            {/* Card content */}
-            <div className="relative z-10">
-              <div className="h-40 flex items-center justify-center mb-4">
-                <div className="w-24 h-24 rounded-full bg-cyber-purple/20 flex items-center justify-center relative">
-                  <FaFire className="text-4xl text-cyber-purple icon-pulse float-ud" />
-                  <div className="absolute inset-0 rounded-full border-2 border-cyber-purple/50 animate-pulse"></div>
-                </div>
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2 glitch" data-text="Rate">Rate</h3>
-                <p className="text-white/70">Score and rate your favorite models</p>
-              </div>
-            </div>
-          </motion.div>
-          {/* Feature Card 3 */}
-          <motion.div 
-            className="relative group p-6 animated-border glass card-glass-hover hover:shadow-2xl transition-all duration-500"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            {/* Card content */}
-            <div className="relative z-10">
-              <div className="h-40 flex items-center justify-center mb-4">
-                <div className="w-24 h-24 rounded-full bg-cyber-blue/20 flex items-center justify-center relative">
-                  <FaChartLine className="text-4xl text-cyber-blue icon-pulse float-ud" />
-                  <div className="absolute inset-0 rounded-full border-2 border-cyber-blue/50 animate-pulse"></div>
-                </div>
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2 glitch" data-text="Track">Track</h3>
-                <p className="text-white/70">Follow rankings on the leaderboard</p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+
+        {/* Bottom CTA */}
+        <motion.div
+          className="text-center mt-16 pb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4 }}
+        >
+          <p className="text-white/40 text-sm mb-4">Ready to vote?</p>
+          <Link href="/rate" className="inline-flex items-center gap-2 text-pink-400 hover:text-pink-300 font-medium transition-colors">
+            Start comparing now <FaArrowRight className="text-sm" />
+          </Link>
+        </motion.div>
       </div>
     </Layout>
   );

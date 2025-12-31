@@ -27,22 +27,30 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Model not found' });
     }
 
-    // Get images for this model
+    // Get images for this model - try both ObjectId and string for backwards compatibility
     const images = await db
       .collection('images')
-      .find({ modelId: id, isActive: true })
+      .find({ 
+        $or: [
+          { modelId: modelId },
+          { modelId: id }
+        ],
+        isActive: true 
+      })
       .sort({ createdAt: -1 })
       .toArray();
 
     // Map to add the MongoDB _id as id
     const mappedImages = images.map(img => ({
-      id: img._id,
+      _id: img._id.toString(),
+      id: img._id.toString(),
       url: img.url,
       name: img.name || '',
       description: img.description || '',
       createdAt: img.createdAt,
       averageScore: img.averageScore || null,
-      timesRated: img.timesRated || 0
+      timesRated: img.timesRated || 0,
+      elo: img.elo || 1000
     }));
 
     // Get detailed statistics
@@ -69,6 +77,7 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({ 
+      success: true,
       model: {
         id: model._id,
         name: model.name,
