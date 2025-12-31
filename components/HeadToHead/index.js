@@ -5,11 +5,10 @@ import Link from 'next/link';
 import { FaUpload, FaGoogle } from 'react-icons/fa';
 
 // Utils
-import { checkAnonymousAccess, fetchComparisonImages, submitWinnerSelection } from './utils/api';
+import { fetchComparisonImages, submitWinnerSelection } from './utils/api';
 import { fireCelebrationEffects } from './utils/animations';
 
 // Components
-import SignInPrompt from './components/SignInPrompt';
 import ImageCard from './components/ImageCard';
 import FullImageModal from './components/FullImageModal';
 import ErrorDisplay from './components/ErrorDisplay';
@@ -25,10 +24,7 @@ const HeadToHeadCompare = () => {
   const [celebratingId, setCelebratingId] = useState(null);
   const confettiCanvasRef = useRef(null);
   const { data: session, status } = useSession();
-  const [anonymousState, setAnonymousState] = useState({
-    remaining: 3,
-    showSignInPrompt: false
-  });
+  const hasFetched = useRef(false);
 
   const fetchImages = async () => {
     try {
@@ -40,17 +36,46 @@ const HeadToHeadCompare = () => {
       const fetchedImages = await fetchComparisonImages();
       setImages(fetchedImages);
     } catch (err) {
-      console.error('Error fetching images:', err);
-      setError(err.message);
+      // Don't log AUTH_REQUIRED as an error - it's expected when not logged in
+      if (err.message === 'AUTH_REQUIRED') {
+        setError('AUTH_REQUIRED');
+      } else if (err.message === 'NEED_MORE_IMAGES') {
+        setError('NEED_MORE_IMAGES');
+      } else {
+        console.error('Error fetching images:', err);
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
   
+  // Wait for session status to be determined before fetching
   useEffect(() => {
-    fetchImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Don't fetch while session is still loading
+    if (status === 'loading') return;
+    
+    // If not authenticated, set error immediately without API call
+    if (!session) {
+      setError('AUTH_REQUIRED');
+      setLoading(false);
+      return;
+    }
+    
+    // Only fetch once when authenticated
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchImages();
+    }
+  }, [session, status]);
+
+  // Refetch when session changes (user logs in)
+  useEffect(() => {
+    if (session && hasFetched.current) {
+      // User just logged in, refetch
+      fetchImages();
+    }
+  }, [session]);
   
   const handleSelectWinner = async (winnerId) => {
     try {
@@ -86,17 +111,14 @@ const HeadToHeadCompare = () => {
     e.stopPropagation();
     setFullViewImage(image === fullViewImage ? null : image);
   };
-  
-  useEffect(() => {
-    if (session) {
-      // Refetch when user logs in
-      fetchImages();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
 
-  // Show login prompt if auth is required
-  if (error === 'AUTH_REQUIRED' || (!session && status !== 'loading')) {
+  // Show loading while session is being determined
+  if (status === 'loading') {
+    return <LoadingSpinner />;
+  }
+
+  // Show login prompt if not authenticated
+  if (!session || error === 'AUTH_REQUIRED') {
     return (
       <div className="w-full max-w-xl mx-auto px-4">
         <motion.div 
@@ -150,6 +172,7 @@ const HeadToHeadCompare = () => {
     );
   }
 
+  // Show generic error
   if (error) {
     return <ErrorDisplay error={error} onRetry={fetchImages} />;
   }

@@ -230,12 +230,12 @@ export default function Leaderboard() {
               </div>
 
               {/* thumb / icon */}
-              <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
                 {item.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <FaCrown className="text-pink-400" />
+                  <FaCrown className="text-pink-400 text-xl" />
                 )}
               </div>
 
@@ -347,15 +347,15 @@ export default function Leaderboard() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center">
                         {item.url && (
-                          <div className="flex-shrink-0 h-10 w-10 mr-3">
-                            <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-700">
+                          <div className="flex-shrink-0 h-16 w-16 mr-4">
+                            <div className="h-16 w-16 rounded-xl overflow-hidden bg-gray-700 border border-white/10">
                               <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
                             </div>
                           </div>
                         )}
                         {!item.url && activeTab === 'models' && (
-                          <div className="flex-shrink-0 h-10 w-10 mr-3 rounded-lg bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center border border-pink-500/30">
-                            <FaCrown className="text-pink-400" />
+                          <div className="flex-shrink-0 h-16 w-16 mr-4 rounded-xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center border border-pink-500/30">
+                            <FaCrown className="text-pink-400 text-xl" />
                           </div>
                         )}
                         <div>

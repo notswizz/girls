@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaFire, FaExpand, FaCrown, FaHeart } from 'react-icons/fa';
+import { FaExpand, FaCrown, FaHeart } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ImageCard = ({
@@ -94,40 +94,6 @@ const ImageCard = ({
           )}
         </AnimatePresence>
         
-        {/* Top info bar */}
-        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 z-20 flex justify-between items-start">
-          {/* Username */}
-          <motion.div 
-            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <span className="text-white font-medium text-xs sm:text-sm">
-              @{image.modelUsername || 'unknown'}
-            </span>
-          </motion.div>
-          
-          {/* ELO score */}
-          {image.elo && (
-            <motion.div 
-              className={`
-                px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full backdrop-blur-md border flex items-center gap-1.5
-                ${image.elo > 1400 
-                  ? 'bg-gradient-to-r from-amber-500/40 to-orange-500/40 border-amber-500/50' 
-                  : 'bg-black/50 border-white/10'}
-              `}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <span className={`font-bold text-xs sm:text-sm ${image.elo > 1400 ? 'text-amber-400' : 'text-white'}`}>
-                {Math.round(image.elo)}
-              </span>
-              {image.elo > 1400 && <FaFire className="text-amber-400 text-xs" />}
-            </motion.div>
-          )}
-        </div>
         
         {/* Bottom expand button */}
         <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 z-20">
