@@ -154,7 +154,35 @@ export default function Leaderboard() {
   return (
     <div className="space-y-4">
       {/* Tabs for filtering */}
-      <div className="flex space-x-2 mb-4">
+      <div className="mb-4">
+        {/* Mobile segmented control */}
+        <div className="sm:hidden grid grid-cols-2 gap-2 p-1 rounded-xl bg-gray-900/60 border border-white/10">
+          <button
+            onClick={() => setActiveTab('models')}
+            className={`py-3 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === 'models'
+                ? 'bg-gradient-to-r from-cyber-blue to-cyber-purple text-white'
+                : 'bg-transparent text-gray-300'
+            }`}
+          >
+            <FaCrown className="inline-block mr-2" />
+            Models
+          </button>
+          <button
+            onClick={() => setActiveTab('images')}
+            className={`py-3 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === 'images'
+                ? 'bg-gradient-to-r from-cyber-pink to-cyber-purple text-white'
+                : 'bg-transparent text-gray-300'
+            }`}
+          >
+            <FaStar className="inline-block mr-2" />
+            Photos
+          </button>
+        </div>
+
+        {/* Desktop tabs */}
+        <div className="hidden sm:flex space-x-2">
         <button
           onClick={() => setActiveTab('models')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -177,9 +205,85 @@ export default function Leaderboard() {
           <FaStar className="inline-block mr-2" />
           Images
         </button>
+        </div>
       </div>
 
-      <div className="bg-gray-900 rounded-lg overflow-hidden shadow-xl">
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-3">
+        {currentData.map((item, index) => (
+          <div
+            key={item.id}
+            className="rounded-2xl bg-gray-900/80 border border-white/10 overflow-hidden"
+          >
+            <div className="p-4 flex items-center gap-3">
+              {/* rank */}
+              <div className="w-10 flex items-center justify-center">
+                {index < 3 ? (
+                  <FaTrophy
+                    className={`text-lg ${
+                      index === 0 ? 'text-amber-400' : index === 1 ? 'text-gray-300' : 'text-amber-700'
+                    }`}
+                  />
+                ) : (
+                  <span className="text-gray-400 text-sm font-semibold">{index + 1}</span>
+                )}
+              </div>
+
+              {/* thumb / icon */}
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0 border border-white/10">
+                {item.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <FaCrown className="text-pink-400" />
+                )}
+              </div>
+
+              {/* title */}
+              <div className="min-w-0 flex-1">
+                <div className="text-white font-semibold truncate">
+                  {item.name || item.username || 'Unknown'}
+                </div>
+                <div className="text-xs text-white/50 truncate">
+                  {activeTab === 'images'
+                    ? item.modelUsername
+                      ? `@${item.modelUsername}`
+                      : item.modelName || ''
+                    : `Top ${item.imagesUsed || 0} pics`}
+                </div>
+              </div>
+
+              {/* score */}
+              <div className="text-right">
+                <div className={`text-xl font-extrabold leading-none ${getScoreColor(item.score)}`}>
+                  {item.score || 0}
+                </div>
+                <div className="text-[11px] text-white/50">{getScoreTier(item.score)}</div>
+              </div>
+            </div>
+
+            <div className="px-4 pb-4">
+              <div className="flex items-center justify-between text-xs text-white/60 mb-2">
+                <span>{Math.round((item.winRate || 0) * 100)}% win</span>
+                <span>
+                  {activeTab === 'models'
+                    ? `${item.totalWins || 0}-${item.totalLosses || 0}`
+                    : `${item.wins || 0}-${item.losses || 0}`}
+                </span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-pink-500 to-purple-500 h-2 rounded-full"
+                  style={{ width: `${Math.round((item.winRate || 0) * 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block bg-gray-900 rounded-lg overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-800">
             <thead className="bg-gray-800">

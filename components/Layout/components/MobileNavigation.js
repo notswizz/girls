@@ -31,10 +31,10 @@ const MobileNavigation = ({ isOpen, setIsOpen }) => {
       {/* Mobile menu dropdown */}
       <div className={`${
         isOpen 
-          ? 'max-h-64 opacity-100' 
+          ? 'max-h-[80vh] opacity-100' 
           : 'max-h-0 opacity-0'
       } md:hidden overflow-hidden transition-all duration-300 ease-in-out absolute top-20 left-0 right-0`}>
-        <div className="px-2 pt-2 pb-6 space-y-2 sm:px-3 border-t border-white/10 bg-cyber-dark/90 backdrop-blur-lg">
+        <div className="max-h-[80vh] overflow-y-auto px-2 pt-2 pb-6 space-y-2 sm:px-3 border-t border-white/10 bg-cyber-dark/90 backdrop-blur-lg">
           {navigationItems.map((item) => (
             <Link
               key={item.path}
