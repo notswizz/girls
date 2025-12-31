@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    // Map to add the MongoDB _id as id
+    // Map to add the MongoDB _id as id and include all stats
     const mappedImages = images.map(img => ({
       _id: img._id.toString(),
       id: img._id.toString(),
@@ -67,7 +67,10 @@ export default async function handler(req, res) {
       createdAt: img.createdAt,
       averageScore: img.averageScore || null,
       timesRated: img.timesRated || 0,
-      elo: img.elo || 1000
+      elo: img.elo || 1200,
+      wins: img.wins || 0,
+      losses: img.losses || 0,
+      winRate: img.winRate || 0
     }));
 
     // Get detailed statistics

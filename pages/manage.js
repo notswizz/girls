@@ -15,6 +15,7 @@ import {
   SignInPrompt,
   FloatingModelButton,
   ModelHeader,
+  Overview,
   manageStyles
 } from '../components/Manage';
 
@@ -26,9 +27,17 @@ export default function ManagePage() {
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [selectedModel, setSelectedModel] = useState(null);
   
-  // Model images
+  // Model images - personal (gallery) stats
   const [modelImages, setModelImages] = useState([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  
+  // Community (explore) stats
+  const [communityImages, setCommunityImages] = useState([]);
+  const [communityStats, setCommunityStats] = useState(null);
+  const [isLoadingCommunity, setIsLoadingCommunity] = useState(false);
+  
+  // Rating mode: 'gallery' (my ratings) or 'explore' (community ratings)
+  const [ratingMode, setRatingMode] = useState('gallery');
   
   // Modal states
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -42,13 +51,6 @@ export default function ManagePage() {
   useEffect(() => {
     fetchModels();
   }, []);
-
-  // Auto-select first model when models load
-  useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
-      selectModel(models[0]);
-    }
-  }, [models]);
 
   const fetchModels = async () => {
     try {
@@ -68,7 +70,17 @@ export default function ManagePage() {
 
   const selectModel = async (model) => {
     setSelectedModel(model);
-    await fetchModelImages(model._id);
+    if (model) {
+      // Fetch both personal and community stats in parallel
+      await Promise.all([
+        fetchModelImages(model._id),
+        fetchCommunityStats(model._id)
+      ]);
+    } else {
+      setModelImages([]);
+      setCommunityImages([]);
+      setCommunityStats(null);
+    }
   };
 
   const fetchModelImages = async (modelId) => {
@@ -86,6 +98,23 @@ export default function ManagePage() {
       console.error('Error fetching images:', err);
     } finally {
       setIsLoadingImages(false);
+    }
+  };
+
+  const fetchCommunityStats = async (modelId) => {
+    try {
+      setIsLoadingCommunity(true);
+      setCommunityImages([]);
+      const res = await fetch(`/api/models/${modelId}/community-stats?t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success) {
+        setCommunityImages(data.images || []);
+        setCommunityStats(data.stats || null);
+      }
+    } catch (err) {
+      console.error('Error fetching community stats:', err);
+    } finally {
+      setIsLoadingCommunity(false);
     }
   };
 
@@ -152,8 +181,8 @@ export default function ManagePage() {
   }
 
   return (
-    <Layout title="Manage">
-      <div className="h-[calc(100vh-100px)] flex flex-col">
+    <Layout title="Manage" fullHeight>
+      <div className="h-full flex flex-col">
         {/* Modals */}
         <AnimatePresence>
           {showUploadModal && (
@@ -218,24 +247,42 @@ export default function ManagePage() {
 
           {/* Main content */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Selected model header + upload button */}
-            <ModelHeader
-              selectedModel={selectedModel}
-              imageCount={modelImages.length}
-              onUploadClick={() => setShowUploadModal(true)}
-              onModelUpdated={handleModelUpdated}
-            />
+            {selectedModel ? (
+              <>
+                {/* Selected model header + upload button + analytics */}
+                <ModelHeader
+                  selectedModel={selectedModel}
+                  imageCount={modelImages.length}
+                  onUploadClick={() => setShowUploadModal(true)}
+                  onModelUpdated={handleModelUpdated}
+                  modelImages={modelImages}
+                  communityImages={communityImages}
+                  communityStats={communityStats}
+                  ratingMode={ratingMode}
+                  onRatingModeChange={setRatingMode}
+                />
 
-            {/* Gallery */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-              <ImageGallery
-                selectedModel={selectedModel}
-                modelImages={modelImages}
-                isLoading={isLoadingImages}
-                onImageClick={setViewingImage}
-                onUploadClick={() => setShowUploadModal(true)}
+                {/* Gallery */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                  <ImageGallery
+                    selectedModel={selectedModel}
+                    modelImages={ratingMode === 'gallery' ? modelImages : communityImages}
+                    isLoading={ratingMode === 'gallery' ? isLoadingImages : isLoadingCommunity}
+                    onImageClick={setViewingImage}
+                    onUploadClick={() => setShowUploadModal(true)}
+                    ratingMode={ratingMode}
+                  />
+                </div>
+              </>
+            ) : (
+              /* Overview when no model selected */
+              <Overview
+                models={models}
+                onSelectModel={selectModel}
+                onAddModel={() => setShowAddModelModal(true)}
+                isLoading={isLoadingModels}
               />
-            </div>
+            )}
 
             {/* Mobile floating model selector button */}
             <FloatingModelButton

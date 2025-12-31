@@ -11,5 +11,6 @@ export { default as SignInPrompt } from './SignInPrompt';
 export { default as FloatingUploadButton } from './FloatingUploadButton';
 export { default as FloatingModelButton } from './FloatingModelButton';
 export { default as ModelHeader } from './ModelHeader';
+export { default as Overview } from './Overview';
 export { manageStyles } from './styles';
 

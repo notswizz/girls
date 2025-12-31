@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGoogle, FaHeart, FaSearchPlus, FaTrophy, FaImages } from 'react-icons/fa';
+import { FaGoogle, FaHeart, FaSearchPlus, FaImages } from 'react-icons/fa';
 
 export default function ExploreRating() {
   const { data: session, status } = useSession();
@@ -11,7 +11,6 @@ export default function ExploreRating() {
   const [celebrating, setCelebrating] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoomedImage, setZoomedImage] = useState(null);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const containerRef = useRef(null);
 
   const fetchImages = async () => {
@@ -265,130 +264,12 @@ export default function ExploreRating() {
         )}
       </AnimatePresence>
 
-      {/* Leaderboard Modal */}
-      <AnimatePresence>
-        {showLeaderboard && (
-          <ExploreLeaderboardModal onClose={() => setShowLeaderboard(false)} />
-        )}
-      </AnimatePresence>
-
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
       `}</style>
     </div>
-  );
-}
-
-// Explore Leaderboard Modal
-function ExploreLeaderboardModal({ onClose }) {
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const res = await fetch('/api/explore/leaderboard');
-        const data = await res.json();
-        if (data.success) {
-          setLeaderboard(data.leaderboard);
-        }
-      } catch (err) {
-        console.error('Error fetching leaderboard:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaderboard();
-  }, []);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-end sm:items-center justify-center"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg max-h-[80vh] overflow-y-auto bg-gradient-to-b from-gray-900 to-black rounded-t-3xl sm:rounded-2xl border border-white/10"
-      >
-        {/* Handle bar for mobile */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 bg-white/30 rounded-full" />
-        </div>
-        
-        {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center gap-3">
-          <FaTrophy className="text-yellow-400 text-xl" />
-          <div>
-            <h2 className="text-lg font-bold text-white">Explore Leaderboard</h2>
-            <p className="text-white/50 text-xs">Top public galleries by community votes</p>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-2">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500" />
-            </div>
-          ) : leaderboard.length === 0 ? (
-            <div className="text-center py-8 text-white/40">
-              <FaTrophy className="text-3xl mx-auto mb-3 text-white/20" />
-              <p>No rankings yet</p>
-              <p className="text-sm mt-1">Start rating to build the leaderboard!</p>
-            </div>
-          ) : (
-            leaderboard.slice(0, 10).map((entry, i) => (
-              <div
-                key={entry.userId}
-                className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5"
-              >
-                {/* Rank */}
-                <div className="w-8 text-center">
-                  {i < 3 ? (
-                    <FaTrophy className={`mx-auto ${
-                      i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : 'text-amber-600'
-                    }`} />
-                  ) : (
-                    <span className="text-white/50 text-sm">{i + 1}</span>
-                  )}
-                </div>
-
-                {/* Preview */}
-                <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-                  {entry.previewUrl ? (
-                    <img src={entry.previewUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FaImages className="text-white/20" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">{entry.galleryName || 'Gallery'}</p>
-                  <p className="text-white/50 text-xs">{entry.totalVotes} votes · {Math.round(entry.winRate * 100)}% wins</p>
-                </div>
-
-                {/* Score */}
-                <div className="text-right">
-                  <p className="text-cyan-400 font-bold">{entry.totalScore}</p>
-                  <p className="text-white/40 text-xs">pts</p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 

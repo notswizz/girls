@@ -23,13 +23,6 @@ export default async function handler(req, res) {
       isPublic: { $ne: false } // This includes true AND undefined/missing
     }).toArray();
 
-    console.log(`Found ${publicModels.length} public models`);
-    
-    // Debug: log which models are being included
-    publicModels.forEach(m => {
-      console.log(`  - ${m.name} (isPublic: ${m.isPublic})`);
-    });
-
     if (publicModels.length === 0) {
       return res.status(200).json({
         success: false,
@@ -51,8 +44,6 @@ export default async function handler(req, res) {
         { modelId: { $in: publicModelIdsStr } }
       ]
     }).toArray();
-
-    console.log(`Found ${allImages.length} images from public models`);
 
     if (allImages.length < 2) {
       return res.status(200).json({

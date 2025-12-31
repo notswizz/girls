@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FaTimes, FaPlus, FaImages, FaCheck } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaImages, FaCheck, FaChartPie } from 'react-icons/fa';
 
 export default function ModelSelectorModal({ 
   isOpen, 
@@ -68,6 +68,48 @@ export default function ModelSelectorModal({
             </div>
           ) : (
             <div className="space-y-2">
+              {/* Overview option */}
+              <motion.button
+                onClick={() => handleSelect(null)}
+                className={`
+                  w-full p-4 rounded-xl transition-all flex items-center gap-4
+                  ${!selectedModel 
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 border border-cyan-500/50' 
+                    : 'bg-white/5 border border-white/10 hover:bg-white/10 active:scale-[0.98]'
+                  }
+                `}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className={`
+                  w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                  ${!selectedModel 
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600' 
+                    : 'bg-white/10'
+                  }
+                `}>
+                  <FaChartPie className="text-white text-lg" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-white">Overview</div>
+                  <div className="text-white/40 text-sm">View all stats</div>
+                </div>
+                {!selectedModel && (
+                  <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
+                    <FaCheck className="text-white text-sm" />
+                  </div>
+                )}
+              </motion.button>
+
+              {/* Divider */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-gray-900 px-3 text-white/30 text-xs">Models</span>
+                </div>
+              </div>
+
               {models.map((model) => {
                 const isSelected = selectedModel?._id === model._id;
                 return (

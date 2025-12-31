@@ -1,4 +1,4 @@
-import { FaPlus, FaSync } from 'react-icons/fa';
+import { FaPlus, FaSync, FaChartPie } from 'react-icons/fa';
 
 export default function DesktopSidebar({ models, selectedModel, onSelectModel, onAddModel, onRefresh, isLoading }) {
   return (
@@ -12,6 +12,22 @@ export default function DesktopSidebar({ models, selectedModel, onSelectModel, o
           title="Add model"
         >
           <FaPlus size={10} />
+        </button>
+      </div>
+
+      {/* Overview button */}
+      <div className="p-2 border-b border-white/10">
+        <button
+          onClick={() => onSelectModel(null)}
+          className={`
+            w-full flex items-center gap-2 p-3 rounded-lg transition-all text-sm
+            ${!selectedModel 
+              ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/30 border border-cyan-500/50' 
+              : 'hover:bg-white/10 border border-transparent'}
+          `}
+        >
+          <FaChartPie className="text-cyan-400" />
+          <span className="font-medium text-white">Overview</span>
         </button>
       </div>
       
