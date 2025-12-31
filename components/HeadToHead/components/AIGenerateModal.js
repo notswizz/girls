@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaVideo, FaTimes, FaMagic, FaSpinner, FaSave, FaTrash, FaDownload } from 'react-icons/fa';
 
@@ -14,10 +14,65 @@ const AIGenerateModal = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState('');
+  const [pollCount, setPollCount] = useState(0);
   
   // Generated content state
   const [generatedContent, setGeneratedContent] = useState(null);
   const [generatedType, setGeneratedType] = useState(null);
+  
+  // Ref for polling interval
+  const pollIntervalRef = useRef(null);
+
+  // Cleanup polling on unmount or close
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const pollForResult = async (predictionId, type) => {
+    try {
+      const response = await fetch(`/api/ai/poll?predictionId=${predictionId}`);
+      const data = await response.json();
+
+      if (data.status === 'succeeded' && data.output) {
+        // Success! Stop polling and show result
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setGeneratedContent(data.output);
+        setGeneratedType(type);
+        setProgress('');
+        setLoading(false);
+        setPollCount(0);
+      } else if (data.status === 'failed' || data.status === 'canceled') {
+        // Failed - stop polling
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setError(data.error || 'Generation failed');
+        setProgress('');
+        setLoading(false);
+        setPollCount(0);
+      } else {
+        // Still processing - update progress
+        setPollCount(prev => prev + 1);
+        const elapsed = Math.round(pollCount * 2); // 2 seconds per poll
+        if (type === 'video') {
+          setProgress(`Generating video... ${elapsed}s (may take 2-5 min)`);
+        } else {
+          setProgress(`Generating image... ${elapsed}s`);
+        }
+      }
+    } catch (err) {
+      console.error('Poll error:', err);
+      // Don't stop polling on network errors, just log it
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -28,7 +83,8 @@ const AIGenerateModal = ({
     setLoading(true);
     setError(null);
     setGeneratedContent(null);
-    setProgress(mode === 'video' ? 'Generating video... this may take a few minutes' : 'Generating image...');
+    setPollCount(0);
+    setProgress(mode === 'video' ? 'Starting video generation...' : 'Starting image generation...');
 
     try {
       const response = await fetch('/api/ai/generate', {
@@ -40,7 +96,6 @@ const AIGenerateModal = ({
           referenceImage: referenceImageUrl,
           prompt: prompt.trim(),
           mode: mode,
-          saveImmediately: false, // Don't save yet, just generate
         }),
       });
 
@@ -50,14 +105,27 @@ const AIGenerateModal = ({
         throw new Error(data.error || data.details || 'Generation failed');
       }
 
-      // Show the generated content for preview
-      setGeneratedContent(data.output);
-      setGeneratedType(data.type);
-      setProgress('');
+      if (data.predictionId) {
+        // Start polling for result
+        setProgress(mode === 'video' ? 'Generating video... 0s (may take 2-5 min)' : 'Generating image... 0s');
+        
+        // Poll every 2 seconds
+        pollIntervalRef.current = setInterval(() => {
+          pollForResult(data.predictionId, data.type);
+        }, 2000);
+        
+        // Also poll immediately
+        pollForResult(data.predictionId, data.type);
+      } else if (data.output) {
+        // Direct result (shouldn't happen with new API but handle it)
+        setGeneratedContent(data.output);
+        setGeneratedType(data.type);
+        setProgress('');
+        setLoading(false);
+      }
     } catch (err) {
       console.error('Generation error:', err);
       setError(err.message || 'Failed to generate. Please try again.');
-    } finally {
       setLoading(false);
       setProgress('');
     }
@@ -129,11 +197,18 @@ const AIGenerateModal = ({
   };
 
   const handleClose = () => {
+    // Stop any active polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setPrompt('');
     setGeneratedContent(null);
     setGeneratedType(null);
     setError(null);
     setProgress('');
+    setLoading(false);
+    setPollCount(0);
     onClose();
   };
 
