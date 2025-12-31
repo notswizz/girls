@@ -95,6 +95,15 @@ export default function ManagePage() {
     showToast('success', `Created "${model.name}"`);
   };
 
+  const handleModelUpdated = (updatedModel) => {
+    // Update in models list
+    setModels(models.map(m => m._id === updatedModel._id ? updatedModel : m));
+    // Update selected model if it's the one that was updated
+    if (selectedModel?._id === updatedModel._id) {
+      setSelectedModel(updatedModel);
+    }
+  };
+
   const handleUploadComplete = async (count) => {
     await fetchModels();
     if (selectedModel) {
@@ -214,6 +223,7 @@ export default function ManagePage() {
               selectedModel={selectedModel}
               imageCount={modelImages.length}
               onUploadClick={() => setShowUploadModal(true)}
+              onModelUpdated={handleModelUpdated}
             />
 
             {/* Gallery */}

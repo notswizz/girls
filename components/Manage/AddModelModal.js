@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaTimes, FaSync, FaInstagram } from 'react-icons/fa';
+import { FaTimes, FaSync, FaInstagram, FaGlobe, FaLock } from 'react-icons/fa';
 import { generateModelUsername, isValidModelUsername } from '../../utils/idGenerator';
 
 export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
@@ -8,6 +8,7 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
   const [modelUsername, setModelUsername] = useState('');
   const [instagram, setInstagram] = useState('');
   const [onlyfans, setOnlyfans] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -17,6 +18,7 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
       setModelName('');
       setInstagram('');
       setOnlyfans('');
+      setIsPublic(true);
       setError('');
     }
   }, [isOpen]);
@@ -37,6 +39,7 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
           username: modelUsername.toUpperCase(),
           instagram: instagram.trim().replace('@', ''),
           onlyfans: onlyfans.trim(),
+          isPublic: isPublic,
         }),
       });
       
@@ -128,6 +131,40 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
               </button>
             </div>
             <p className="text-white/40 text-xs mt-2">6 characters, letters and numbers only</p>
+          </div>
+
+          {/* Public/Private Toggle */}
+          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isPublic ? (
+                  <FaGlobe className="text-green-400 text-lg" />
+                ) : (
+                  <FaLock className="text-white/40 text-lg" />
+                )}
+                <div>
+                  <p className="text-white font-medium text-sm">
+                    {isPublic ? 'Public Gallery' : 'Private Gallery'}
+                  </p>
+                  <p className="text-white/40 text-xs">
+                    {isPublic 
+                      ? 'Visible in Explore & community ratings' 
+                      : 'Only you can see and rate'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPublic(!isPublic)}
+                className={`relative w-12 h-7 rounded-full transition-colors ${
+                  isPublic ? 'bg-green-500' : 'bg-white/20'
+                }`}
+              >
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                  isPublic ? 'left-6' : 'left-1'
+                }`} />
+              </button>
+            </div>
           </div>
 
           {/* Divider */}

@@ -12,6 +12,7 @@ class Model {
     onlyfans = '',
     userId = null, // User who owns this model
     isActive = true,
+    isPublic = true, // Whether this model appears in public explore
     createdAt = new Date(),
     imageCount = 0,
     averageScore = null,
@@ -30,6 +31,7 @@ class Model {
     this.onlyfans = onlyfans;
     this.userId = userId;
     this.isActive = isActive;
+    this.isPublic = isPublic;
     this.createdAt = createdAt;
     this.imageCount = imageCount;
     this.averageScore = averageScore;
@@ -52,6 +54,7 @@ class Model {
       onlyfans: this.onlyfans,
       userId: this.userId,
       isActive: this.isActive,
+      isPublic: this.isPublic,
       createdAt: this.createdAt,
       imageCount: this.imageCount,
       averageScore: this.averageScore,
@@ -74,6 +77,7 @@ class Model {
       onlyfans: doc.onlyfans || '',
       userId: doc.userId || null,
       isActive: doc.isActive !== undefined ? doc.isActive : true,
+      isPublic: doc.isPublic || false,
       createdAt: doc.createdAt,
       imageCount: doc.imageCount,
       averageScore: doc.averageScore,

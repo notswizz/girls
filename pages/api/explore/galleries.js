@@ -12,10 +12,10 @@ export default async function handler(req, res) {
     const session = await getServerSession(req, res, authOptions);
     const currentUserId = session?.user?.id;
 
-    // Get all users who have models with images
+    // Get all users who have PUBLIC models with images
     const galleries = await db.collection('models').aggregate([
-      // Only active models
-      { $match: { isActive: true } },
+      // Only active AND public models
+      { $match: { isActive: true, isPublic: true } },
       // Group by userId to get galleries
       { $group: {
         _id: '$userId',

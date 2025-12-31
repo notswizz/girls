@@ -64,7 +64,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'Invalid model ID format' });
           }
           
-          const { name, username, description, instagram, twitter, onlyfans } = req.body;
+          const { name, username, description, instagram, twitter, onlyfans, isPublic } = req.body;
           
           // Validate required fields
           if (!name || name.trim() === '') {
@@ -91,19 +91,24 @@ export default async function handler(req, res) {
           const usernameChanged = currentModel && currentModel.username !== username;
           
           // Update the model
+          const updateFields = { 
+            name,
+            username,
+            description: description || '',
+            instagram: instagram || '',
+            twitter: twitter || '',
+            onlyfans: onlyfans || '',
+            updatedAt: new Date()
+          };
+          
+          // Only update isPublic if explicitly provided
+          if (typeof isPublic === 'boolean') {
+            updateFields.isPublic = isPublic;
+          }
+          
           const result = await db.collection('models').updateOne(
             { _id: new ObjectId(id) },
-            { 
-              $set: { 
-                name,
-                username,
-                description: description || '',
-                instagram: instagram || '',
-                twitter: twitter || '',
-                onlyfans: onlyfans || '',
-                updatedAt: new Date()
-              } 
-            }
+            { $set: updateFields }
           );
           
           if (result.matchedCount === 0) {

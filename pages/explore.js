@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGoogle, FaFire, FaTrophy, FaImages, FaArrowRight, FaHeart, FaCrown, FaUsers, FaChevronLeft } from 'react-icons/fa';
+import { FaGoogle, FaFire, FaTrophy, FaImages, FaArrowRight, FaHeart, FaCrown, FaUsers, FaChevronLeft, FaSearchPlus } from 'react-icons/fa';
 import Link from 'next/link';
 
 // Gallery Card Component
@@ -86,14 +86,14 @@ function GalleryCard({ gallery, onRate }) {
   );
 }
 
-// Community Rating Mode - Fullscreen swipe experience
+// Community Rating Mode - Card swipe experience
 function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [celebrating, setCelebrating] = useState(false);
-  const [votesThisSession, setVotesThisSession] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [zoomedImage, setZoomedImage] = useState(null);
   const containerRef = useRef(null);
 
   const fetchImages = async () => {
@@ -108,7 +108,6 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
       if (data.success && data.images?.length >= 2) {
         setImages(data.images);
         setCurrentIndex(0);
-        // Reset scroll position
         if (containerRef.current) {
           containerRef.current.scrollTo({ left: 0, behavior: 'instant' });
         }
@@ -126,7 +125,6 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
     fetchImages();
   }, [galleryOwnerId]);
 
-  // Handle scroll snap to detect current image
   const handleScroll = (e) => {
     if (selectedId) return;
     const container = e.target;
@@ -139,6 +137,7 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
   };
 
   const handleVote = async (winnerId) => {
+    if (zoomedImage) return;
     const loserId = images.find(img => img._id !== winnerId)?._id;
     if (!loserId) return;
 
@@ -152,13 +151,11 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
         body: JSON.stringify({ winnerId, loserId })
       });
 
-      setVotesThisSession(prev => prev + 1);
-
       setTimeout(() => {
         setCelebrating(false);
         setSelectedId(null);
         fetchImages();
-      }, 800);
+      }, 1000);
     } catch (err) {
       console.error('Error voting:', err);
       setCelebrating(false);
@@ -189,114 +186,154 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
     );
   }
 
-  const currentImage = images[currentIndex];
-  const isWinner = selectedId === currentImage?._id;
-
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Header - overlaid on image */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+    <div className="h-[calc(100vh-180px)] flex flex-col -mx-4">
+      {/* Header */}
+      <div className="p-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
           >
-            <FaChevronLeft className="text-lg" />
-            <span className="font-medium">Back</span>
+            <FaChevronLeft />
+            <span className="text-sm">Back</span>
           </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
-            <FaHeart className="text-pink-400 text-sm" />
-            <span className="text-white font-medium text-sm">{votesThisSession}</span>
-          </div>
+          <p className="text-white/60 text-sm">tap your favorite ✨</p>
+          <div className="w-16" />
         </div>
       </div>
 
-      {/* Swipeable Image Container */}
+      {/* Swipeable Card Container */}
       <div 
         ref={containerRef}
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4"
         onScroll={handleScroll}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {images.map((image, i) => {
-          const isThisWinner = selectedId === image._id;
-          const isThisLoser = selectedId && selectedId !== image._id;
+          const isWinner = selectedId === image._id;
+          const isLoser = selectedId && selectedId !== image._id;
           
           return (
             <div
               key={image._id}
-              className="w-full h-full flex-shrink-0 snap-center relative flex items-center justify-center cursor-pointer"
-              onClick={() => !selectedId && handleVote(image._id)}
+              className="w-full h-full flex-shrink-0 snap-center flex items-center justify-center px-3 py-2"
             >
-              <img
-                src={image.url}
-                alt=""
-                className={`w-full h-full object-contain transition-all duration-500 ${
-                  isThisLoser ? 'opacity-30 scale-90' : ''
-                } ${isThisWinner && celebrating ? 'scale-105' : ''}`}
-              />
-              
-              {/* Tap hint overlay - shown when not celebrating */}
-              {!selectedId && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/40 backdrop-blur-sm rounded-full">
-                    <span className="text-white/70 text-sm font-medium">Tap to pick</span>
-                  </div>
-                </div>
-              )}
-              
-              {/* Winner celebration overlay */}
-              {isThisWinner && celebrating && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="absolute inset-0 flex items-center justify-center bg-green-500/20"
-                >
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200 }}
-                    className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full p-6 shadow-2xl"
+              <motion.div
+                className={`
+                  relative rounded-2xl overflow-hidden cursor-pointer
+                  w-full max-w-md shadow-2xl
+                  transition-all duration-300
+                  ${isWinner ? 'ring-4 ring-pink-400 shadow-[0_0_40px_rgba(236,72,153,0.5)]' : ''}
+                  ${isLoser ? 'opacity-20 scale-90 grayscale' : ''}
+                  ${!selectedId ? 'hover:scale-[1.02] active:scale-[0.98]' : ''}
+                `}
+                onClick={() => !selectedId && handleVote(image._id)}
+                animate={{
+                  scale: isLoser ? 0.9 : (celebrating && isWinner ? 1.02 : 1),
+                }}
+                style={{
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                }}
+              >
+                {/* Cute border glow effect */}
+                <div className="absolute -inset-[2px] rounded-3xl bg-gradient-to-br from-pink-500/50 via-purple-500/50 to-cyan-500/50 -z-10 blur-sm" />
+                
+                {/* Image container - taller aspect ratio for bigger images */}
+                <div className="relative aspect-[9/14] bg-black/20">
+                  <img
+                    src={image.url}
+                    alt=""
+                    className={`
+                      w-full h-full object-cover
+                      transition-all duration-500
+                      ${celebrating && isWinner ? 'scale-105 brightness-110' : ''}
+                    `}
+                  />
+                  
+                  {/* Zoom button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomedImage(image);
+                    }}
+                    className="absolute bottom-3 right-3 p-2.5 bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/70 transition-all"
                   >
-                    <FaCrown className="text-white text-5xl" />
-                  </motion.div>
-                </motion.div>
-              )}
+                    <FaSearchPlus size={14} />
+                  </button>
+                </div>
+
+                {/* Winner celebration overlay */}
+                <AnimatePresence>
+                  {isWinner && celebrating && (
+                    <motion.div
+                      className="absolute inset-0 z-20 flex items-center justify-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/30 via-purple-500/20 to-transparent" />
+                      
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                        className="relative"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full blur-2xl opacity-60" />
+                        <div className="relative bg-gradient-to-br from-pink-400 via-pink-500 to-purple-600 rounded-full p-6 shadow-2xl">
+                          <FaHeart className="text-white text-4xl drop-shadow-lg" />
+                        </div>
+                      </motion.div>
+                      
+                      {/* Floating hearts */}
+                      {[...Array(12)].map((_, idx) => (
+                        <motion.div
+                          key={idx}
+                          className="absolute"
+                          initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+                          animate={{ 
+                            opacity: [0, 1, 0],
+                            scale: [0.5, 1.2, 0.5],
+                            x: (Math.random() - 0.5) * 250,
+                            y: -120 - Math.random() * 150
+                          }}
+                          transition={{ duration: 1, delay: idx * 0.05 }}
+                        >
+                          <FaHeart className={`${idx % 2 === 0 ? 'text-pink-400' : 'text-purple-400'} text-lg`} />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
           );
         })}
       </div>
 
-      {/* Bottom Controls */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-        {/* Image indicator dots */}
-        <div className="flex justify-center gap-2 mb-3">
-          {images.map((img, i) => (
-            <div
-              key={img._id}
-              className={`h-2 rounded-full transition-all ${
-                i === currentIndex 
-                  ? 'bg-pink-500 w-8' 
-                  : 'bg-white/30 w-2'
-              }`}
+      {/* Zoom Modal */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+            onClick={() => setZoomedImage(null)}
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={zoomedImage.url}
+              alt=""
+              className="max-w-full max-h-full object-contain rounded-2xl"
             />
-          ))}
-        </div>
-
-        {/* Swipe hint */}
-        <p className="text-center text-white/50 text-xs">
-          ← Swipe to compare · Tap to pick →
-        </p>
-
-        {/* Skip option */}
-        <button
-          onClick={fetchImages}
-          disabled={loading || selectedId}
-          className="block mx-auto mt-3 text-white/30 hover:text-white/60 text-sm transition-colors pointer-events-auto"
-        >
-          Skip →
-        </button>
-      </div>
+            <p className="absolute bottom-8 text-white/50 text-sm">tap anywhere to close</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {

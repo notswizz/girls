@@ -17,18 +17,29 @@ export default async function handler(req, res) {
     }
 
     const currentUserId = session.user.id;
-    const { galleryId } = req.query;
 
-    // Build query - get images from OTHER users (not yourself)
-    const baseQuery = {
+    // First, get all PUBLIC model IDs (excluding your own)
+    const publicModels = await db.collection('models').find({
+      isPublic: true,
       isActive: true,
       userId: { $ne: currentUserId }
-    };
+    }).project({ _id: 1 }).toArray();
 
-    // If galleryId specified, only get from that gallery
-    if (galleryId) {
-      baseQuery.userId = galleryId;
+    const publicModelIds = publicModels.map(m => m._id.toString());
+
+    if (publicModelIds.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: 'NEED_MORE_GALLERIES',
+        images: []
+      });
     }
+
+    // Build query - get images only from PUBLIC models
+    const baseQuery = {
+      isActive: true,
+      modelId: { $in: publicModelIds }
+    };
 
     // Get first random image
     const firstImages = await db.collection('images').aggregate([
@@ -49,7 +60,7 @@ export default async function handler(req, res) {
     // Get second random image from a DIFFERENT model
     const secondQuery = {
       ...baseQuery,
-      modelId: { $ne: firstImage.modelId }
+      modelId: { $in: publicModelIds.filter(id => id !== firstImage.modelId) }
     };
 
     const secondImages = await db.collection('images').aggregate([
@@ -58,7 +69,7 @@ export default async function handler(req, res) {
     ]).toArray();
 
     if (secondImages.length === 0) {
-      // No images from different models, try to get any other image
+      // No images from different models, try to get any other image from same model
       const fallbackImages = await db.collection('images').aggregate([
         { $match: { 
           ...baseQuery,
@@ -75,10 +86,7 @@ export default async function handler(req, res) {
         });
       }
 
-      // Use fallback (might be same model but different image)
       const images = [firstImage, fallbackImages[0]];
-      
-      // Lookup model info for both
       const enrichedImages = await enrichWithModelInfo(db, images);
       
       return res.status(200).json({
@@ -88,8 +96,6 @@ export default async function handler(req, res) {
     }
 
     const images = [firstImage, secondImages[0]];
-    
-    // Lookup model info for both
     const enrichedImages = await enrichWithModelInfo(db, images);
 
     return res.status(200).json({

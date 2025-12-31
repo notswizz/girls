@@ -196,6 +196,7 @@ export default async function handler(req, res) {
             onlyfans: onlyfans || '',
             userId: userId, // Associate with the creating user
             isActive: true,
+            isPublic: req.body.isPublic !== false, // Default to public
             createdAt: new Date(),
             updatedAt: new Date(),
             imageCount: 0,
