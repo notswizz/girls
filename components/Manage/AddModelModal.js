@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaTimes, FaSync } from 'react-icons/fa';
+import { FaTimes, FaSync, FaInstagram } from 'react-icons/fa';
 import { generateModelUsername, isValidModelUsername } from '../../utils/idGenerator';
 
 export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
   const [modelName, setModelName] = useState('');
   const [modelUsername, setModelUsername] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [onlyfans, setOnlyfans] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -13,6 +15,8 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
     if (isOpen) {
       setModelUsername(generateModelUsername());
       setModelName('');
+      setInstagram('');
+      setOnlyfans('');
       setError('');
     }
   }, [isOpen]);
@@ -31,6 +35,8 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
         body: JSON.stringify({
           name: modelName.trim(),
           username: modelUsername.toUpperCase(),
+          instagram: instagram.trim().replace('@', ''),
+          onlyfans: onlyfans.trim(),
         }),
       });
       
@@ -61,7 +67,7 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md bg-gradient-to-b from-gray-900 to-black rounded-t-3xl sm:rounded-2xl border border-white/10 overflow-hidden"
+        className="w-full sm:max-w-md max-h-[90vh] overflow-y-auto bg-gradient-to-b from-gray-900 to-black rounded-t-3xl sm:rounded-2xl border border-white/10"
       >
         {/* Handle bar for mobile */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -87,8 +93,9 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
             </div>
           )}
           
+          {/* Name */}
           <div>
-            <label className="block text-white/60 text-sm mb-2">Model Name</label>
+            <label className="block text-white/60 text-sm mb-2">Model Name *</label>
             <input
               type="text"
               value={modelName}
@@ -100,8 +107,9 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
             />
           </div>
 
+          {/* Username */}
           <div>
-            <label className="block text-white/60 text-sm mb-2">Username</label>
+            <label className="block text-white/60 text-sm mb-2">Username *</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -122,6 +130,49 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
             <p className="text-white/40 text-xs mt-2">6 characters, letters and numbers only</p>
           </div>
 
+          {/* Divider */}
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-white/30 text-xs">SOCIALS (optional)</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Instagram */}
+          <div>
+            <label className="block text-white/60 text-sm mb-2 flex items-center gap-2">
+              <FaInstagram className="text-pink-400" />
+              Instagram
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">@</span>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value.replace('@', ''))}
+                placeholder="username"
+                className="w-full p-4 pl-8 bg-white/5 border border-white/10 text-white rounded-xl text-base focus:ring-2 focus:ring-pink-500 focus:border-transparent placeholder-white/30"
+              />
+            </div>
+          </div>
+
+          {/* OnlyFans */}
+          <div>
+            <label className="block text-white/60 text-sm mb-2 flex items-center gap-2">
+              <span className="w-4 h-4 rounded bg-[#00AFF0] flex items-center justify-center text-[10px] font-bold text-white">OF</span>
+              OnlyFans
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm">onlyfans.com/</span>
+              <input
+                type="text"
+                value={onlyfans}
+                onChange={(e) => setOnlyfans(e.target.value)}
+                placeholder="username"
+                className="w-full p-4 pl-[108px] bg-white/5 border border-white/10 text-white rounded-xl text-base focus:ring-2 focus:ring-pink-500 focus:border-transparent placeholder-white/30"
+              />
+            </div>
+          </div>
+
           <div className="pt-2 pb-4">
             <button
               type="submit"
@@ -140,4 +191,3 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
     </motion.div>
   );
 }
-
