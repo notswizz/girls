@@ -17,16 +17,16 @@ export default function RatePage() {
   };
 
   return (
-    <Layout {...seoProps}>
+    <Layout {...seoProps} fullHeight>
       {/* Animated background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-1/3 -left-40 w-80 h-80 bg-gradient-to-r from-pink-600/20 to-purple-600/10 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-1/3 -right-40 w-96 h-96 bg-gradient-to-r from-cyan-600/10 to-blue-600/20 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
       </div>
       
-      <div className="min-h-[calc(100vh-120px)]">
+      <div className="h-full flex flex-col overflow-hidden">
         {/* Mode Toggle */}
-        <div className="flex justify-center py-4">
+        <div className="flex-shrink-0 flex justify-center py-3">
           <div className="inline-flex bg-white/5 rounded-2xl p-1 border border-white/10">
             <button
               onClick={() => setMode('gallery')}
@@ -54,11 +54,13 @@ export default function RatePage() {
         </div>
 
         {/* Content based on mode */}
-        {mode === 'gallery' ? (
-          <HeadToHeadCompare />
-        ) : (
-          <ExploreRating />
-        )}
+        <div className="flex-1 overflow-hidden">
+          {mode === 'gallery' ? (
+            <HeadToHeadCompare />
+          ) : (
+            <ExploreRating />
+          )}
+        </div>
       </div>
     </Layout>
   );

@@ -106,10 +106,10 @@ export default function UploadModal({ isOpen, onClose, selectedModel, onUploadCo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col"
+      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 safe-top">
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
         <button
           onClick={handleClose}
           disabled={isUploading}
@@ -120,17 +120,7 @@ export default function UploadModal({ isOpen, onClose, selectedModel, onUploadCo
         <h2 className="text-lg font-semibold text-white">
           Upload to {selectedModel?.name}
         </h2>
-        <button
-          onClick={handleUpload}
-          disabled={isUploading || files.length === 0}
-          className={`px-4 py-2 rounded-full font-medium text-sm transition-all ${
-            isUploading || files.length === 0
-              ? 'bg-white/10 text-white/30 cursor-not-allowed'
-              : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-          }`}
-        >
-          {isUploading ? `${uploadProgress}%` : `Upload${files.length > 0 ? ` (${files.length})` : ''}`}
-        </button>
+        <div className="w-10" /> {/* Spacer for centering */}
       </div>
 
       {/* Content */}
@@ -222,6 +212,21 @@ export default function UploadModal({ isOpen, onClose, selectedModel, onUploadCo
             </div>
           </div>
         )}
+      </div>
+
+      {/* Footer with Upload Button */}
+      <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black/50">
+        <button
+          onClick={handleUpload}
+          disabled={isUploading || files.length === 0}
+          className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all ${
+            isUploading || files.length === 0
+              ? 'bg-white/10 text-white/30 cursor-not-allowed'
+              : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-lg hover:shadow-pink-500/25'
+          }`}
+        >
+          {isUploading ? `Uploading... ${uploadProgress}%` : `Upload${files.length > 0 ? ` ${files.length} Photo${files.length > 1 ? 's' : ''}` : ''}`}
+        </button>
       </div>
     </motion.div>
   );

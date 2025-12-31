@@ -46,7 +46,7 @@ const MobileSwipeRating = ({
   if (!images || images.length < 2) return null;
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col -mx-4 sm:-mx-6">
+    <div className="h-full flex flex-col -mx-4 sm:-mx-6">
 
       {/* Swipeable Image Container */}
       <div 

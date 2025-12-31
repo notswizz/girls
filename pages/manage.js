@@ -182,58 +182,59 @@ export default function ManagePage() {
 
   return (
     <Layout title="Manage" fullHeight>
-      <div className="h-full flex flex-col">
-        {/* Modals */}
-        <AnimatePresence>
-          {showUploadModal && (
-            <UploadModal
-              isOpen={showUploadModal}
-              onClose={() => setShowUploadModal(false)}
-              selectedModel={selectedModel}
-              onUploadComplete={handleUploadComplete}
-            />
-          )}
-        </AnimatePresence>
+      {/* Modals - rendered outside overflow container */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <UploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            selectedModel={selectedModel}
+            onUploadComplete={handleUploadComplete}
+          />
+        )}
+      </AnimatePresence>
 
-        <AnimatePresence>
-          {showAddModelModal && (
-            <AddModelModal
-              isOpen={showAddModelModal}
-              onClose={() => setShowAddModelModal(false)}
-              onModelCreated={handleModelCreated}
-            />
-          )}
-        </AnimatePresence>
+      <AnimatePresence>
+        {showAddModelModal && (
+          <AddModelModal
+            isOpen={showAddModelModal}
+            onClose={() => setShowAddModelModal(false)}
+            onModelCreated={handleModelCreated}
+          />
+        )}
+      </AnimatePresence>
 
-        <AnimatePresence>
-          {showModelSelectorModal && (
-            <ModelSelectorModal
-              isOpen={showModelSelectorModal}
-              onClose={() => setShowModelSelectorModal(false)}
-              models={models}
-              selectedModel={selectedModel}
-              onSelectModel={selectModel}
-              onAddModel={() => setShowAddModelModal(true)}
-              isLoading={isLoadingModels}
-            />
-          )}
-        </AnimatePresence>
+      <AnimatePresence>
+        {showModelSelectorModal && (
+          <ModelSelectorModal
+            isOpen={showModelSelectorModal}
+            onClose={() => setShowModelSelectorModal(false)}
+            models={models}
+            selectedModel={selectedModel}
+            onSelectModel={selectModel}
+            onAddModel={() => setShowAddModelModal(true)}
+            isLoading={isLoadingModels}
+          />
+        )}
+      </AnimatePresence>
 
-        <AnimatePresence>
-          {viewingImage && (
-            <ImageViewerModal
-              image={viewingImage}
-              onClose={() => setViewingImage(null)}
-              onDelete={() => deleteImage(viewingImage._id)}
-            />
-          )}
-        </AnimatePresence>
+      <AnimatePresence>
+        {viewingImage && (
+          <ImageViewerModal
+            image={viewingImage}
+            onClose={() => setViewingImage(null)}
+            onDelete={() => deleteImage(viewingImage._id)}
+          />
+        )}
+      </AnimatePresence>
 
-        {/* Toast message */}
-        <AnimatePresence>
-          {message && <Toast message={message} />}
-        </AnimatePresence>
+      {/* Toast message */}
+      <AnimatePresence>
+        {message && <Toast message={message} />}
+      </AnimatePresence>
 
+      {/* Main content container */}
+      <div className="h-full flex flex-col overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
           {/* Desktop Sidebar */}
           <DesktopSidebar
