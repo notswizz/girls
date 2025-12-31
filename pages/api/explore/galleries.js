@@ -13,15 +13,12 @@ export default async function handler(req, res) {
     const currentUserId = session?.user?.id;
 
     // Get all users who have PUBLIC models with images
-    // Also include legacy models without isPublic field (treat as public)
+    // Exclude models with isPublic: false
     const galleries = await db.collection('models').aggregate([
-      // Only active AND public models (or legacy models without the field)
+      // Only active AND public models (exclude private ones)
       { $match: { 
         isActive: true, 
-        $or: [
-          { isPublic: true },
-          { isPublic: { $exists: false } }
-        ]
+        isPublic: { $ne: false } // Includes true and undefined/missing
       }},
       // Group by userId to get galleries
       { $group: {

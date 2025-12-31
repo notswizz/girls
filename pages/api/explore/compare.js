@@ -16,16 +16,19 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: 'Must be logged in to rate' });
     }
 
-    // Get all PUBLIC models (including legacy models without isPublic field)
+    // Get all PUBLIC models only (explicitly exclude private models)
+    // Include legacy models without isPublic field, but EXCLUDE isPublic: false
     const publicModels = await db.collection('models').find({
-      $or: [
-        { isPublic: true },
-        { isPublic: { $exists: false } }
-      ],
-      isActive: true
+      isActive: true,
+      isPublic: { $ne: false } // This includes true AND undefined/missing
     }).toArray();
 
     console.log(`Found ${publicModels.length} public models`);
+    
+    // Debug: log which models are being included
+    publicModels.forEach(m => {
+      console.log(`  - ${m.name} (isPublic: ${m.isPublic})`);
+    });
 
     if (publicModels.length === 0) {
       return res.status(200).json({
