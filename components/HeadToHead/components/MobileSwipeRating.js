@@ -47,17 +47,6 @@ const MobileSwipeRating = ({
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col -mx-4 sm:-mx-6">
-      {/* Header */}
-      <div className="p-4 flex-shrink-0 flex items-center justify-between">
-        <p className="text-white/60 text-sm">tap your favorite ✨</p>
-        <button
-          onClick={() => setShowLeaderboard(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/20 transition-all text-sm"
-        >
-          <FaTrophy className="text-yellow-400" size={12} />
-          Leaderboard
-        </button>
-      </div>
 
       {/* Swipeable Image Container */}
       <div 

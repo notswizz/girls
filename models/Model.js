@@ -77,7 +77,7 @@ class Model {
       onlyfans: doc.onlyfans || '',
       userId: doc.userId || null,
       isActive: doc.isActive !== undefined ? doc.isActive : true,
-      isPublic: doc.isPublic || false,
+      isPublic: doc.isPublic !== false, // Default to true for legacy models
       createdAt: doc.createdAt,
       imageCount: doc.imageCount,
       averageScore: doc.averageScore,

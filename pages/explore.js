@@ -188,19 +188,15 @@ function CommunityRatingMode({ galleryOwnerId, onBack, onComplete }) {
 
   return (
     <div className="h-[calc(100vh-180px)] flex flex-col -mx-4">
-      {/* Header */}
+      {/* Header - just back button */}
       <div className="p-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
-          >
-            <FaChevronLeft />
-            <span className="text-sm">Back</span>
-          </button>
-          <p className="text-white/60 text-sm">tap your favorite ✨</p>
-          <div className="w-16" />
-        </div>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
+        >
+          <FaChevronLeft />
+          <span className="text-sm">Back</span>
+        </button>
       </div>
 
       {/* Swipeable Card Container */}

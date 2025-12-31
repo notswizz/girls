@@ -13,9 +13,16 @@ export default async function handler(req, res) {
     const currentUserId = session?.user?.id;
 
     // Get all users who have PUBLIC models with images
+    // Also include legacy models without isPublic field (treat as public)
     const galleries = await db.collection('models').aggregate([
-      // Only active AND public models
-      { $match: { isActive: true, isPublic: true } },
+      // Only active AND public models (or legacy models without the field)
+      { $match: { 
+        isActive: true, 
+        $or: [
+          { isPublic: true },
+          { isPublic: { $exists: false } }
+        ]
+      }},
       // Group by userId to get galleries
       { $group: {
         _id: '$userId',
@@ -77,9 +84,15 @@ export default async function handler(req, res) {
 
     // Get preview images for each gallery (just URLs, no personal data)
     for (const gallery of galleries) {
+      // Handle both string and ObjectId userId formats
+      const userIdStr = gallery.userId?.toString() || gallery.userId;
+      
       const images = await db.collection('images')
         .find({ 
-          userId: gallery.userId,
+          $or: [
+            { userId: userIdStr },
+            { userId: gallery.userId }
+          ],
           isActive: true 
         })
         .sort({ elo: -1 })
