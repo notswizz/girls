@@ -1,21 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaVideo, FaTimes, FaMagic, FaSpinner, FaSave, FaTrash, FaDownload, FaRobot, FaCheck, FaPhotoVideo, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import { HiSparkles } from 'react-icons/hi';
+import { FaImage, FaVideo, FaTimes, FaSpinner, FaSave, FaTrash, FaDownload, FaRobot, FaCheck } from 'react-icons/fa';
 import { useAIGeneration } from '../context/AIGenerationContext';
-import { extractFrames } from '../utils/videoFrameExtractor';
 
 export default function GlobalAIModal() {
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  
-  // Frame extraction states
-  const [extractingFrames, setExtractingFrames] = useState(false);
-  const [extractedFrames, setExtractedFrames] = useState([]);
-  const [selectedFrameIndex, setSelectedFrameIndex] = useState(0);
-  const [showFrameSelector, setShowFrameSelector] = useState(false);
   
   const {
     isGenerating,
@@ -35,40 +27,6 @@ export default function GlobalAIModal() {
     setMounted(true);
   }, []);
 
-  // Auto-extract frames when video generation completes
-  useEffect(() => {
-    if (result && generationType === 'video' && !extractingFrames && extractedFrames.length === 0) {
-      handleExtractFrames();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, generationType]);
-
-  const handleExtractFrames = async () => {
-    if (!result) return;
-    
-    setExtractingFrames(true);
-    setError(null);
-    
-    try {
-      console.log('Extracting frames from video:', result);
-      const frames = await extractFrames(result, 12); // Extract 12 frames
-      console.log(`Extracted ${frames.length} frames`);
-      
-      if (frames.length === 0) {
-        throw new Error('No frames could be extracted');
-      }
-      
-      setExtractedFrames(frames);
-      setSelectedFrameIndex(0); // Auto-select best frame (already sorted by score)
-      setShowFrameSelector(true);
-    } catch (err) {
-      console.error('Frame extraction error:', err);
-      setError('Failed to extract frames: ' + err.message);
-    } finally {
-      setExtractingFrames(false);
-    }
-  };
-
   // Lock body scroll when modal is open
   useEffect(() => {
     if (showModal) {
@@ -81,34 +39,12 @@ export default function GlobalAIModal() {
     };
   }, [showModal]);
 
-  // Check if user selected the video (last item in the selector)
-  const isVideoSelected = showFrameSelector && selectedFrameIndex === extractedFrames.length;
-
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     
     try {
-      let urlToSave = result;
-      let typeToSave = generationType;
-      let isFrame = false;
-      
-      // If we have extracted frames, check what's selected
-      if (showFrameSelector && extractedFrames.length > 0) {
-        if (isVideoSelected) {
-          // User selected the full video (last item)
-          urlToSave = result;
-          typeToSave = 'video';
-        } else {
-          // User selected a frame
-          const selectedFrame = extractedFrames[selectedFrameIndex];
-          urlToSave = selectedFrame.dataUrl; // This is a base64 data URL
-          typeToSave = 'image';
-          isFrame = true;
-        }
-      }
-      
-      if (!urlToSave) {
+      if (!result) {
         throw new Error('No content to save');
       }
 
@@ -116,10 +52,9 @@ export default function GlobalAIModal() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: urlToSave,
+          url: result,
           prompt: prompt,
-          type: typeToSave,
-          isExtractedFrame: isFrame,
+          type: generationType,
         }),
       });
 
@@ -131,7 +66,7 @@ export default function GlobalAIModal() {
 
       setSaveSuccess(true);
       setTimeout(() => {
-        handleReset();
+        resetGeneration();
         setSaveSuccess(false);
       }, 1500);
     } catch (err) {
@@ -141,30 +76,14 @@ export default function GlobalAIModal() {
     }
   };
 
-  const handleReset = () => {
-    resetGeneration();
-    setExtractedFrames([]);
-    setSelectedFrameIndex(0);
-    setShowFrameSelector(false);
-  };
-
   const handleDownload = async () => {
+    if (!result) return;
+    
     try {
-      let downloadUrl;
-      let filename;
-      
-      if (showFrameSelector && !isVideoSelected && extractedFrames[selectedFrameIndex]) {
-        // Download the selected frame
-        downloadUrl = extractedFrames[selectedFrameIndex].dataUrl;
-        filename = `ai-frame-${Date.now()}.jpg`;
-      } else {
-        // Download the video or image result
-        if (!result) return;
-        const response = await fetch(result);
-        const blob = await response.blob();
-        downloadUrl = window.URL.createObjectURL(blob);
-        filename = `ai-${generationType}-${Date.now()}.${generationType === 'video' ? 'mp4' : 'png'}`;
-      }
+      const response = await fetch(result);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const filename = `ai-${generationType}-${Date.now()}.${generationType === 'video' ? 'mp4' : 'png'}`;
       
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -172,34 +91,19 @@ export default function GlobalAIModal() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
-      // Only revoke if it was a blob URL (not a data URL)
-      if (!downloadUrl.startsWith('data:')) {
-        window.URL.revokeObjectURL(downloadUrl);
-      }
+      window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       setError('Failed to download');
     }
   };
 
   const handleDiscard = () => {
-    if (isGenerating || extractingFrames) {
+    if (isGenerating) {
       if (!window.confirm('Processing is in progress. Are you sure you want to discard?')) {
         return;
       }
     }
-    handleReset();
-  };
-
-  // Total items = frames + 1 (for the video at the end)
-  const totalItems = extractedFrames.length + 1;
-
-  const handlePrevFrame = () => {
-    setSelectedFrameIndex(prev => prev > 0 ? prev - 1 : totalItems - 1);
-  };
-
-  const handleNextFrame = () => {
-    setSelectedFrameIndex(prev => prev < totalItems - 1 ? prev + 1 : 0);
+    resetGeneration();
   };
 
   const handleClose = () => {
@@ -279,21 +183,6 @@ export default function GlobalAIModal() {
             </div>
           )}
 
-          {/* Frame Extraction Loading */}
-          {extractingFrames && (
-            <div className="py-8 text-center">
-              <div className="relative mx-auto w-20 h-20 mb-4">
-                <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20" />
-                <div className="absolute inset-0 rounded-full border-4 border-t-cyan-500 animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <FaPhotoVideo className="text-cyan-400 text-2xl animate-pulse" />
-                </div>
-              </div>
-              <p className="text-white/60 text-sm">Extracting best frames...</p>
-              <p className="text-white/40 text-xs mt-1">Analyzing video for quality shots</p>
-            </div>
-          )}
-
           {/* Error State */}
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
@@ -318,139 +207,28 @@ export default function GlobalAIModal() {
           )}
 
           {/* Result Display */}
-          {result && !saveSuccess && !extractingFrames && (
+          {result && !saveSuccess && (
             <div className="space-y-4">
+              <p className="text-white/40 text-xs">
+                Generated {generationType === 'video' ? 'Video' : 'Image'}
+              </p>
               
-              {/* Frame Selector for Videos */}
-              {showFrameSelector && extractedFrames.length > 0 ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-white/40 text-xs">
-                      {isVideoSelected ? 'Full Video' : 'Best Frames Extracted'}
-                    </p>
-                    <span className="text-cyan-400 text-xs font-medium">
-                      {selectedFrameIndex + 1} / {totalItems}
-                    </span>
-                  </div>
-                  
-                  {/* Main Display - Frame or Video */}
-                  <div className="relative">
-                    {isVideoSelected ? (
-                      <motion.div
-                        key="video"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                      >
-                        <video
-                          src={result}
-                          className="w-full rounded-xl shadow-lg border border-purple-500/30"
-                          controls
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                        />
-                        {/* Video Badge */}
-                        <div className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-sm">
-                          <span className="text-white text-xs font-medium flex items-center gap-1">
-                            <FaVideo size={10} />
-                            Full Video
-                          </span>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.img
-                        key={selectedFrameIndex}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        src={extractedFrames[selectedFrameIndex]?.dataUrl}
-                        alt={`Frame ${selectedFrameIndex + 1}`}
-                        className="w-full rounded-xl shadow-lg border border-white/10"
-                      />
-                    )}
-                    
-                    {/* Navigation Arrows */}
-                    <button
-                      onClick={handlePrevFrame}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 text-white/80 hover:bg-black/80 hover:text-white transition-all backdrop-blur-sm"
-                    >
-                      <FaArrowLeft size={14} />
-                    </button>
-                    <button
-                      onClick={handleNextFrame}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 text-white/80 hover:bg-black/80 hover:text-white transition-all backdrop-blur-sm"
-                    >
-                      <FaArrowRight size={14} />
-                    </button>
-
-                    {/* Quality Score Badge (only for frames) */}
-                    {!isVideoSelected && (
-                      <div className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-500/80 to-blue-500/80 backdrop-blur-sm">
-                        <span className="text-white text-xs font-medium flex items-center gap-1">
-                          <HiSparkles size={12} />
-                          Score: {extractedFrames[selectedFrameIndex]?.score?.toFixed(1) || 'N/A'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Thumbnail Strip - Frames + Video at end */}
-                  <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-                    {extractedFrames.slice(0, 8).map((frame, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedFrameIndex(idx)}
-                        className={`
-                          flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all
-                          ${idx === selectedFrameIndex 
-                            ? 'border-cyan-400 ring-2 ring-cyan-400/30' 
-                            : 'border-white/10 hover:border-white/30'}
-                        `}
-                      >
-                        <img
-                          src={frame.dataUrl}
-                          alt={`Thumb ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                    {/* Video thumbnail at the end */}
-                    <button
-                      onClick={() => setSelectedFrameIndex(extractedFrames.length)}
-                      className={`
-                        flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all relative
-                        ${isVideoSelected 
-                          ? 'border-purple-400 ring-2 ring-purple-400/30' 
-                          : 'border-white/10 hover:border-white/30'}
-                      `}
-                    >
-                      <video
-                        src={result}
-                        className="w-full h-full object-cover"
-                        muted
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <FaVideo className="text-white text-lg" />
-                      </div>
-                    </button>
-                  </div>
-
-                  <p className="text-white/40 text-xs text-center">
-                    {isVideoSelected 
-                      ? 'Save the full video or swipe to pick a frame' 
-                      : 'Frames sorted by quality • Swipe right for full video'}
-                  </p>
-                </>
+              {generationType === 'video' ? (
+                <video
+                  src={result}
+                  className="w-full rounded-xl shadow-lg border border-purple-500/30"
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
               ) : (
-                <>
-                  {/* Regular image result */}
-                  <p className="text-white/40 text-xs">Generated Image</p>
-                  <img
-                    src={result}
-                    alt="Generated"
-                    className="w-full rounded-xl shadow-lg"
-                  />
-                </>
+                <img
+                  src={result}
+                  alt="Generated"
+                  className="w-full rounded-xl shadow-lg"
+                />
               )}
 
               {/* Action Buttons */}
@@ -461,7 +239,7 @@ export default function GlobalAIModal() {
                   disabled={saving}
                   className={`
                     w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2
-                    ${isVideoSelected 
+                    ${generationType === 'video' 
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
                       : 'bg-gradient-to-r from-green-500 to-emerald-500'} 
                     text-white hover:shadow-lg transition-all
@@ -475,14 +253,14 @@ export default function GlobalAIModal() {
                     </>
                   ) : (
                     <>
-                      {isVideoSelected ? <FaVideo /> : <FaSave />}
-                      Save {isVideoSelected ? 'Video' : (showFrameSelector ? 'Frame' : '')} to Gallery
+                      {generationType === 'video' ? <FaVideo /> : <FaSave />}
+                      Save {generationType === 'video' ? 'Video' : 'Image'} to Gallery
                     </>
                   )}
                 </button>
 
                 <div className="flex gap-2">
-                  {/* Download (video or frame) */}
+                  {/* Download */}
                   <button
                     onClick={handleDownload}
                     className="flex-1 py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-all border border-purple-500/30"
@@ -504,8 +282,6 @@ export default function GlobalAIModal() {
             </div>
           )}
         </div>
-
-        {/* Floating indicator when minimized */}
       </motion.div>
     </motion.div>
   );
@@ -566,4 +342,3 @@ export function AIGenerationIndicator() {
     document.body
   );
 }
-
