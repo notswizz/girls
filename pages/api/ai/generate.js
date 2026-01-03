@@ -73,6 +73,8 @@ async function startImageGeneration(referenceImage, prompt, apiKey, res) {
         aspect_ratio: "1:1",
         enhance_prompt: true,
         sequential_image_generation: "disabled",
+        // Disable safety checker
+        disable_safety_checker: true,
       },
     }),
   });
@@ -125,6 +127,8 @@ async function startVideoGeneration(referenceImage, prompt, apiKey, res) {
         interpolate_output: false,
         lora_scale_transformer: 1,
         lora_scale_transformer_2: 1,
+        // Disable safety checker
+        disable_safety_checker: true,
       },
     }),
   });
