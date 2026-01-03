@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Authorization': `Token ${apiKey}` },
     });
 
     if (!response.ok) {

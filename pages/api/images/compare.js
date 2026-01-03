@@ -19,7 +19,29 @@ export default async function handler(req, res) {
         });
       }
       
-      const userId = session.user.id;
+      // Get user ID - try multiple sources
+      let userId = session.user.id;
+      
+      // If userId is not in session directly, look up by email
+      if (!userId && session.user.email) {
+        const user = await db.collection('users').findOne({ email: session.user.email });
+        if (user) {
+          userId = user._id.toString();
+        }
+      }
+      
+      console.log('Session user:', { 
+        id: session.user.id, 
+        email: session.user.email,
+        resolvedUserId: userId 
+      });
+      
+      if (!userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Could not determine user ID' 
+        });
+      }
       
       // Parse query parameters
       const { count = 2, exclude = '' } = req.query;
@@ -46,12 +68,35 @@ export default async function handler(req, res) {
       }
       
       // Build query object - only show user's own images, exclude AI generated content
+      // Use $or to handle images that don't have these fields yet (legacy images)
+      // Also match userId in multiple formats (string, ObjectId)
+      const userIdMatches = [{ userId: userId }];
+      try {
+        if (ObjectId.isValid(userId)) {
+          userIdMatches.push({ userId: new ObjectId(userId) });
+        }
+      } catch (e) {
+        // userId is not a valid ObjectId, just use string match
+      }
+      
       const query = { 
         isActive: true, 
-        userId: userId,
-        isAIGenerated: { $ne: true }, // Exclude AI generated images
-        excludeFromRatings: { $ne: true } // Exclude images marked for no ratings
+        $or: userIdMatches
       };
+      
+      // Also exclude AI generated images
+      query.$and = [
+        { $or: [
+          { isAIGenerated: { $exists: false } },
+          { isAIGenerated: false },
+          { isAIGenerated: null }
+        ]},
+        { $or: [
+          { excludeFromRatings: { $exists: false } },
+          { excludeFromRatings: false },
+          { excludeFromRatings: null }
+        ]}
+      ];
       
       // Add exclusions if provided
       if (excludedIds.length > 0) {
@@ -112,18 +157,30 @@ export default async function handler(req, res) {
         modelIdsForLogging.push(model.modelId.toString());
         
         // Select a random image from this model (user's own images only, excluding AI)
+        const imageMatchConditions = [
+          { modelId: model.modelId },
+          { isActive: true },
+          { $or: userIdMatches },
+          { $or: [
+            { isAIGenerated: { $exists: false } },
+            { isAIGenerated: false },
+            { isAIGenerated: null }
+          ]},
+          { $or: [
+            { excludeFromRatings: { $exists: false } },
+            { excludeFromRatings: false },
+            { excludeFromRatings: null }
+          ]}
+        ];
+        
+        if (excludedIds.length > 0) {
+          imageMatchConditions.push({ _id: { $nin: excludedIds } });
+        }
+        
         const images = await db
           .collection('images')
           .aggregate([
-            { $match: { 
-                modelId: model.modelId, 
-                isActive: true,
-                userId: userId,
-                isAIGenerated: { $ne: true },
-                excludeFromRatings: { $ne: true },
-                ...(excludedIds.length > 0 && { _id: { $nin: excludedIds } })
-              } 
-            },
+            { $match: { $and: imageMatchConditions } },
             { $sample: { size: 1 } }
           ])
           .toArray();

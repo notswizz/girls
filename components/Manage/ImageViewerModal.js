@@ -1,8 +1,29 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { FaTimes, FaTrash, FaTrophy, FaChartLine, FaFire, FaUsers } from 'react-icons/fa';
+import { FaArrowLeft, FaTrash, FaTrophy, FaChartLine, FaFire, FaUsers, FaTags, FaTimes, FaPlay, FaRobot } from 'react-icons/fa';
+
+// Helper to check if URL is a video
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+  return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+};
 
 export default function ImageViewerModal({ image, onClose, onDelete }) {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    // Lock body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   if (!image) return null;
+  if (!mounted) return null;
 
   const wins = image.wins || 0;
   const losses = image.losses || 0;
@@ -37,123 +58,215 @@ export default function ImageViewerModal({ image, onClose, onDelete }) {
 
   const tier = isExplore ? getScoreTier(score) : getEloTier(elo);
 
-  return (
+  const modalContent = (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
-      onClick={onClose}
+      className="fixed inset-0 bg-black overflow-y-auto"
+      style={{ 
+        zIndex: 99999,
+        paddingTop: 'env(safe-area-inset-top, 0px)', 
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)' 
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 safe-top">
-        <button
+      {/* Fixed Header - Very prominent back button */}
+      <div 
+        className="sticky top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black via-black to-transparent"
+        style={{ 
+          zIndex: 100000,
+          paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))',
+          paddingBottom: '20px'
+        }}
+      >
+        {/* Back button - BIG and obvious */}
+        <motion.button
           onClick={onClose}
-          className="p-2 -ml-2 text-white/70 hover:text-white transition-colors"
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/20 text-white font-semibold hover:bg-white/30 transition-all shadow-lg backdrop-blur-sm border border-white/10"
+          whileTap={{ scale: 0.95 }}
         >
-          <FaTimes size={20} />
-        </button>
-        <div className="flex items-center gap-2">
-          {isExplore && (
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 flex items-center gap-1">
-              <FaUsers size={10} />
-              Community
-            </span>
-          )}
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${tier.bg} ${tier.color}`}>
-            {tier.label}
-          </span>
-        </div>
-        <button
+          <FaArrowLeft size={18} />
+          <span className="text-base">Back</span>
+        </motion.button>
+        
+        {/* Status badge */}
+        <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${tier.bg} ${tier.color}`}>
+          {tier.label}
+        </span>
+        
+        {/* Delete button */}
+        <motion.button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-red-400 hover:text-red-300 transition-colors"
+          className="p-3 rounded-full text-red-400 hover:text-red-300 bg-white/10 hover:bg-red-500/20 transition-all border border-white/10"
+          whileTap={{ scale: 0.95 }}
         >
           <FaTrash size={16} />
-        </button>
+        </motion.button>
       </div>
 
-      {/* Image */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-        <motion.img
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          src={image.url}
-          alt=""
-          className="max-w-full max-h-full object-contain rounded-xl"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
+      {/* Scrollable Content */}
+      <div className="flex flex-col min-h-0">
+        {/* Image or Video */}
+        <div className="flex items-center justify-center p-3 bg-gradient-to-b from-gray-900/20 to-black">
+          {isVideoUrl(image.url) || image.aiType === 'video' ? (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative"
+            >
+              <video
+                src={image.url}
+                className="max-w-full rounded-xl shadow-2xl"
+                style={{ maxHeight: '50vh' }}
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              {/* AI Generated badge for videos */}
+              {image.isAIGenerated && (
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-sm">
+                  <FaRobot className="text-white text-xs" />
+                  <span className="text-white text-xs font-medium">AI Video</span>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative"
+            >
+              <img
+                src={image.url}
+                alt=""
+                className="max-w-full rounded-xl shadow-2xl"
+                style={{ maxHeight: '50vh' }}
+              />
+              {/* AI Generated badge for images */}
+              {image.isAIGenerated && (
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-sm">
+                  <FaRobot className="text-white text-xs" />
+                  <span className="text-white text-xs font-medium">AI Generated</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
 
-      {/* Analytics Footer */}
-      <div className="p-4 safe-bottom" onClick={(e) => e.stopPropagation()}>
-        {totalMatches > 0 ? (
-          <div className="max-w-md mx-auto">
-            {/* Stats Grid */}
-            <div className={`grid ${isExplore ? 'grid-cols-3' : 'grid-cols-4'} gap-2 mb-3`}>
-              {/* Score */}
-              <div className={`bg-white/5 rounded-xl p-3 text-center border ${isExplore ? 'border-cyan-500/30' : 'border-white/10'}`}>
-                {isExplore ? (
-                  <FaUsers className="mx-auto mb-1 text-cyan-400" />
-                ) : (
-                  <FaTrophy className={`mx-auto mb-1 ${
-                    compositeScore >= 500 ? 'text-yellow-400' : 
-                    compositeScore >= 300 ? 'text-purple-400' : 'text-cyan-400'
-                  }`} />
+        {/* Info Section */}
+        <div className="px-4 py-4 space-y-4">
+          {/* Tags Display */}
+          {image.tags && image.tags.length > 0 && (
+            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <FaTags className="text-purple-400" size={12} />
+                <span className="text-xs font-medium text-white/60">AI Tags</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {image.tags.slice(0, 12).map((tagObj, i) => (
+                  <span 
+                    key={i}
+                    className="px-2 py-1 text-[10px] rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20"
+                  >
+                    {tagObj.tag || tagObj}
+                  </span>
+                ))}
+                {image.tags.length > 12 && (
+                  <span className="px-2 py-1 text-[10px] text-white/40">+{image.tags.length - 12} more</span>
                 )}
-                <div className="text-lg font-bold text-white">{compositeScore}</div>
-                <div className="text-[10px] text-white/40">{isExplore ? 'Community Score' : 'Score'}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Section */}
+          {totalMatches > 0 ? (
+            <>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Score */}
+                <div className={`bg-white/5 rounded-xl p-3 text-center border ${isExplore ? 'border-cyan-500/20' : 'border-white/10'}`}>
+                  {isExplore ? (
+                    <FaUsers className="mx-auto mb-1 text-cyan-400" size={14} />
+                  ) : (
+                    <FaTrophy className="mx-auto mb-1 text-yellow-400" size={14} />
+                  )}
+                  <div className="text-xl font-bold text-white">{compositeScore}</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wide">Score</div>
+                </div>
+
+                {/* Win Rate */}
+                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+                  <div className="text-xl font-bold text-white">{Math.round(winRate * 100)}%</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wide">Win Rate</div>
+                </div>
+
+                {/* Total Votes */}
+                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/10">
+                  <FaFire className="mx-auto mb-1 text-orange-400" size={14} />
+                  <div className="text-xl font-bold text-white">{totalMatches}</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wide">Votes</div>
+                </div>
               </div>
 
-              {/* ELO - only for gallery mode */}
+              {/* ELO (only for gallery mode) */}
               {!isExplore && (
-                <div className="bg-white/5 rounded-xl p-3 text-center border border-white/10">
-                  <FaChartLine className="mx-auto mb-1 text-cyan-400" />
-                  <div className="text-lg font-bold text-white">{Math.round(elo)}</div>
-                  <div className="text-[10px] text-white/40">ELO</div>
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FaChartLine className="text-cyan-400" size={14} />
+                      <span className="text-sm text-white/60">ELO Rating</span>
+                    </div>
+                    <span className="text-lg font-bold text-white">{Math.round(elo)}</span>
+                  </div>
                 </div>
               )}
 
-              {/* Win Rate */}
-              <div className={`bg-white/5 rounded-xl p-3 text-center border ${isExplore ? 'border-cyan-500/30' : 'border-white/10'}`}>
-                <div className="text-lg font-bold text-white">{Math.round(winRate * 100)}%</div>
-                <div className="text-[10px] text-white/40">Win Rate</div>
+              {/* Win/Loss Bar */}
+              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-green-400 font-medium">{wins} Wins</span>
+                  <span className="text-red-400 font-medium">{losses} Losses</span>
+                </div>
+                <div className="h-2.5 rounded-full overflow-hidden bg-red-500/20 flex">
+                  <div 
+                    className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full transition-all"
+                    style={{ width: `${winRate * 100}%` }}
+                  />
+                </div>
               </div>
-
-              {/* Total Votes */}
-              <div className={`bg-white/5 rounded-xl p-3 text-center border ${isExplore ? 'border-cyan-500/30' : 'border-white/10'}`}>
-                <FaFire className="mx-auto mb-1 text-orange-400" />
-                <div className="text-lg font-bold text-white">{totalMatches}</div>
-                <div className="text-[10px] text-white/40">Votes</div>
-              </div>
+            </>
+          ) : (
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10 text-center">
+              <p className="text-white/60 text-sm mb-1">
+                {isExplore ? 'No community votes yet' : 'Not rated yet'}
+              </p>
+              <p className="text-white/30 text-xs">
+                {isExplore 
+                  ? 'Make your model public to get community ratings!' 
+                  : 'Go to Rate to start voting!'}
+              </p>
             </div>
+          )}
 
-            {/* Win/Loss Bar */}
-            <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-green-400 font-medium">{wins} Wins</span>
-                <span className="text-red-400 font-medium">{losses} Losses</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden bg-red-500/30 flex">
-                <div 
-                  className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all"
-                  style={{ width: `${winRate * 100}%` }}
-                />
-              </div>
+          {/* Community badge */}
+          {isExplore && (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <FaUsers className="text-cyan-400" size={12} />
+              <span className="text-xs text-cyan-400 font-medium">Community Ratings</span>
             </div>
-          </div>
-        ) : (
-          <div className="text-center text-white/50 text-sm">
-            <p>{isExplore ? 'No community votes yet' : 'Not rated yet'}</p>
-            <p className="text-xs text-white/30 mt-1">
-              {isExplore 
-                ? 'Make your model public to get community ratings!' 
-                : 'Go to Rate to start voting!'}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Bottom padding for safe scroll */}
+        <div className="h-8" />
       </div>
     </motion.div>
   );
+
+  // Use portal to render at document body level, escaping all parent stacking contexts
+  return createPortal(modalContent, document.body);
 }
 
 // Wilson Score calculation

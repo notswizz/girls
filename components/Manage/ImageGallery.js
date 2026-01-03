@@ -1,5 +1,12 @@
 import { motion } from 'framer-motion';
-import { FaPlus, FaCamera, FaImages, FaTrophy, FaChartLine, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaCamera, FaImages, FaTrophy, FaChartLine, FaUsers, FaPlay } from 'react-icons/fa';
+
+// Helper to check if URL is a video
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+  return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+};
 
 export default function ImageGallery({ 
   selectedModel, 
@@ -127,12 +134,30 @@ export default function ImageGallery({
             <div className={`aspect-[3/4] rounded-xl overflow-hidden bg-white/5 border ${
               isExplore ? 'border-cyan-500/30' : 'border-white/10'
             }`}>
-              <img
-                src={image.url}
-                alt=""
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                loading="lazy"
-              />
+              {isVideoUrl(image.url) || image.aiType === 'video' ? (
+                <div className="relative w-full h-full">
+                  <video
+                    src={image.url}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    muted
+                    loop
+                    playsInline
+                    onMouseEnter={(e) => e.target.play()}
+                    onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+                  />
+                  {/* Video indicator */}
+                  <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full p-1.5">
+                    <FaPlay className="text-white text-[10px]" />
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={image.url}
+                  alt=""
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  loading="lazy"
+                />
+              )}
             </div>
             
             {/* Gradient overlay - always visible on bottom */}

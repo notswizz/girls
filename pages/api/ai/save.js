@@ -1,6 +1,15 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
-import { connectToDatabase } from '../../../config';
+import { connectToDatabase, s3 } from '../../../config';
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+    responseLimit: false,
+  },
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,7 +33,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const savedImage = await saveToAIModel(url, prompt, session.user.id, type || 'image');
+    console.log(`Saving AI ${type} for user ${session.user.id}`);
+    console.log(`Source URL: ${url.substring(0, 100)}...`);
+    
+    // Re-upload to S3 (Replicate URLs are temporary)
+    const s3Url = await uploadToS3(url, type || 'image');
+    console.log(`Uploaded to S3: ${s3Url}`);
+    
+    const savedImage = await saveToAIModel(s3Url, prompt, session.user.id, type || 'image');
     return res.status(200).json({
       success: true,
       savedImage
@@ -36,6 +52,36 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
+}
+
+// Upload content from URL to S3
+async function uploadToS3(sourceUrl, type) {
+  // Fetch the content from Replicate
+  const response = await fetch(sourceUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch content: ${response.status}`);
+  }
+  
+  const contentType = response.headers.get('content-type') || (type === 'video' ? 'video/mp4' : 'image/png');
+  const buffer = Buffer.from(await response.arrayBuffer());
+  
+  // Generate unique filename
+  const extension = type === 'video' ? 'mp4' : 'png';
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+  const key = `ai-generated/${uniqueSuffix}.${extension}`;
+  
+  // Upload to S3
+  const uploadParams = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  };
+  
+  await s3.upload(uploadParams).promise();
+  
+  // Return the S3 URL
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 }
 
 // Save generated content to AI model (doesn't participate in ratings)

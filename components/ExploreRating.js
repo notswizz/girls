@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGoogle, FaHeart, FaSearchPlus, FaImages, FaImage, FaVideo, FaMagic } from 'react-icons/fa';
-import AIGenerateModal from './HeadToHead/components/AIGenerateModal';
+import { HiSparkles } from 'react-icons/hi';
+import { useAIGeneration } from '../context/AIGenerationContext';
+import { AIGenerationIndicator } from './GlobalAIModal';
+import AIPromptModal from './AIPromptModal';
 
 export default function ExploreRating() {
   const { data: session, status } = useSession();
@@ -14,28 +17,22 @@ export default function ExploreRating() {
   const [zoomedImage, setZoomedImage] = useState(null);
   const containerRef = useRef(null);
   
-  // AI Generation state
-  const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [aiMode, setAiMode] = useState('image');
-  const [aiReferenceImage, setAiReferenceImage] = useState(null);
-  const [showAiSuccess, setShowAiSuccess] = useState(false);
-  const [aiSuccessMessage, setAiSuccessMessage] = useState('');
+  // AI Generation - using global context
+  const { startGeneration, isGenerating } = useAIGeneration();
+  const [promptModalOpen, setPromptModalOpen] = useState(false);
+  const [promptMode, setPromptMode] = useState('image');
+  const [promptReferenceImage, setPromptReferenceImage] = useState(null);
   
   const handleOpenAiModal = (e, image, mode) => {
     e.stopPropagation();
-    setAiReferenceImage(image.url);
-    setAiMode(mode);
-    setAiModalOpen(true);
+    setPromptReferenceImage(image.url);
+    setPromptMode(mode);
+    setPromptModalOpen(true);
   };
   
-  const handleAiSaved = (data) => {
-    if (data?.downloaded) {
-      setAiSuccessMessage('Video downloaded!');
-    } else {
-      setAiSuccessMessage('AI content saved to gallery!');
-    }
-    setShowAiSuccess(true);
-    setTimeout(() => setShowAiSuccess(false), 3000);
+  const handlePromptSubmit = (prompt) => {
+    startGeneration(promptReferenceImage, prompt, promptMode);
+    setPromptModalOpen(false);
   };
 
   const fetchImages = async () => {
@@ -155,12 +152,12 @@ export default function ExploreRating() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
 
-      {/* Swipeable Card Container */}
+      {/* Side-by-side on desktop, swipeable on mobile */}
       <div 
         ref={containerRef}
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4"
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide md:overflow-x-visible md:justify-center md:items-center md:gap-4 lg:gap-6 py-2"
         onScroll={handleScroll}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
@@ -171,51 +168,88 @@ export default function ExploreRating() {
           return (
             <div
               key={image._id}
-              className="w-full h-full flex-shrink-0 snap-center flex flex-col items-center justify-center px-3 py-2"
+              className="w-[88vw] h-full flex-shrink-0 snap-center flex flex-col items-center justify-center px-2 md:w-auto md:flex-shrink md:max-w-[45%] lg:max-w-[380px]"
             >
               {/* Image Card */}
               <motion.div
                 className={`
                   relative rounded-2xl overflow-hidden cursor-pointer
-                  w-full max-w-md shadow-2xl
+                  w-full h-full max-h-full shadow-2xl
                   transition-all duration-300
-                  ${isWinner ? 'ring-4 ring-cyan-400 shadow-[0_0_40px_rgba(34,211,238,0.5)]' : ''}
-                  ${isLoser ? 'opacity-20 scale-90 grayscale' : ''}
-                  ${!selectedId ? 'hover:scale-[1.02] active:scale-[0.98]' : ''}
+                  ${isWinner ? 'shadow-[0_0_40px_rgba(34,211,238,0.5)]' : ''}
+                  ${isLoser ? 'opacity-20 scale-95 grayscale' : ''}
+                  ${!selectedId ? 'active:scale-[0.98]' : ''}
                 `}
                 onClick={() => !selectedId && handleVote(image._id)}
                 animate={{
-                  scale: isLoser ? 0.9 : (celebrating && isWinner ? 1.02 : 1),
-                }}
-                style={{
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                  scale: isLoser ? 0.95 : (celebrating && isWinner ? 1.01 : 1),
                 }}
               >
-                {/* Cute border glow effect */}
-                <div className="absolute -inset-[2px] rounded-3xl bg-gradient-to-br from-cyan-500/50 via-blue-500/50 to-purple-500/50 -z-10 blur-sm" />
+                {/* Gradient border */}
+                <div 
+                  className={`absolute -inset-[1.5px] rounded-2xl ${
+                    isWinner 
+                      ? 'bg-gradient-to-r from-cyan-500 via-blue-400 to-cyan-500' 
+                      : 'bg-gradient-to-br from-cyan-500/30 via-blue-500/20 to-purple-500/30'
+                  }`}
+                  style={{
+                    backgroundSize: isWinner ? '200% 200%' : '100% 100%',
+                    animation: isWinner ? 'gradient-shift 2s ease infinite' : 'none',
+                  }}
+                />
                 
-                {/* Image container - taller aspect ratio for bigger images */}
-                <div className="relative aspect-[9/13] bg-black/20">
-                  <img
-                    src={image.url}
-                    alt=""
-                    className={`
-                      w-full h-full object-cover
-                      transition-all duration-500
-                      ${celebrating && isWinner ? 'scale-105 brightness-110' : ''}
-                    `}
-                  />
+                {/* Inner card */}
+                <div className="relative rounded-[14px] overflow-hidden bg-gray-950 m-[1.5px] h-full flex flex-col">
+                  {/* Image container */}
+                  <div className="flex-1 relative bg-black flex items-center justify-center min-h-0">
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={`
+                        max-w-full max-h-full w-auto h-auto object-contain
+                        transition-all duration-500
+                        ${celebrating && isWinner ? 'scale-[1.02] brightness-110' : ''}
+                      `}
+                    />
+                    
+                    {/* Subtle vignette */}
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/30 via-transparent to-black/10" />
+                  </div>
                   
-                  {/* Zoom button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setZoomedImage(image);
-                    }}
-                    className="absolute bottom-3 right-3 p-2.5 bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/70 transition-all"
-                  >
-                    <FaSearchPlus size={14} />
-                  </button>
+                  {/* AI Controls bar at bottom */}
+                  <div className="flex-shrink-0 flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-t from-black via-black/90 to-black/70 border-t border-white/10">
+                    {/* AI Photo Button */}
+                    <motion.button
+                      onClick={(e) => handleOpenAiModal(e, image, 'image')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/30 transition-all shadow-lg shadow-cyan-500/10"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <HiSparkles className="text-cyan-400" size={14} />
+                      <span className="text-xs font-semibold text-cyan-300">AI Photo</span>
+                    </motion.button>
+                    
+                    {/* AI Video Button */}
+                    <motion.button
+                      onClick={(e) => handleOpenAiModal(e, image, 'video')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/30 transition-all shadow-lg shadow-purple-500/10"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <FaVideo className="text-purple-400" size={12} />
+                      <span className="text-xs font-semibold text-purple-300">AI Video</span>
+                    </motion.button>
+                    
+                    {/* Zoom Button */}
+                    <motion.button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setZoomedImage(image);
+                      }}
+                      className="p-2.5 rounded-full bg-white/10 border border-white/20 text-white/70 hover:text-white hover:border-white/40 hover:bg-white/20 transition-all"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <FaSearchPlus size={12} />
+                    </motion.button>
+                  </div>
                 </div>
 
                 {/* Winner celebration overlay */}
@@ -263,28 +297,6 @@ export default function ExploreRating() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* AI Buttons below image */}
-              <div className="flex items-center justify-center gap-3 mt-3 w-full max-w-md">
-                <motion.button
-                  onClick={(e) => handleOpenAiModal(e, image, 'image')}
-                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl text-white font-medium flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaImage size={14} />
-                  <span className="text-sm">AI Photo</span>
-                </motion.button>
-                
-                <motion.button
-                  onClick={(e) => handleOpenAiModal(e, image, 'video')}
-                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-xl text-white font-medium flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaVideo size={14} />
-                  <span className="text-sm">AI Video</span>
-                </motion.button>
-              </div>
             </div>
           );
         })}
@@ -313,33 +325,26 @@ export default function ExploreRating() {
         )}
       </AnimatePresence>
 
-      {/* AI Generate Modal */}
-      <AIGenerateModal
-        isOpen={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        mode={aiMode}
-        referenceImageUrl={aiReferenceImage}
-        onSaved={handleAiSaved}
+      {/* AI Prompt Modal */}
+      <AIPromptModal
+        isOpen={promptModalOpen}
+        onClose={() => setPromptModalOpen(false)}
+        mode={promptMode}
+        referenceImageUrl={promptReferenceImage}
+        onSubmit={handlePromptSubmit}
+        isGenerating={isGenerating}
       />
 
-      {/* AI Success Toast */}
-      <AnimatePresence>
-        {showAiSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg flex items-center gap-3"
-          >
-            <FaMagic className="text-white" />
-            <span className="text-white font-medium">{aiSuccessMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* AI Generation Indicator (floating button when generating) */}
+      <AIGenerationIndicator />
 
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
+        }
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
         }
       `}</style>
     </div>

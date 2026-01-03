@@ -32,6 +32,20 @@ const AIGenerateModal = ({
     };
   }, []);
 
+  // Warn before leaving page if generation is in progress
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (loading && pollIntervalRef.current) {
+        e.preventDefault();
+        e.returnValue = 'AI generation is in progress. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [loading]);
+
   const pollForResult = async (predictionId, type) => {
     try {
       const response = await fetch(`/api/ai/poll?predictionId=${predictionId}`);
@@ -197,6 +211,14 @@ const AIGenerateModal = ({
   };
 
   const handleClose = () => {
+    // Warn if generation is in progress
+    if (loading && pollIntervalRef.current) {
+      const confirmClose = window.confirm(
+        'AI generation is still in progress. Are you sure you want to cancel?'
+      );
+      if (!confirmClose) return;
+    }
+    
     // Stop any active polling
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -299,42 +321,18 @@ const AIGenerateModal = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDiscard}
-                  disabled={saving}
-                  className="flex-1 py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 bg-white/10 text-white/70 hover:bg-white/20 transition-all"
-                >
-                  <FaTrash size={14} />
-                  Discard
-                </button>
-                
-                {generatedType === 'video' ? (
-                  // Video: Download to phone
+              <div className="flex flex-col gap-2">
+                {/* Primary actions row */}
+                <div className="flex gap-2">
                   <button
-                    onClick={handleDownload}
+                    onClick={handleDiscard}
                     disabled={saving}
-                    className={`
-                      flex-1 py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2
-                      bg-gradient-to-r from-purple-500 to-pink-500 text-white
-                      hover:shadow-lg hover:shadow-purple-500/30 transition-all
-                      ${saving ? 'opacity-70 cursor-not-allowed' : ''}
-                    `}
+                    className="py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 bg-white/10 text-white/70 hover:bg-white/20 transition-all"
                   >
-                    {saving ? (
-                      <>
-                        <FaSpinner className="animate-spin" />
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <FaDownload />
-                        Save to Phone
-                      </>
-                    )}
+                    <FaTrash size={14} />
                   </button>
-                ) : (
-                  // Image: Save to gallery
+                  
+                  {/* Save to Gallery - works for both images and videos */}
                   <button
                     onClick={handleSave}
                     disabled={saving}
@@ -357,15 +355,28 @@ const AIGenerateModal = ({
                       </>
                     )}
                   </button>
+                </div>
+                
+                {/* Download option for videos */}
+                {generatedType === 'video' && (
+                  <button
+                    onClick={handleDownload}
+                    disabled={saving}
+                    className="w-full py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-all text-sm"
+                  >
+                    <FaDownload size={12} />
+                    Or download to phone
+                  </button>
                 )}
               </div>
 
-              {/* Tip for video on mobile */}
-              {generatedType === 'video' && (
-                <p className="mt-3 text-center text-white/30 text-xs">
-                  Tip: You can also long-press the video above to save
-                </p>
-              )}
+              {/* Tip */}
+              <p className="mt-3 text-center text-white/30 text-xs">
+                {generatedType === 'video' 
+                  ? 'Videos saved to gallery can be viewed in Manage → AI'
+                  : 'Saved images appear in Manage → AI gallery'
+                }
+              </p>
             </div>
           ) : (
             <>

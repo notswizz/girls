@@ -3,6 +3,7 @@ import { connectToDatabase } from '../../../lib/mongodb';
 import { calculateNewRatings } from '../../../utils/eloCalculator';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
+import { updateUserPreferences } from '../user/preferences';
 
 export default async function handler(req, res) {
   // Only accept POST method
@@ -42,6 +43,16 @@ export default async function handler(req, res) {
     // Get authenticated user
     let authenticatedUserId = null;
     const session = await getServerSession(req, res, authOptions);
+    
+    // Learn user preferences from tags (if images have tags)
+    if (session?.user?.id && (winnerImage.tags || loserImage.tags)) {
+      await updateUserPreferences(
+        db, 
+        session.user.id, 
+        winnerImage.tags || [], 
+        loserImage.tags || []
+      );
+    }
     
     if (session) {
       // If session, get the user from our database

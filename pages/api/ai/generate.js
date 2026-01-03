@@ -60,7 +60,7 @@ async function startImageGeneration(referenceImage, prompt, apiKey, res) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Token ${apiKey}`,
     },
     body: JSON.stringify({
       input: {
@@ -111,7 +111,7 @@ async function startVideoGeneration(referenceImage, prompt, apiKey, res) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Token ${apiKey}`,
     },
     body: JSON.stringify({
       input: {

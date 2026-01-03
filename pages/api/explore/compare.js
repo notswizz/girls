@@ -21,8 +21,11 @@ export default async function handler(req, res) {
     const publicModels = await db.collection('models').find({
       isActive: true,
       isPublic: { $ne: false }, // This includes true AND undefined/missing
-      isAIModel: { $ne: true }, // Exclude AI models
-      excludeFromRatings: { $ne: true } // Exclude models marked for no ratings
+      $or: [
+        { isAIModel: { $exists: false } },
+        { isAIModel: false },
+        { isAIModel: null }
+      ]
     }).toArray();
 
     if (publicModels.length === 0) {
@@ -41,11 +44,17 @@ export default async function handler(req, res) {
     // Match on modelId as both ObjectId and string (different storage formats)
     const allImages = await db.collection('images').find({
       isActive: true,
-      isAIGenerated: { $ne: true }, // Exclude AI generated images
-      excludeFromRatings: { $ne: true }, // Exclude images marked for no ratings
-      $or: [
-        { modelId: { $in: publicModelIdsObj } },
-        { modelId: { $in: publicModelIdsStr } }
+      // Exclude AI generated images (allow missing field, false, or null)
+      $and: [
+        { $or: [
+          { isAIGenerated: { $exists: false } },
+          { isAIGenerated: false },
+          { isAIGenerated: null }
+        ]},
+        { $or: [
+          { modelId: { $in: publicModelIdsObj } },
+          { modelId: { $in: publicModelIdsStr } }
+        ]}
       ]
     }).toArray();
 

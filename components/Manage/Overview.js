@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaTrophy, FaImages, FaUsers, FaFire, FaChartLine, FaCrown, FaPlus } from 'react-icons/fa';
+import { FaTrophy, FaImages, FaUsers, FaFire, FaChartLine, FaCrown, FaPlus, FaTags, FaSpinner } from 'react-icons/fa';
 
 export default function Overview({ models, onSelectModel, onAddModel, isLoading }) {
   if (isLoading) {
@@ -233,20 +234,7 @@ export default function Overview({ models, onSelectModel, onAddModel, isLoading 
 
         {/* Quick Actions */}
         {models.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            className="flex justify-center pt-4"
-          >
-            <button
-              onClick={onAddModel}
-              className="flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white text-sm transition-colors"
-            >
-              <FaPlus size={12} />
-              Add New Model
-            </button>
-          </motion.div>
+          <QuickActions onAddModel={onAddModel} />
         )}
       </motion.div>
     </div>
@@ -338,5 +326,98 @@ function calculateModelScore(model) {
   const eloNormalized = (elo - 800) / 1600;
   
   return Math.round((wilsonScore * 0.7 + eloNormalized * 0.3) * 1000);
+}
+
+// Quick Actions Component with Tag All button
+function QuickActions({ onAddModel }) {
+  const [tagging, setTagging] = useState(false);
+  const [tagResult, setTagResult] = useState(null);
+
+  const handleTagAll = async () => {
+    setTagging(true);
+    setTagResult(null);
+    
+    try {
+      const response = await fetch('/api/ai/tag-batch', { method: 'POST' });
+      const data = await response.json();
+      
+      if (data.success) {
+        setTagResult({
+          type: 'success',
+          message: data.queued > 0 
+            ? `Tagging ${data.queued} images in background...` 
+            : 'All images already tagged!'
+        });
+      } else {
+        setTagResult({
+          type: 'error',
+          message: data.error || 'Failed to start tagging'
+        });
+      }
+    } catch (err) {
+      setTagResult({
+        type: 'error',
+        message: 'Failed to connect to server'
+      });
+    } finally {
+      setTagging(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.9 }}
+      className="space-y-3 pt-4"
+    >
+      <div className="flex justify-center gap-4 flex-wrap">
+        <button
+          onClick={onAddModel}
+          className="flex items-center gap-2 px-4 py-2 text-white/60 hover:text-white text-sm transition-colors"
+        >
+          <FaPlus size={12} />
+          Add New Model
+        </button>
+        
+        <button
+          onClick={handleTagAll}
+          disabled={tagging}
+          className={`
+            flex items-center gap-2 px-4 py-2 text-sm transition-all rounded-lg
+            ${tagging 
+              ? 'text-white/40 cursor-not-allowed' 
+              : 'text-cyan-400/80 hover:text-cyan-400 hover:bg-cyan-500/10'
+            }
+          `}
+        >
+          {tagging ? (
+            <>
+              <FaSpinner className="animate-spin" size={12} />
+              Tagging...
+            </>
+          ) : (
+            <>
+              <FaTags size={12} />
+              Tag All Images (AI)
+            </>
+          )}
+        </button>
+      </div>
+      
+      {/* Result message */}
+      {tagResult && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`text-center text-sm ${
+            tagResult.type === 'success' ? 'text-green-400' : 'text-red-400'
+          }`}
+        >
+          {tagResult.message}
+        </motion.div>
+      )}
+    </motion.div>
+  );
 }
 

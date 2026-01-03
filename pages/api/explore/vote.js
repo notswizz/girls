@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../config';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
+import { updateUserPreferences } from '../user/preferences';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -33,6 +34,16 @@ export default async function handler(req, res) {
 
     if (!winnerImage || !loserImage) {
       return res.status(404).json({ message: 'Images not found' });
+    }
+
+    // Learn user preferences from tags (if images have tags)
+    if (winnerImage.tags || loserImage.tags) {
+      await updateUserPreferences(
+        db, 
+        voterId, 
+        winnerImage.tags || [], 
+        loserImage.tags || []
+      );
     }
 
     // Record the community vote
