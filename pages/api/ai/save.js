@@ -22,25 +22,25 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'You must be logged in to save AI content' });
   }
 
-  const { url, prompt, type } = req.body;
+  const { url, prompt, type, isExtractedFrame } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
   }
 
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
-  }
+  // Prompt is optional - can be empty for extracted frames
+  const finalPrompt = prompt || (isExtractedFrame ? 'Extracted video frame' : 'AI Generated');
 
   try {
-    console.log(`Saving AI ${type} for user ${session.user.id}`);
+    const saveType = isExtractedFrame ? 'image' : (type || 'image');
+    console.log(`Saving AI ${saveType} for user ${session.user.id}${isExtractedFrame ? ' (extracted frame)' : ''}`);
     console.log(`Source URL: ${url.substring(0, 100)}...`);
     
-    // Re-upload to S3 (Replicate URLs are temporary)
-    const s3Url = await uploadToS3(url, type || 'image');
+    // Re-upload to S3 (Replicate URLs are temporary, data URLs need to be uploaded)
+    const s3Url = await uploadToS3(url, saveType);
     console.log(`Uploaded to S3: ${s3Url}`);
     
-    const savedImage = await saveToAIModel(s3Url, prompt, session.user.id, type || 'image');
+    const savedImage = await saveToAIModel(s3Url, finalPrompt, session.user.id, saveType);
     return res.status(200).json({
       success: true,
       savedImage
@@ -54,19 +54,43 @@ export default async function handler(req, res) {
   }
 }
 
-// Upload content from URL to S3
+// Upload content from URL or data URL to S3
 async function uploadToS3(sourceUrl, type) {
-  // Fetch the content from Replicate
-  const response = await fetch(sourceUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch content: ${response.status}`);
+  let buffer;
+  let contentType;
+  
+  // Check if it's a base64 data URL (from extracted frames)
+  if (sourceUrl.startsWith('data:')) {
+    // Parse data URL
+    const matches = sourceUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      throw new Error('Invalid data URL format');
+    }
+    
+    contentType = matches[1]; // e.g., 'image/jpeg'
+    buffer = Buffer.from(matches[2], 'base64');
+    console.log(`Uploading base64 data URL, content-type: ${contentType}, size: ${buffer.length} bytes`);
+  } else {
+    // Fetch the content from URL (Replicate or other)
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch content: ${response.status}`);
+    }
+    
+    contentType = response.headers.get('content-type') || (type === 'video' ? 'video/mp4' : 'image/png');
+    buffer = Buffer.from(await response.arrayBuffer());
   }
   
-  const contentType = response.headers.get('content-type') || (type === 'video' ? 'video/mp4' : 'image/png');
-  const buffer = Buffer.from(await response.arrayBuffer());
+  // Generate unique filename based on content type
+  let extension = 'png';
+  if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+    extension = 'jpg';
+  } else if (contentType.includes('mp4') || type === 'video') {
+    extension = 'mp4';
+  } else if (contentType.includes('webp')) {
+    extension = 'webp';
+  }
   
-  // Generate unique filename
-  const extension = type === 'video' ? 'mp4' : 'png';
   const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
   const key = `ai-generated/${uniqueSuffix}.${extension}`;
   

@@ -1,5 +1,9 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaPlus, FaCamera, FaImages, FaTrophy, FaChartLine, FaUsers, FaPlay } from 'react-icons/fa';
+import { FaPlus, FaCamera, FaImages, FaTrophy, FaChartLine, FaUsers, FaPlay, FaVideo } from 'react-icons/fa';
+import { HiSparkles } from 'react-icons/hi';
+import { useAIGeneration } from '../../context/AIGenerationContext';
+import AIPromptModal from '../AIPromptModal';
 
 // Helper to check if URL is a video
 const isVideoUrl = (url) => {
@@ -16,6 +20,23 @@ export default function ImageGallery({
   onUploadClick,
   ratingMode = 'gallery'
 }) {
+  // AI Generation
+  const { startGeneration, isGenerating } = useAIGeneration();
+  const [promptModalOpen, setPromptModalOpen] = useState(false);
+  const [promptMode, setPromptMode] = useState('image');
+  const [promptReferenceImage, setPromptReferenceImage] = useState(null);
+
+  const handleOpenAiModal = (e, image, mode) => {
+    e.stopPropagation();
+    setPromptReferenceImage(image.url);
+    setPromptMode(mode);
+    setPromptModalOpen(true);
+  };
+
+  const handlePromptSubmit = (prompt) => {
+    startGeneration(promptReferenceImage, prompt, promptMode);
+    setPromptModalOpen(false);
+  };
   if (!selectedModel) {
     return (
       <div className="h-full flex items-center justify-center text-white/30">
@@ -217,9 +238,10 @@ export default function ImageGallery({
               )}
             </div>
 
-            {/* Hover details overlay */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl bg-black/40">
-              <div className="text-center">
+            {/* Hover overlay with AI buttons */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl bg-black/60">
+              {/* Stats */}
+              <div className="text-center mb-3">
                 <div className="text-white font-bold text-lg">
                   {isExplore ? score : Math.round(elo)}
                 </div>
@@ -232,10 +254,41 @@ export default function ImageGallery({
                   </div>
                 )}
               </div>
+              
+              {/* AI Buttons */}
+              <div className="flex gap-2 pointer-events-auto">
+                <motion.button
+                  onClick={(e) => handleOpenAiModal(e, image, 'image')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/40 transition-all"
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <HiSparkles className="text-cyan-400" size={12} />
+                  <span className="text-[10px] font-semibold text-cyan-300">AI</span>
+                </motion.button>
+                
+                <motion.button
+                  onClick={(e) => handleOpenAiModal(e, image, 'video')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/40 transition-all"
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <FaVideo className="text-purple-400" size={10} />
+                  <span className="text-[10px] font-semibold text-purple-300">Video</span>
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         );
       })}
+      
+      {/* AI Prompt Modal */}
+      <AIPromptModal
+        isOpen={promptModalOpen}
+        onClose={() => setPromptModalOpen(false)}
+        mode={promptMode}
+        referenceImageUrl={promptReferenceImage}
+        onSubmit={handlePromptSubmit}
+        isGenerating={isGenerating}
+      />
     </div>
   );
 }
