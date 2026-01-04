@@ -47,29 +47,42 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get model IDs in both formats for matching (ObjectId and string)
-    const publicModelIdsObj = publicModels.map(m => m._id);
-    const publicModelIdsStr = publicModels.map(m => m._id.toString());
+    // For each public model, get only TOP 10 images by ELO score
+    // This ensures only owner-curated best images appear in Explore
+    const TOP_IMAGES_PER_MODEL = 10;
+    
+    let allEligibleImages = [];
+    
+    for (const model of publicModels) {
+      const modelIdStr = model._id.toString();
+      
+      // Get top 10 images for this model, sorted by ELO (owner's rating determines quality)
+      const topImages = await db.collection('images')
+        .find({
+          isActive: true,
+          $or: [
+            { modelId: model._id },
+            { modelId: modelIdStr }
+          ],
+          // Exclude AI generated images
+          $and: [
+            { $or: [
+              { isAIGenerated: { $exists: false } },
+              { isAIGenerated: false },
+              { isAIGenerated: null }
+            ]}
+          ]
+        })
+        .sort({ elo: -1, wins: -1, createdAt: -1 }) // Sort by ELO, then wins, then newest
+        .limit(TOP_IMAGES_PER_MODEL)
+        .toArray();
+      
+      allEligibleImages.push(...topImages);
+    }
+    
+    console.log(`Total eligible images (top ${TOP_IMAGES_PER_MODEL} per model): ${allEligibleImages.length}`);
 
-    // Get all images from public models (excluding AI generated content)
-    // Match on modelId as both ObjectId and string (different storage formats)
-    const allImages = await db.collection('images').find({
-      isActive: true,
-      // Exclude AI generated images (allow missing field, false, or null)
-      $and: [
-        { $or: [
-          { isAIGenerated: { $exists: false } },
-          { isAIGenerated: false },
-          { isAIGenerated: null }
-        ]},
-        { $or: [
-          { modelId: { $in: publicModelIdsObj } },
-          { modelId: { $in: publicModelIdsStr } }
-        ]}
-      ]
-    }).toArray();
-
-    if (allImages.length < 2) {
+    if (allEligibleImages.length < 2) {
       return res.status(200).json({
         success: false,
         message: 'NEED_MORE_GALLERIES',
@@ -78,17 +91,17 @@ export default async function handler(req, res) {
     }
 
     // Filter out images from recently shown models (minimum 6 ratings apart rule)
-    let availableImages = allImages;
+    let availableImages = allEligibleImages;
     if (recentModelIds.length > 0) {
-      availableImages = allImages.filter(img => {
+      availableImages = allEligibleImages.filter(img => {
         const imgModelId = img.modelId?.toString() || img.modelId;
         return !recentModelIds.includes(imgModelId);
       });
       
-      // If not enough images after filtering, fall back to all images
+      // If not enough images after filtering, fall back to all eligible images
       if (availableImages.length < 2) {
-        console.log(`Not enough images after filtering recent models, using all ${allImages.length}`);
-        availableImages = allImages;
+        console.log(`Not enough images after filtering recent models, using all ${allEligibleImages.length}`);
+        availableImages = allEligibleImages;
       }
     }
 
