@@ -166,22 +166,31 @@ export default function Home() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const response = await fetch('/api/images?allUsers=true&limit=50');
+        const response = await fetch('/api/images?allUsers=true&limit=100');
         const data = await response.json();
         
         if (data.success && data.images?.length > 0) {
           const activeImages = data.images.filter(img => img.isActive && img.url);
           
-          // Shuffle and dedupe by URL to ensure no repeats
+          // Shuffle images
           const shuffled = activeImages.sort(() => 0.5 - Math.random());
-          const seen = new Set();
+          
+          // Dedupe by both URL and modelId - one image per model for variety
+          const seenUrls = new Set();
+          const seenModels = new Set();
           const uniqueImages = [];
           
           for (const img of shuffled) {
-            if (!seen.has(img.url) && uniqueImages.length < 16) {
-              seen.add(img.url);
-              uniqueImages.push(img);
-            }
+            const modelId = img.modelId?.toString() || img.modelId;
+            
+            // Skip if we've seen this URL or this model already
+            if (seenUrls.has(img.url) || seenModels.has(modelId)) continue;
+            
+            seenUrls.add(img.url);
+            if (modelId) seenModels.add(modelId);
+            uniqueImages.push(img);
+            
+            if (uniqueImages.length >= 16) break;
           }
           
           setImages(uniqueImages);
@@ -351,6 +360,26 @@ export default function Home() {
             isMobile={isMobile}
           />
         ))}
+
+        {/* Footer */}
+        <motion.footer 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+          className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center z-50"
+        >
+          <a 
+            href="https://www.hotgirlshit.xyz/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="group inline-block"
+          >
+            <span className="text-white/80 text-[9px] sm:text-[10px] font-bold tracking-[0.3em] uppercase hover:text-pink-400 transition-colors">
+              HOT GIRL SHIT
+            </span>
+            <div className="mt-1 h-[1.5px] w-full bg-gradient-to-r from-transparent via-pink-500 to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
+          </a>
+        </motion.footer>
 
         {/* Center content - above images */}
         <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">

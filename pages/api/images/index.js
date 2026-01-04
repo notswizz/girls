@@ -28,10 +28,16 @@ export default async function handler(req, res) {
         } else {
           // For public views (homepage, not logged in), only show images from PUBLIC models
           // First get all public model IDs
-          publicModels = await db.collection('models').find({
-            isActive: true,
-            isPublic: { $ne: false } // Include true and undefined/missing
-          }).toArray();
+          const allModels = await db.collection('models').find({ isActive: true }).toArray();
+          
+          console.log('=== PUBLIC MODELS DEBUG ===');
+          console.log('Total active models:', allModels.length);
+          allModels.forEach(m => {
+            console.log(`Model "${m.name}": isPublic=${m.isPublic} (type: ${typeof m.isPublic})`);
+          });
+          
+          publicModels = allModels.filter(m => m.isPublic !== false);
+          console.log('Public models count:', publicModels.length);
           
           const publicModelIds = publicModels.map(m => m._id);
           const publicModelIdsStr = publicModels.map(m => m._id.toString());

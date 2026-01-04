@@ -23,21 +23,6 @@ export default function BottomNav() {
         className="bg-black/90 backdrop-blur-xl border-t border-white/5"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        {/* Footer link */}
-        <div className="text-center py-1.5">
-          <a 
-            href="https://www.hotgirlshit.xyz/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-block"
-          >
-            <span className="text-white/80 text-[8px] font-bold tracking-[0.25em] uppercase">
-              HOT GIRL SHIT
-            </span>
-            <div className="mt-0.5 h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500/60 to-transparent" />
-          </a>
-        </div>
-        
         <div className="flex items-center justify-around h-14">
           {navItems.map((item) => {
             const active = isActive(item);

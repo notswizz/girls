@@ -104,6 +104,9 @@ export default async function handler(req, res) {
           // Only update isPublic if explicitly provided
           if (typeof isPublic === 'boolean') {
             updateFields.isPublic = isPublic;
+            console.log(`Updating model ${id} isPublic to: ${isPublic}`);
+          } else {
+            console.log(`isPublic not provided or not boolean: ${isPublic} (type: ${typeof isPublic})`);
           }
           
           const result = await db.collection('models').updateOne(

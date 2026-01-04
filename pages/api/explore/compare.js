@@ -17,16 +17,23 @@ export default async function handler(req, res) {
     }
 
     // Get all PUBLIC models only (explicitly exclude private models and AI models)
+    const allModels = await db.collection('models').find({ isActive: true }).toArray();
+    
+    console.log('=== EXPLORE COMPARE DEBUG ===');
+    console.log('Total active models:', allModels.length);
+    allModels.forEach(m => {
+      console.log(`Model "${m.name}": isPublic=${m.isPublic}, isAIModel=${m.isAIModel}`);
+    });
+    
     // Include legacy models without isPublic field, but EXCLUDE isPublic: false
-    const publicModels = await db.collection('models').find({
-      isActive: true,
-      isPublic: { $ne: false }, // This includes true AND undefined/missing
-      $or: [
-        { isAIModel: { $exists: false } },
-        { isAIModel: false },
-        { isAIModel: null }
-      ]
-    }).toArray();
+    const publicModels = allModels.filter(m => {
+      const isNotPrivate = m.isPublic !== false;
+      const isNotAIModel = !m.isAIModel;
+      console.log(`  "${m.name}": isNotPrivate=${isNotPrivate}, isNotAIModel=${isNotAIModel}, included=${isNotPrivate && isNotAIModel}`);
+      return isNotPrivate && isNotAIModel;
+    });
+    
+    console.log('Public non-AI models count:', publicModels.length);
 
     if (publicModels.length === 0) {
       return res.status(200).json({

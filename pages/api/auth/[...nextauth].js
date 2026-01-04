@@ -15,23 +15,41 @@ export const authOptions = {
   adapter: getMongoDBAdapter(),
   callbacks: {
     async jwt({ token, account, user }) {
-      // If signing in
+      // If signing in (account and user are only present on sign-in)
       if (account && user) {
-        // Add the user ID to the token
-        token.userId = user.id;
-        token.isAdmin = user.isAdmin || false;
+        console.log(`[AUTH] Sign-in for ${user.email}, adapter user.id: ${user.id}`);
         
-        // Update user's last login
+        // Look up the user in our users collection to get the correct MongoDB _id
         try {
           const { db } = await connectToDatabase();
           const users = db.collection('users');
           
-          await users.updateOne(
-            { email: user.email },
-            { $set: { lastLoginAt: new Date() } }
-          );
+          const dbUser = await users.findOne({ email: user.email });
+          
+          if (dbUser) {
+            // Use the MongoDB _id from our users collection
+            token.userId = dbUser._id.toString();
+            token.userEmail = user.email;
+            token.isAdmin = dbUser.isAdmin || false;
+            console.log(`[AUTH] Found user in DB, using _id: ${token.userId}`);
+            
+            // Update last login
+            await users.updateOne(
+              { _id: dbUser._id },
+              { $set: { lastLoginAt: new Date() } }
+            );
+          } else {
+            // Fallback to adapter's user.id if user not found
+            console.log(`[AUTH] User not found in DB, falling back to adapter id: ${user.id}`);
+            token.userId = user.id;
+            token.userEmail = user.email;
+            token.isAdmin = user.isAdmin || false;
+          }
         } catch (error) {
-          console.error('Error updating user last login:', error);
+          console.error('[AUTH] Error in jwt callback:', error);
+          token.userId = user.id;
+          token.userEmail = user.email;
+          token.isAdmin = user.isAdmin || false;
         }
       }
       return token;
