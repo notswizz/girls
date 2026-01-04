@@ -166,34 +166,43 @@ export default function Home() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const response = await fetch('/api/images?allUsers=true&limit=100');
+        // If logged in, fetch only user's own images
+        // If logged out, fetch public images for the landing page
+        const url = session 
+          ? '/api/images?limit=20' 
+          : '/api/images?allUsers=true&limit=100';
+        
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success && data.images?.length > 0) {
           const activeImages = data.images.filter(img => img.isActive && img.url);
           
-          // Shuffle images
-          const shuffled = activeImages.sort(() => 0.5 - Math.random());
-          
-          // Dedupe by both URL and modelId - one image per model for variety
-          const seenUrls = new Set();
-          const seenModels = new Set();
-          const uniqueImages = [];
-          
-          for (const img of shuffled) {
-            const modelId = img.modelId?.toString() || img.modelId;
+          if (session) {
+            // For logged-in users, just show recent images (no shuffle)
+            setImages(activeImages.slice(0, 16));
+          } else {
+            // For logged-out users, shuffle and dedupe for variety
+            const shuffled = activeImages.sort(() => 0.5 - Math.random());
             
-            // Skip if we've seen this URL or this model already
-            if (seenUrls.has(img.url) || seenModels.has(modelId)) continue;
+            const seenUrls = new Set();
+            const seenModels = new Set();
+            const uniqueImages = [];
             
-            seenUrls.add(img.url);
-            if (modelId) seenModels.add(modelId);
-            uniqueImages.push(img);
+            for (const img of shuffled) {
+              const modelId = img.modelId?.toString() || img.modelId;
+              
+              if (seenUrls.has(img.url) || seenModels.has(modelId)) continue;
+              
+              seenUrls.add(img.url);
+              if (modelId) seenModels.add(modelId);
+              uniqueImages.push(img);
+              
+              if (uniqueImages.length >= 16) break;
+            }
             
-            if (uniqueImages.length >= 16) break;
+            setImages(uniqueImages);
           }
-          
-          setImages(uniqueImages);
         }
       } catch (error) {
         console.error('Error fetching images:', error);
@@ -202,8 +211,11 @@ export default function Home() {
       }
     };
 
-    fetchImages();
-  }, []);
+    // Wait for session to be determined before fetching
+    if (status !== 'loading') {
+      fetchImages();
+    }
+  }, [session, status]);
 
   const seoProps = {
     title: "fap bank - Your Private Vault",

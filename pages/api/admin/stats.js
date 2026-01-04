@@ -28,26 +28,20 @@ export default async function handler(req, res) {
       totalImages,
       publicModels,
       aiCreations,
-      voteStats
+      comparisonsCount,
+      communityVotesCount
     ] = await Promise.all([
       db.collection("users").countDocuments(),
-      db.collection("models").countDocuments({ isActive: true }),
-      db.collection("images").countDocuments({ isActive: true }),
-      db.collection("models").countDocuments({ isActive: true, isPublic: true }),
+      db.collection("models").countDocuments(),
+      db.collection("images").countDocuments(),
+      db.collection("models").countDocuments({ isPublic: true }),
       db.collection("ai_creations").countDocuments(),
-      db.collection("images").aggregate([
-        { $match: { isActive: true } },
-        { $group: {
-          _id: null,
-          totalWins: { $sum: { $ifNull: ["$wins", 0] } },
-          totalLosses: { $sum: { $ifNull: ["$losses", 0] } }
-        }}
-      ]).toArray()
+      db.collection("comparisons").countDocuments(),
+      db.collection("community_votes").countDocuments()
     ]);
 
-    const totalVotes = voteStats[0] 
-      ? (voteStats[0].totalWins || 0) + (voteStats[0].totalLosses || 0)
-      : 0;
+    // Total votes = comparisons (personal rating) + community votes (explore)
+    const totalVotes = comparisonsCount + communityVotesCount;
 
     return res.status(200).json({
       success: true,

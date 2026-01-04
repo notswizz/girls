@@ -24,14 +24,16 @@ export default async function handler(req, res) {
     // Fetch all users
     const users = await db.collection("users").find({}).toArray();
 
-    // Get all models and images to build counts
+    // Get all models, images, and votes to build counts
     const allModels = await db.collection("models").find({}).toArray();
     const allImages = await db.collection("images").find({}).toArray();
+    const allComparisons = await db.collection("comparisons").find({}).toArray();
+    const allCommunityVotes = await db.collection("community_votes").find({}).toArray();
     
     // Build count maps
     const modelCountMap = {};
     const imageCountMap = {};
-    const voteCountMap = {};
+    const voteCountMap = {}; // Votes CAST by this user
     
     allModels.forEach(m => {
       const key = m.userId?.toString() || 'unknown';
@@ -41,8 +43,18 @@ export default async function handler(req, res) {
     allImages.forEach(i => {
       const key = i.userId?.toString() || 'unknown';
       imageCountMap[key] = (imageCountMap[key] || 0) + 1;
-      const votes = (i.wins || 0) + (i.losses || 0);
-      voteCountMap[key] = (voteCountMap[key] || 0) + votes;
+    });
+    
+    // Count votes cast by each user (from comparisons collection)
+    allComparisons.forEach(c => {
+      const key = c.userId?.toString() || 'unknown';
+      voteCountMap[key] = (voteCountMap[key] || 0) + 1;
+    });
+    
+    // Also count community votes cast
+    allCommunityVotes.forEach(v => {
+      const key = v.voterId?.toString() || 'unknown';
+      voteCountMap[key] = (voteCountMap[key] || 0) + 1;
     });
 
     // Get unique userIds from models/images that aren't in users table
