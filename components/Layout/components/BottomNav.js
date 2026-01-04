@@ -1,38 +1,44 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { FaHome, FaTrophy, FaGlobe, FaPiggyBank } from 'react-icons/fa';
+import { FaHome, FaTrophy, FaPiggyBank } from 'react-icons/fa';
+import { HiSparkles } from 'react-icons/hi';
 
 const navItems = [
   { href: '/', icon: FaHome, label: 'Home' },
   { href: '/rate', icon: FaTrophy, label: 'Rate' },
-  { href: '/rate?tab=explore', icon: FaGlobe, label: 'Explore' },
   { href: '/manage', icon: FaPiggyBank, label: 'Bank' },
+  { href: '/creations', icon: HiSparkles, label: 'Creations' },
 ];
 
 export default function BottomNav() {
   const router = useRouter();
   const currentPath = router.pathname;
-  const currentTab = router.query.tab;
 
-  const isActive = (item) => {
-    if (item.href === '/rate?tab=explore') {
-      return currentPath === '/rate' && currentTab === 'explore';
-    }
-    if (item.href === '/rate') {
-      return currentPath === '/rate' && currentTab !== 'explore';
-    }
-    return currentPath === item.href;
-  };
+  const isActive = (item) => currentPath === item.href;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Nav background with blur */}
       <div 
-        className="bg-black/95 backdrop-blur-xl border-t border-white/10"
+        className="bg-black/90 backdrop-blur-xl border-t border-white/5"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-center justify-around h-[56px]">
+        {/* Footer link */}
+        <div className="text-center py-1.5">
+          <a 
+            href="https://www.hotgirlshit.xyz/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block"
+          >
+            <span className="text-white/80 text-[8px] font-bold tracking-[0.25em] uppercase">
+              HOT GIRL SHIT
+            </span>
+            <div className="mt-0.5 h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500/60 to-transparent" />
+          </a>
+        </div>
+        
+        <div className="flex items-center justify-around h-14">
           {navItems.map((item) => {
             const active = isActive(item);
             const Icon = item.icon;
@@ -43,30 +49,32 @@ export default function BottomNav() {
                 href={item.href}
                 className="relative flex flex-col items-center justify-center flex-1 h-full"
               >
-                {/* Active indicator line */}
+                {/* Active background pill */}
                 {active && (
                   <motion.div
-                    layoutId="bottomNavLine"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    layoutId="bottomNavPill"
+                    className="absolute inset-x-2 top-1 bottom-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-xl border border-pink-500/30"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
                 
-                {/* Icon */}
-                <Icon 
-                  size={20} 
-                  className={`transition-colors ${
-                    active 
-                      ? 'text-white' 
-                      : 'text-white/40'
-                  }`} 
-                />
+                {/* Icon with glow effect when active */}
+                <div className="relative z-10">
+                  <Icon 
+                    size={18} 
+                    className={`transition-all duration-200 ${
+                      active 
+                        ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]' 
+                        : 'text-white/30'
+                    }`} 
+                  />
+                </div>
                 
                 {/* Label */}
-                <span className={`text-[9px] mt-0.5 font-medium transition-colors ${
+                <span className={`relative z-10 text-[9px] mt-0.5 font-semibold transition-all duration-200 ${
                   active 
                     ? 'text-white' 
-                    : 'text-white/40'
+                    : 'text-white/30'
                 }`}>
                   {item.label}
                 </span>
@@ -78,4 +86,3 @@ export default function BottomNav() {
     </nav>
   );
 }
-

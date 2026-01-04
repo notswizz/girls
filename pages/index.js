@@ -1,168 +1,462 @@
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
-import { FaArrowRight, FaTrophy, FaEye, FaPiggyBank } from 'react-icons/fa';
+import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { motion } from 'framer-motion';
-import RandomImages from '../components/ModelGallery';
+
+// Floating image component
+const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
+  const videoRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.3 }}
+      animate={{ 
+        opacity: isMobile ? 0.7 : 1, 
+        scale: position.scale,
+        rotate: position.rotate
+      }}
+      transition={{ 
+        duration: 0.8, 
+        delay: 0.05 + index * 0.08,
+        ease: [0.22, 1, 0.36, 1]
+      }}
+      whileHover={!isMobile ? { 
+        scale: position.scale * 1.2, 
+        rotate: 0,
+        zIndex: 100,
+        transition: { duration: 0.2 }
+      } : undefined}
+      onHoverStart={() => {
+        if (isMobile) return;
+        setIsHovered(true);
+        if (videoRef.current) videoRef.current.play().catch(() => {});
+      }}
+      onHoverEnd={() => {
+        if (isMobile) return;
+        setIsHovered(false);
+        if (videoRef.current) {
+          videoRef.current.pause();
+          videoRef.current.currentTime = 0;
+        }
+      }}
+      className="absolute cursor-pointer group"
+      style={{ 
+        left: position.x, 
+        top: position.y,
+        width: position.width,
+        height: position.height,
+        zIndex: position.z || 1,
+      }}
+    >
+      {/* Glow effect - desktop only */}
+      {!isMobile && (
+        <div className="absolute -inset-3 bg-gradient-to-r from-pink-500/60 via-purple-500/60 to-rose-500/60 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-300" />
+      )}
+      
+      {/* Image frame */}
+      <div className={`relative w-full h-full overflow-hidden shadow-xl border border-white/10 ${isMobile ? 'rounded-lg' : 'rounded-xl sm:rounded-2xl group-hover:border-pink-500/60'} transition-all duration-200`}>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 z-10" />
+        
+        {isVideo && !isMobile ? (
+          <>
+            <video
+              ref={videoRef}
+              src={src}
+              className="w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+            {!isHovered && (
+              <div className="absolute inset-0 flex items-center justify-center z-30">
+                <div className="w-6 h-6 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+                  <FaPlay className="text-white text-[8px] ml-0.5" />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <img
+            src={src}
+            alt=""
+            className={`w-full h-full object-cover ${!isMobile ? 'transition-transform duration-500 group-hover:scale-110' : ''}`}
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+// Generate scattered positions for images - responsive for mobile/desktop
+const generatePositions = (count, isMobile = false) => {
+  if (isMobile) {
+    // Mobile: Smaller images in corners, leaving center clear
+    const mobilePositions = [
+      // Top left area
+      { x: '-5%', y: '2%', width: '80px', height: '100px', rotate: -8, scale: 1, z: 2 },
+      { x: '8%', y: '12%', width: '70px', height: '90px', rotate: 6, scale: 0.9, z: 1 },
+      
+      // Top right area
+      { x: '78%', y: '2%', width: '75px', height: '95px', rotate: 10, scale: 0.95, z: 2 },
+      { x: '88%', y: '14%', width: '65px', height: '85px', rotate: -5, scale: 0.85, z: 1 },
+      
+      // Bottom left area
+      { x: '-3%', y: '75%', width: '72px', height: '92px', rotate: 8, scale: 0.9, z: 2 },
+      { x: '10%', y: '85%', width: '68px', height: '88px', rotate: -10, scale: 0.85, z: 1 },
+      
+      // Bottom right area
+      { x: '80%', y: '78%', width: '70px', height: '90px', rotate: -6, scale: 0.9, z: 2 },
+      { x: '88%', y: '88%', width: '65px', height: '82px', rotate: 5, scale: 0.8, z: 1 },
+    ];
+    return mobilePositions.slice(0, Math.min(count, 8));
+  }
+  
+  // Desktop positions
+  const basePositions = [
+    // Left side
+    { x: '2%', y: '8%', width: '130px', height: '170px', rotate: -12, scale: 1, z: 2 },
+    { x: '4%', y: '42%', width: '115px', height: '150px', rotate: 8, scale: 0.95, z: 1 },
+    { x: '2%', y: '72%', width: '125px', height: '165px', rotate: -6, scale: 0.9, z: 2 },
+    
+    // Left-center
+    { x: '16%', y: '15%', width: '140px', height: '185px', rotate: 5, scale: 1.05, z: 3 },
+    { x: '14%', y: '55%', width: '120px', height: '155px', rotate: -10, scale: 0.9, z: 1 },
+    { x: '18%', y: '85%', width: '110px', height: '145px', rotate: 12, scale: 0.85, z: 2 },
+    
+    // Right side
+    { x: '83%', y: '6%', width: '125px', height: '165px', rotate: 10, scale: 0.95, z: 2 },
+    { x: '85%', y: '38%', width: '135px', height: '175px', rotate: -8, scale: 1, z: 3 },
+    { x: '82%', y: '70%', width: '115px', height: '150px', rotate: 6, scale: 0.9, z: 1 },
+    
+    // Right-center
+    { x: '70%', y: '10%', width: '120px', height: '160px', rotate: -5, scale: 1, z: 2 },
+    { x: '72%', y: '52%', width: '130px', height: '170px', rotate: 8, scale: 1.05, z: 3 },
+    { x: '68%', y: '82%', width: '118px', height: '155px', rotate: -12, scale: 0.9, z: 1 },
+    
+    // Extra positions
+    { x: '9%', y: '28%', width: '100px', height: '130px', rotate: -4, scale: 0.82, z: 1 },
+    { x: '88%', y: '22%', width: '105px', height: '138px', rotate: 7, scale: 0.85, z: 1 },
+    { x: '76%', y: '90%', width: '95px', height: '125px', rotate: -9, scale: 0.8, z: 1 },
+    { x: '22%', y: '3%', width: '90px', height: '120px', rotate: 6, scale: 0.78, z: 1 },
+  ];
+  
+  return basePositions.slice(0, count);
+};
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Check if mobile
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        const response = await fetch('/api/images?allUsers=true&limit=50');
+        const data = await response.json();
+        
+        if (data.success && data.images?.length > 0) {
+          const activeImages = data.images.filter(img => img.isActive && img.url);
+          
+          // Shuffle and dedupe by URL to ensure no repeats
+          const shuffled = activeImages.sort(() => 0.5 - Math.random());
+          const seen = new Set();
+          const uniqueImages = [];
+          
+          for (const img of shuffled) {
+            if (!seen.has(img.url) && uniqueImages.length < 16) {
+              seen.add(img.url);
+              uniqueImages.push(img);
+            }
+          }
+          
+          setImages(uniqueImages);
+        }
+      } catch (error) {
+        console.error('Error fetching images:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, []);
+
   const seoProps = {
-    title: "fap bank - Browse, Create, Rate",
-    description: "Your private collection vault. Browse your favorites, create with AI, and rate head-to-head. The ultimate secret folder app.",
-    keywords: "private gallery, secret folder, photo vault, ai image generator, photo rating, collection manager",
+    title: "fap bank - Your Private Vault",
+    description: "The ultimate secret folder. Browse your favorites, create with AI, and rate head-to-head.",
+    keywords: "private gallery, secret folder, photo vault, ai image generator, photo rating",
     ogType: "website"
   };
 
-  return (
-    <Layout {...seoProps}>
-      {/* Animated gradient orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none hidden sm:block">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-gradient-to-r from-pink-500/20 to-rose-600/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-gradient-to-r from-purple-500/15 to-pink-600/20 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
-      </div>
+  const positions = generatePositions(images.length, isMobile);
 
-      <div className="relative w-full max-w-6xl mx-auto px-4 py-4 sm:py-12">
-        {/* Hero Section */}
-        <motion.div 
-          className="text-center mb-6 sm:mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          {/* Icon */}
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ duration: 0.5, type: "spring" }}
-            className="mb-4"
-          >
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg shadow-pink-500/30">
-              <FaPiggyBank className="text-2xl sm:text-3xl text-white" />
-            </div>
-          </motion.div>
+  // Logged in user - dashboard view (no scroll)
+  if (session) {
+    return (
+      <Layout {...seoProps} fullHeight>
+        <div className="fixed inset-0 flex flex-col overflow-hidden">
+          {/* Background effects */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-pink-600/10 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px]" />
+          </div>
 
-          {/* Main title */}
-          <motion.div 
-            className="relative inline-block mb-3 sm:mb-4"
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <h1 className="text-5xl sm:text-7xl md:text-8xl font-display font-black tracking-tight">
-              <span className="relative inline-block">
-                <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-rose-200 to-pink-300">
-                  fap bank
-                </span>
-              </span>
-            </h1>
-          </motion.div>
-          
-          {/* Tagline */}
-          <motion.p 
-            className="text-lg sm:text-2xl text-white/60 mb-6 sm:mb-8 font-medium"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            browse. create. rate.
-          </motion.p>
-          
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12"
-          >
-            <Link href="/manage">
-              <motion.button
-                className="group relative px-8 sm:px-10 py-4 text-lg font-bold rounded-2xl overflow-hidden"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {/* Button background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-500 bg-[length:200%_100%] animate-gradient-x" />
-                
-                {/* Glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-rose-500 blur-xl opacity-40 group-hover:opacity-60 transition-opacity" />
-                
-                {/* Border */}
-                <div className="absolute inset-0 rounded-2xl border border-white/20" />
-                
-                {/* Content */}
-                <span className="relative flex items-center justify-center gap-2 text-white">
-                  <FaPiggyBank className="text-lg" />
-                  <span>OPEN BANK</span>
-                </span>
-              </motion.button>
-            </Link>
-
-            <Link href="/rate">
-              <motion.button
-                className="group relative px-8 sm:px-10 py-4 text-lg font-bold rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <span className="relative flex items-center justify-center gap-2 text-white/80">
-                  <FaTrophy className="text-lg text-pink-400" />
-                  <span>START RATING</span>
-                </span>
-              </motion.button>
-            </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* Featured Gallery Preview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mb-10 sm:mb-16"
-        >
-          <RandomImages />
-        </motion.div>
-
-        {/* Features Grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="max-w-md sm:max-w-3xl mx-auto"
-        >
-          <div className="grid grid-cols-3 gap-3 sm:gap-8">
-            {[
-              { icon: FaEye, title: 'Browse', desc: 'Your collection', color: 'from-pink-500 to-rose-600' },
-              { icon: HiSparkles, title: 'Create', desc: 'AI magic', color: 'from-purple-500 to-violet-600' },
-              { icon: FaTrophy, title: 'Rate', desc: 'Head-to-head', color: 'from-cyan-500 to-blue-600' },
-            ].map((item, i) => (
+          {/* Main content - centered */}
+          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20 pt-16">
+            {/* Welcome header */}
+            <motion.div 
+              className="text-center mb-8"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <motion.div
-                key={item.title}
-                className="text-center"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-xl shadow-pink-500/30"
+              >
+                <FaPiggyBank className="text-2xl text-white" />
+              </motion.div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                Welcome back
+              </h1>
+              <p className="text-white/40 text-sm">What do you want to do?</p>
+            </motion.div>
+
+            {/* Action Cards Grid */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="grid grid-cols-3 gap-3 w-full max-w-md"
+            >
+              {[
+                { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600' },
+                { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: 'Your collection', color: 'from-pink-500 to-rose-600' },
+                { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: 'AI content', color: 'from-purple-500 to-violet-600' },
+              ].map((item, i) => (
+                <Link href={item.href} key={item.title}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + i * 0.05 }}
+                    whileHover={{ scale: 1.05, y: -4 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all text-center"
+                  >
+                    <div className={`w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg`}>
+                      <item.icon className="text-white text-lg" />
+                    </div>
+                    <div className="text-white font-semibold text-sm">{item.title}</div>
+                    <div className="text-white/40 text-[10px] mt-0.5">{item.subtitle}</div>
+                  </motion.div>
+                </Link>
+              ))}
+            </motion.div>
+
+            {/* Recent Photos Preview */}
+            {images.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-8 w-full max-w-md"
+              >
+                <Link href="/manage" className="block">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white/50 text-xs font-medium">Recent in collection</span>
+                    <span className="text-pink-400/60 text-xs">View all →</span>
+                  </div>
+                  <div className="flex gap-2 overflow-hidden">
+                    {images.slice(0, 6).map((img, i) => (
+                      <motion.div
+                        key={img._id || i}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.45 + i * 0.03 }}
+                        className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5 border border-white/10"
+                      >
+                        <img
+                          src={img.url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      </motion.div>
+                    ))}
+                    {images.length > 6 && (
+                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                        <span className="text-white/40 text-xs font-medium">+{images.length - 6}</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Feature data
+  const features = [
+    { icon: FaPiggyBank, title: 'Store', desc: 'Private & encrypted', color: 'from-pink-500 to-rose-600' },
+    { icon: HiSparkles, title: 'Create', desc: 'AI image & video', color: 'from-purple-500 to-violet-600' },
+    { icon: FaTrophy, title: 'Rate', desc: 'ELO rankings', color: 'from-amber-500 to-orange-600' },
+  ];
+
+  // Logged out - immersive landing page (no scroll)
+  return (
+    <Layout {...seoProps} hideBottomNav>
+      <div className="fixed inset-0 overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0015] via-[#12001f] to-[#050010]" />
+        
+        {/* Animated gradient orbs */}
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-pink-600/10 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        {/* Grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: '50px 50px'
+          }}
+        />
+
+        {/* Floating Images */}
+        {!loading && images.slice(0, positions.length).map((img, i) => (
+          <FloatingImage
+            key={img._id || i}
+            src={img.url}
+            position={positions[i]}
+            index={i}
+            isVideo={img.url?.includes('.mp4') || img.url?.includes('video')}
+            isMobile={isMobile}
+          />
+        ))}
+
+        {/* Center content - above images */}
+        <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="text-center px-4 pointer-events-auto max-w-xl">
+            {/* Glassmorphism card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="relative p-6 sm:p-10 rounded-3xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl"
+            >
+              {/* Glow behind card */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-xl -z-10" />
+              
+              {/* Lock icon */}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.5, type: "spring", delay: 0.2 }}
+                className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-purple-600 shadow-2xl shadow-pink-500/40 mb-5"
+              >
+                <FaLock className="text-xl sm:text-2xl text-white" />
+              </motion.div>
+
+              {/* Title */}
+              <motion.h1 
+                className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter mb-2"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 + i * 0.1 }}
+                transition={{ delay: 0.3 }}
               >
-                <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br ${item.color} mb-2 sm:mb-3 shadow-lg`}>
-                  <item.icon className="text-white text-lg sm:text-xl" />
-                </div>
-                <h3 className="text-white font-semibold text-sm sm:text-lg">{item.title}</h3>
-                <p className="text-white/40 text-xs sm:text-sm">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                <span className="relative">
+                  <span className="absolute inset-0 text-pink-500 blur-2xl opacity-60">fap bank</span>
+                  <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-pink-200 via-white to-pink-200">
+                    fap bank
+                  </span>
+                </span>
+              </motion.h1>
 
-        {/* Bottom CTA */}
-        <motion.div
-          className="text-center mt-10 sm:mt-16 pb-4 sm:pb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          <Link href="/manage" className="inline-flex items-center gap-2 text-pink-400 hover:text-pink-300 font-medium transition-colors text-sm sm:text-base">
-            Open your bank <FaArrowRight className="text-xs sm:text-sm" />
-          </Link>
-        </motion.div>
+              {/* Tagline */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-base sm:text-lg text-white/50 mb-6 font-light"
+              >
+                your private vault
+              </motion.p>
+
+              {/* Feature Cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="grid grid-cols-3 gap-2 sm:gap-3 mb-6"
+              >
+                {features.map((feature, i) => (
+                  <motion.div
+                    key={feature.title}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 + i * 0.1 }}
+                    className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10"
+                  >
+                    <div className={`inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${feature.color} mb-2 shadow-lg`}>
+                      <feature.icon className="text-white text-sm sm:text-base" />
+                    </div>
+                    <h3 className="text-white font-bold text-xs sm:text-sm">{feature.title}</h3>
+                    <p className="text-white/40 text-[10px] sm:text-xs leading-tight">{feature.desc}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* CTA Button */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                <motion.button
+                  onClick={() => signIn('google')}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group relative w-full sm:w-auto px-8 py-4 text-base font-bold rounded-xl overflow-hidden"
+                >
+                  {/* Animated gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 bg-[length:200%_100%] animate-gradient-x" />
+                  
+                  {/* Shimmer */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  </div>
+                  
+                  {/* Border */}
+                  <div className="absolute inset-0 rounded-xl border border-white/30" />
+                  
+                  {/* Content */}
+                  <span className="relative flex items-center justify-center gap-3 text-white">
+                    <FaGoogle className="text-lg" />
+                    <span>UNLOCK YOUR VAULT</span>
+                  </span>
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

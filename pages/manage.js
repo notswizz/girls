@@ -163,7 +163,7 @@ export default function ManagePage() {
   // Show loading state while session is being fetched
   if (status === 'loading') {
     return (
-      <Layout title="Manage">
+      <Layout title="Bank">
         <div className="h-[calc(100vh-100px)] flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
         </div>
@@ -174,14 +174,14 @@ export default function ManagePage() {
   // Show login prompt if not authenticated
   if (!session) {
     return (
-      <Layout title="Manage">
+      <Layout title="Bank">
         <SignInPrompt />
       </Layout>
     );
   }
 
   return (
-    <Layout title="Manage" fullHeight>
+    <Layout title="Bank" fullHeight>
       {/* Modals - rendered outside overflow container */}
       <AnimatePresence>
         {showUploadModal && (

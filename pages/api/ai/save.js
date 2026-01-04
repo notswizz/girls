@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'You must be logged in to save AI content' });
   }
 
-  const { url, prompt, type, isExtractedFrame } = req.body;
+  const { url, prompt, type, isExtractedFrame, sourceModelId, sourceModelName } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
@@ -35,12 +35,13 @@ export default async function handler(req, res) {
     const saveType = isExtractedFrame ? 'image' : (type || 'image');
     console.log(`Saving AI ${saveType} for user ${session.user.id}${isExtractedFrame ? ' (extracted frame)' : ''}`);
     console.log(`Source URL: ${url.substring(0, 100)}...`);
+    console.log(`Source Model: ${sourceModelId} (${sourceModelName})`);
     
     // Re-upload to S3 (Replicate URLs are temporary, data URLs need to be uploaded)
     const s3Url = await uploadToS3(url, saveType);
     console.log(`Uploaded to S3: ${s3Url}`);
     
-    const savedImage = await saveToAIModel(s3Url, finalPrompt, session.user.id, saveType);
+    const savedImage = await saveToAICreations(s3Url, finalPrompt, session.user.id, saveType, sourceModelId, sourceModelName);
     return res.status(200).json({
       success: true,
       savedImage
@@ -108,75 +109,29 @@ async function uploadToS3(sourceUrl, type) {
   return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 }
 
-// Save generated content to AI model (doesn't participate in ratings)
-async function saveToAIModel(url, prompt, userId, type) {
+// Save generated content to AI creations collection (doesn't participate in ratings)
+async function saveToAICreations(url, prompt, userId, type, sourceModelId, sourceModelName) {
   const { db } = await connectToDatabase();
+  const { ObjectId } = require('mongodb');
   
-  // Find or create the AI model for this user
-  let aiModel = await db.collection('models').findOne({ 
-    userId: userId,
-    name: 'AI',
-    isAIModel: true
-  });
-  
-  if (!aiModel) {
-    // Create the AI model
-    const newModel = {
-      name: 'AI',
-      username: 'AI',
-      description: 'AI Generated Content',
-      userId: userId,
-      isActive: true,
-      isPublic: false, // AI model is private
-      isAIModel: true, // Special flag for AI model
-      excludeFromRatings: true, // Exclude from ratings
-      createdAt: new Date(),
-      imageCount: 0,
-      wins: 0,
-      losses: 0,
-      winRate: 0,
-      elo: 1200,
-      eloHistory: []
-    };
-    
-    const result = await db.collection('models').insertOne(newModel);
-    aiModel = { _id: result.insertedId, ...newModel };
-  }
-  
-  // Save the generated content as an image/video
-  const imageData = {
+  // Save the generated content to the ai_creations collection
+  const creationData = {
     url: url,
-    name: prompt.substring(0, 100), // Use prompt as name (truncated)
-    description: prompt,
-    modelId: aiModel._id,
-    modelName: 'AI',
-    modelUsername: 'AI',
+    prompt: prompt,
     userId: userId,
     createdAt: new Date(),
     isActive: true,
-    isAIGenerated: true, // Flag for AI generated content
-    aiType: type, // 'image' or 'video'
-    excludeFromRatings: true, // Exclude from ratings
-    averageScore: null,
-    timesRated: 0,
-    wins: 0,
-    losses: 0,
-    winRate: 0,
-    elo: 1200,
-    lastOpponents: []
+    type: type, // 'image' or 'video'
+    // Track source model for filtering
+    sourceModelId: sourceModelId ? new ObjectId(sourceModelId) : null,
+    sourceModelName: sourceModelName || null,
   };
   
-  const insertResult = await db.collection('images').insertOne(imageData);
-  
-  // Update model image count
-  await db.collection('models').updateOne(
-    { _id: aiModel._id },
-    { $inc: { imageCount: 1 } }
-  );
+  const insertResult = await db.collection('ai_creations').insertOne(creationData);
   
   return {
     id: insertResult.insertedId,
-    ...imageData
+    ...creationData
   };
 }
 

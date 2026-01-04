@@ -24,16 +24,23 @@ const MobileSwipeRating = ({
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const [promptMode, setPromptMode] = useState('image');
   const [promptReferenceImage, setPromptReferenceImage] = useState(null);
+  const [currentAiImage, setCurrentAiImage] = useState(null);
   
   const handleOpenAiModal = (e, image, mode) => {
     e.stopPropagation();
     setPromptReferenceImage(image.url);
+    setCurrentAiImage(image);
     setPromptMode(mode);
     setPromptModalOpen(true);
   };
   
   const handlePromptSubmit = (prompt) => {
-    startGeneration(promptReferenceImage, prompt, promptMode);
+    // Pass model info for filtering in creations
+    const modelInfo = currentAiImage ? {
+      id: currentAiImage.modelId,
+      name: currentAiImage.modelName || currentAiImage.modelUsername
+    } : null;
+    startGeneration(promptReferenceImage, prompt, promptMode, modelInfo);
     setPromptModalOpen(false);
   };
 
@@ -74,7 +81,7 @@ const MobileSwipeRating = ({
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide md:overflow-x-visible md:justify-center md:items-center md:gap-4 lg:gap-6 py-2"
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide md:overflow-x-visible md:justify-center md:items-center md:gap-6 lg:gap-8 py-3 px-3"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {images.map((image, index) => {
@@ -85,29 +92,33 @@ const MobileSwipeRating = ({
           return (
             <div
               key={image._id}
-              className="w-[88vw] h-full flex-shrink-0 snap-center flex flex-col items-center justify-center px-2 md:w-auto md:flex-shrink md:max-w-[45%] lg:max-w-[380px]"
+              className="w-[80vw] flex-shrink-0 snap-center flex items-center justify-center px-1 md:w-[320px] lg:w-[360px]"
             >
-              {/* Image Card */}
+              {/* Image Card - Fixed aspect ratio container */}
               <motion.div
                 className={`
-                  relative rounded-2xl overflow-hidden cursor-pointer
-                  w-full h-full max-h-full shadow-2xl
+                  relative rounded-3xl overflow-hidden cursor-pointer
+                  w-full aspect-[3/4]
                   transition-all duration-300
-                  ${isWinner ? 'shadow-[0_0_40px_rgba(236,72,153,0.5)]' : ''}
-                  ${isLoser ? 'opacity-20 scale-95 grayscale' : ''}
+                  ${isLoser ? 'opacity-30 scale-90 grayscale' : ''}
                   ${!selectedImageId ? 'active:scale-[0.98]' : ''}
                 `}
                 onClick={() => handleTapToVote(image._id)}
                 animate={{
-                  scale: isLoser ? 0.95 : (isCelebrating ? 1.01 : 1),
+                  scale: isLoser ? 0.9 : (isCelebrating ? 1.02 : 1),
                 }}
               >
+                {/* Outer glow for winner */}
+                {isWinner && (
+                  <div className="absolute -inset-3 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 rounded-[32px] blur-xl opacity-70 animate-pulse" />
+                )}
+                
                 {/* Gradient border */}
                 <div 
-                  className={`absolute -inset-[1.5px] rounded-2xl ${
+                  className={`absolute -inset-[2px] rounded-3xl ${
                     isWinner 
-                      ? 'bg-gradient-to-r from-pink-500 via-rose-400 to-pink-500' 
-                      : 'bg-gradient-to-br from-pink-500/30 via-purple-500/20 to-cyan-500/30'
+                      ? 'bg-gradient-to-r from-pink-500 via-rose-400 to-purple-500' 
+                      : 'bg-gradient-to-br from-white/20 via-white/5 to-white/10'
                   }`}
                   style={{
                     backgroundSize: isWinner ? '200% 200%' : '100% 100%',
@@ -116,52 +127,61 @@ const MobileSwipeRating = ({
                 />
                 
                 {/* Inner card */}
-                <div className="relative rounded-[14px] overflow-hidden bg-gray-950 m-[1.5px] h-full flex flex-col">
-                  {/* Image container */}
-                  <div className="flex-1 relative bg-black flex items-center justify-center min-h-0">
-                    <img
-                      src={image.url}
-                      alt=""
-                      className={`
-                        max-w-full max-h-full w-auto h-auto object-contain
-                        transition-all duration-500
-                        ${isCelebrating ? 'scale-[1.02] brightness-110' : ''}
-                      `}
-                    />
-                    
-                    {/* Subtle vignette */}
-                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/30 via-transparent to-black/10" />
+                <div className="absolute inset-[2px] rounded-[22px] overflow-hidden bg-black">
+                  {/* Full bleed image - covers the entire card */}
+                  <img
+                    src={image.url}
+                    alt=""
+                    className={`
+                      absolute inset-0 w-full h-full object-cover brightness-110
+                      transition-all duration-500
+                      ${isCelebrating ? 'scale-[1.05] brightness-125' : ''}
+                    `}
+                  />
+                  
+                  {/* Gradient overlays for text readability - reduced opacity */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/50 pointer-events-none" />
+                  
+                  {/* Top info bar - ELO only */}
+                  <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end p-3">
+                    {/* ELO badge */}
+                    {image.elo && (
+                      <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 shadow-lg">
+                        <span className="text-xs font-bold text-white">{Math.round(image.elo)}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  {/* AI Controls bar at bottom */}
-                  <div className="flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2.5 bg-black/80 backdrop-blur-sm border-t border-white/5">
-                    {/* AI Photo Button */}
-                    <motion.button
-                      onClick={(e) => handleOpenAiModal(e, image, 'image')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-all"
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <HiSparkles className="text-cyan-400" size={12} />
-                      <span className="text-[10px] font-medium text-white/80">AI Photo</span>
-                    </motion.button>
-                    
-                    {/* AI Video Button */}
-                    <motion.button
-                      onClick={(e) => handleOpenAiModal(e, image, 'video')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <FaVideo className="text-purple-400" size={10} />
-                      <span className="text-[10px] font-medium text-white/80">AI Video</span>
-                    </motion.button>
+                  {/* Bottom controls bar */}
+                  <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between gap-2 p-3">
+                    {/* AI Buttons */}
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        onClick={(e) => handleOpenAiModal(e, image, 'image')}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 transition-all shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <HiSparkles className="text-cyan-400" size={14} />
+                        <span className="text-xs font-medium text-white">Photo</span>
+                      </motion.button>
+                      
+                      <motion.button
+                        onClick={(e) => handleOpenAiModal(e, image, 'video')}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 transition-all shadow-lg"
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <FaVideo className="text-purple-400" size={12} />
+                        <span className="text-xs font-medium text-white">Video</span>
+                      </motion.button>
+                    </div>
                     
                     {/* Zoom Button */}
                     <motion.button
                       onClick={(e) => handleZoom(e, image)}
-                      className="p-2 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-all"
+                      className="p-2.5 rounded-xl bg-black/50 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all shadow-lg"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <FaSearchPlus size={11} />
+                      <FaSearchPlus size={14} />
                     </motion.button>
                   </div>
                 </div>

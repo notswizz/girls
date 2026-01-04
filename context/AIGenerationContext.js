@@ -54,6 +54,9 @@ export function AIGenerationProvider({ children }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // The generated content URL
   const [showModal, setShowModal] = useState(false);
+  // Track source model for filtering in creations
+  const [sourceModelId, setSourceModelId] = useState(null);
+  const [sourceModelName, setSourceModelName] = useState(null);
   
   const pollIntervalRef = useRef(null);
 
@@ -70,6 +73,8 @@ export function AIGenerationProvider({ children }) {
       if (persisted.generationType) setGenerationType(persisted.generationType);
       if (persisted.referenceImageUrl) setReferenceImageUrl(persisted.referenceImageUrl);
       if (persisted.prompt) setPrompt(persisted.prompt);
+      if (persisted.sourceModelId) setSourceModelId(persisted.sourceModelId);
+      if (persisted.sourceModelName) setSourceModelName(persisted.sourceModelName);
       if (persisted.result) {
         setResult(persisted.result);
         setShowModal(true);
@@ -87,9 +92,11 @@ export function AIGenerationProvider({ children }) {
       referenceImageUrl,
       prompt,
       result,
-      isGenerating
+      isGenerating,
+      sourceModelId,
+      sourceModelName
     });
-  }, [initialized, predictionId, generationType, referenceImageUrl, prompt, result, isGenerating]);
+  }, [initialized, predictionId, generationType, referenceImageUrl, prompt, result, isGenerating, sourceModelId, sourceModelName]);
 
   // Poll for result
   const pollForResult = useCallback(async () => {
@@ -162,10 +169,13 @@ export function AIGenerationProvider({ children }) {
   }, [isGenerating]);
 
   // Start a new generation
-  const startGeneration = useCallback(async (imageUrl, promptText, type) => {
+  // modelInfo: { id, name } - optional info about source model for filtering
+  const startGeneration = useCallback(async (imageUrl, promptText, type, modelInfo = null) => {
     setReferenceImageUrl(imageUrl);
     setPrompt(promptText);
     setGenerationType(type);
+    setSourceModelId(modelInfo?.id || null);
+    setSourceModelName(modelInfo?.name || null);
     setError(null);
     setResult(null);
     setIsGenerating(true);
@@ -229,6 +239,8 @@ export function AIGenerationProvider({ children }) {
     setPrompt('');
     setReferenceImageUrl(null);
     setGenerationType(null);
+    setSourceModelId(null);
+    setSourceModelName(null);
     setShowModal(false);
     // Clear localStorage
     if (typeof window !== 'undefined') {
@@ -265,6 +277,8 @@ export function AIGenerationProvider({ children }) {
     error,
     result,
     showModal,
+    sourceModelId,
+    sourceModelName,
     
     // Actions
     startGeneration,

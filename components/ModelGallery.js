@@ -187,14 +187,6 @@ const RandomImages = () => {
                   />
                 )}
                 
-                {/* Username badge */}
-                {image.modelUsername && (
-                  <div className="absolute bottom-2 left-2 right-2 z-20">
-                    <span className="text-[10px] sm:text-xs text-white/80 font-medium truncate block">
-                      @{image.modelUsername}
-                    </span>
-                  </div>
-                )}
                 
                 {/* ELO badge */}
                 {image.elo && (

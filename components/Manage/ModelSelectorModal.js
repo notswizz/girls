@@ -141,13 +141,9 @@ export default function ModelSelectorModal({
                     {/* Model info */}
                     <div className="flex-1 text-left min-w-0">
                       <div className="font-semibold text-white truncate">{model.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-white/40 text-sm">@{model.username}</span>
-                        <span className="text-white/30">·</span>
-                        <span className="text-white/50 text-sm flex items-center gap-1">
-                          <FaImages size={10} />
-                          {model.imageCount || 0}
-                        </span>
+                      <div className="text-white/50 text-sm flex items-center gap-1 mt-0.5">
+                        <FaImages size={10} />
+                        {model.imageCount || 0} photos
                       </div>
                     </div>
 

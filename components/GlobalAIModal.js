@@ -21,6 +21,8 @@ export default function GlobalAIModal() {
     closeModal,
     resetGeneration,
     setError,
+    sourceModelId,
+    sourceModelName,
   } = useAIGeneration();
 
   useEffect(() => {
@@ -55,6 +57,8 @@ export default function GlobalAIModal() {
           url: result,
           prompt: prompt,
           type: generationType,
+          sourceModelId: sourceModelId,
+          sourceModelName: sourceModelName,
         }),
       });
 
@@ -202,7 +206,7 @@ export default function GlobalAIModal() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
                 <FaCheck className="text-green-400 text-2xl" />
               </div>
-              <p className="text-green-400 font-medium">Saved to AI Gallery!</p>
+              <p className="text-green-400 font-medium">Saved to Creations!</p>
             </div>
           )}
 
@@ -254,7 +258,7 @@ export default function GlobalAIModal() {
                   ) : (
                     <>
                       {generationType === 'video' ? <FaVideo /> : <FaSave />}
-                      Save {generationType === 'video' ? 'Video' : 'Image'} to Gallery
+                      Save {generationType === 'video' ? 'Video' : 'Image'} to Creations
                     </>
                   )}
                 </button>

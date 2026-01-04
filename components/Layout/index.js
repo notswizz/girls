@@ -36,6 +36,21 @@ const Layout = ({ children, title = 'fap bank', fullHeight = false, hideBottomNa
         </main>
       )}
       
+      {/* Footer - desktop only */}
+      <footer className="hidden md:block fixed bottom-6 left-0 right-0 text-center pointer-events-auto z-40">
+        <a 
+          href="https://www.hotgirlshit.xyz/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="group inline-block"
+        >
+          <span className="text-white/90 text-[10px] font-bold tracking-[0.3em] uppercase">
+            HOT GIRL SHIT
+          </span>
+          <div className="mt-1.5 h-[2px] w-full bg-gradient-to-r from-transparent via-pink-500 to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
+        </a>
+      </footer>
+      
       {/* Bottom Navigation - mobile only */}
       {!hideBottomNav && <BottomNav />}
     </div>

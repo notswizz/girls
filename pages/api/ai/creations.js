@@ -1,0 +1,122 @@
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
+import { connectToDatabase } from '../../../config';
+import { ObjectId } from 'mongodb';
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Get user session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session || !session.user) {
+    return res.status(401).json({ error: 'You must be logged in to view creations' });
+  }
+
+  const { modelId, type, limit = 50, skip = 0, favoritesFirst } = req.query;
+
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Fetch from BOTH the new ai_creations collection AND the old images collection
+    // (for backwards compatibility with previously saved AI content)
+    
+    // 1. Query for new ai_creations collection
+    const newQuery = {
+      userId: session.user.id,
+      isActive: { $ne: false }
+    };
+
+    // Filter by source model if specified
+    if (modelId && modelId !== 'all') {
+      newQuery.sourceModelId = new ObjectId(modelId);
+    }
+
+    // Filter by type (image/video)
+    if (type && type !== 'all') {
+      newQuery.type = type;
+    }
+
+    // 2. Query for old images collection (AI generated content)
+    const oldQuery = {
+      userId: session.user.id,
+      isAIGenerated: true,
+      isActive: { $ne: false }
+    };
+
+    // For old images, filter by aiType if type specified
+    if (type && type !== 'all') {
+      oldQuery.aiType = type;
+    }
+
+    // Fetch from both collections in parallel
+    const [newCreations, oldCreations] = await Promise.all([
+      db.collection('ai_creations')
+        .find(newQuery)
+        .sort({ createdAt: -1 })
+        .toArray(),
+      db.collection('images')
+        .find(oldQuery)
+        .sort({ createdAt: -1 })
+        .toArray()
+    ]);
+
+    // Normalize old creations to match new format
+    const normalizedOldCreations = oldCreations.map(img => ({
+      _id: img._id,
+      url: img.url,
+      prompt: img.description || img.name || 'AI Generated',
+      userId: img.userId,
+      createdAt: img.createdAt,
+      isActive: img.isActive,
+      type: img.aiType || 'image',
+      isFavorite: img.isFavorite || false,
+      // Old creations don't have source model tracking
+      sourceModelId: null,
+      sourceModelName: null,
+      // Mark as legacy for potential migration
+      _isLegacy: true
+    }));
+
+    // Merge all creations
+    let allCreations = [...newCreations, ...normalizedOldCreations];
+    
+    // Sort: favorites first if requested, then by date
+    if (favoritesFirst === 'true') {
+      allCreations.sort((a, b) => {
+        // Favorites first
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        // Then by date
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    } else {
+      allCreations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    // Apply pagination
+    const paginatedCreations = allCreations.slice(parseInt(skip), parseInt(skip) + parseInt(limit));
+    const total = allCreations.length;
+
+    // Get unique source models for filter dropdown (only from new creations)
+    const sourceModels = await db.collection('ai_creations').aggregate([
+      { $match: { userId: session.user.id, sourceModelId: { $ne: null } } },
+      { $group: { _id: '$sourceModelId', name: { $first: '$sourceModelName' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]).toArray();
+
+    return res.status(200).json({
+      creations: paginatedCreations,
+      total,
+      sourceModels: sourceModels.map(m => ({
+        id: m._id.toString(),
+        name: m.name,
+        count: m.count
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching AI creations:', error);
+    return res.status(500).json({ error: 'Failed to fetch creations' });
+  }
+}
