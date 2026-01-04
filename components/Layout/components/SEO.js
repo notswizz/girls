@@ -6,15 +6,15 @@ import { useRouter } from 'next/router';
  * for improved search engine optimization and social sharing
  */
 const SEO = ({ 
-  title = 'hot girl shit',
-  description = 'Rate, compare, and discover the hottest models in our head-to-head matchups with our cyberpunk-inspired platform.',
-  keywords = 'model rating, olivia ponton, jordyn jones, fapello, onlyfans, boutinella, livvy dunne, madison pettis, jasmine skye, millie bobby brown, hannah ann sluss, hot girls, influencers, compare models, bikini models, instagram models',
+  title = 'fap bank',
+  description = 'Your private collection app. Browse your favorites, create with AI, and rate head-to-head.',
+  keywords = 'private gallery, secret folder, photo vault, ai image generator, photo rating, collection manager',
   ogImage = '/og-image.jpg', 
   ogType = 'website'
 }) => {
   const router = useRouter();
-  const canonicalUrl = `https://hotgirlshit.com${router.asPath}`;
-  const siteName = 'hot girl shit';
+  const canonicalUrl = `https://fapbank.app${router.asPath}`;
+  const siteName = 'fap bank';
   
   // Format the title consistently
   const formattedTitle = `${title} | ${siteName}`;
@@ -65,11 +65,11 @@ const SEO = ({
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": siteName,
-            "url": "https://hotgirlshit.com",
+            "url": "https://fapbank.app",
             "description": description,
             "potentialAction": {
               "@type": "SearchAction",
-              "target": "https://hotgirlshit.com/search?q={search_term_string}",
+              "target": "https://fapbank.app/search?q={search_term_string}",
               "query-input": "required name=search_term_string"
             }
           })

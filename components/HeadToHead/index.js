@@ -122,7 +122,7 @@ const HeadToHeadCompare = () => {
           </div>
           <h2 className="text-2xl font-bold text-white mb-4">Sign in to Rate</h2>
           <p className="text-white/60 mb-8">
-            Create your personal gallery and start rating your own hot girl shit collection.
+            Create your private bank and start rating your collection head-to-head.
           </p>
           <button
             onClick={() => signIn('google')}

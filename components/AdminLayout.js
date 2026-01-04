@@ -18,8 +18,8 @@ export default function AdminLayout({ children, title = 'admin' }) {
   return (
     <div className="min-h-screen bg-black text-white">
       <Head>
-        <title>{title} | admin | hot girl shit</title>
-        <meta name="description" content="admin dashboard for hot girl shit" />
+        <title>{title} | admin | fap bank</title>
+        <meta name="description" content="admin dashboard for fap bank" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>

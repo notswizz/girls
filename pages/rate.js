@@ -27,7 +27,7 @@ export default function RatePage() {
   const seoProps = {
     title: "Rate Models - Head-to-Head Comparison",
     description: "Vote for your favorite models in our head-to-head comparisons. Participate in ranking the hottest content with our interactive rating system.",
-    keywords: "olivia ponton, jordyn jones, fapello, onlyfans, boutinella, livvy dunne, madison pettis, jasmine skye, millie bobby brown, hannah ann sluss, rate models, compare hot girls, vote for models, head to head comparison",
+    keywords: "photo rating, head to head comparison, image battle, rate collection, private gallery duels, AI enhanced photos",
     ogType: "website"
   };
 

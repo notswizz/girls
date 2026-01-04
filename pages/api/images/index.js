@@ -19,11 +19,38 @@ export default async function handler(req, res) {
         
         // Build query object
         const query = { isActive: true };
+        let publicModels = null;
         
         // Filter by user unless allUsers is explicitly requested (for public views)
         // If user is logged in and not requesting all users, filter by their userId
         if (session?.user?.id && allUsers !== 'true') {
           query.userId = session.user.id;
+        } else {
+          // For public views (homepage, not logged in), only show images from PUBLIC models
+          // First get all public model IDs
+          publicModels = await db.collection('models').find({
+            isActive: true,
+            isPublic: { $ne: false } // Include true and undefined/missing
+          }).toArray();
+          
+          const publicModelIds = publicModels.map(m => m._id);
+          const publicModelIdsStr = publicModels.map(m => m._id.toString());
+          
+          // Only show images from public models
+          query.$or = [
+            { modelId: { $in: publicModelIds } },
+            { modelId: { $in: publicModelIdsStr } }
+          ];
+          
+          // Also exclude AI generated content from public view
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { isAIGenerated: { $exists: false } },
+              { isAIGenerated: false },
+              { isAIGenerated: null }
+            ]
+          });
         }
         
         // Add modelId filter if provided
@@ -65,13 +92,29 @@ export default async function handler(req, res) {
         const total = await db.collection('images').countDocuments(query);
         
         // Fetch images
-        const images = await db
+        let images = await db
           .collection('images')
           .find(query)
           .sort(sortOptions)
           .skip(numOffset)
           .limit(numLimit)
           .toArray();
+        
+        // Add model username for public views
+        if (publicModels) {
+          const modelMap = {};
+          publicModels.forEach(m => {
+            modelMap[m._id.toString()] = m;
+          });
+          
+          images = images.map(img => {
+            const imgModelId = img.modelId?.toString() || img.modelId;
+            return {
+              ...img,
+              modelUsername: modelMap[imgModelId]?.username || null
+            };
+          });
+        }
         
         return res.status(200).json({
           success: true,

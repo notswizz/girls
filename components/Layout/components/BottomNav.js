@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { FaHome, FaFire, FaGlobe, FaImages } from 'react-icons/fa';
+import { FaHome, FaTrophy, FaGlobe, FaPiggyBank } from 'react-icons/fa';
 
 const navItems = [
   { href: '/', icon: FaHome, label: 'Home' },
-  { href: '/rate', icon: FaFire, label: 'Rate' },
+  { href: '/rate', icon: FaTrophy, label: 'Rate' },
   { href: '/rate?tab=explore', icon: FaGlobe, label: 'Explore' },
-  { href: '/manage', icon: FaImages, label: 'Manage' },
+  { href: '/manage', icon: FaPiggyBank, label: 'Bank' },
 ];
 
 export default function BottomNav() {
@@ -47,7 +47,7 @@ export default function BottomNav() {
                 {active && (
                   <motion.div
                     layoutId="bottomNavLine"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full"
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}

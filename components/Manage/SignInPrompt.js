@@ -15,7 +15,7 @@ export default function SignInPrompt() {
         </div>
         <h1 className="text-3xl font-bold text-white mb-4">Manage Your Gallery</h1>
         <p className="text-white/60 mb-8">
-          Sign in to create your personal gallery, upload photos, and start rating your own hot girl shit.
+          Sign in to open your fap bank. Browse your collection, create with AI, and rate your favorites.
         </p>
         <button
           onClick={() => signIn('google')}

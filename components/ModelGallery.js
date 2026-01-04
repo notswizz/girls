@@ -1,8 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { FaUpload, FaGoogle, FaArrowRight } from 'react-icons/fa';
+import { FaUpload, FaGoogle, FaArrowRight, FaPlay } from 'react-icons/fa';
+
+// Helper to check if URL is a video
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+  const lowercaseUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowercaseUrl.includes(ext));
+};
+
+// Video thumbnail component with hover-to-play
+const VideoThumbnail = ({ url, className }) => {
+  const videoRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <div 
+      className="relative w-full h-full"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <video
+        ref={videoRef}
+        src={url}
+        className={className}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      />
+      {/* Play indicator when not hovered */}
+      {!isHovered && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <FaPlay className="text-white text-xs ml-0.5" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const RandomImages = () => {
   const [images, setImages] = useState([]);
@@ -13,7 +68,8 @@ const RandomImages = () => {
     const fetchRandomImages = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/images');
+        // Always fetch public images for homepage gallery (allUsers=true triggers public filter)
+        const response = await fetch('/api/images?allUsers=true');
         const data = await response.json();
         
         if (data.success && data.images && data.images.length > 0) {
@@ -106,7 +162,7 @@ const RandomImages = () => {
               className="relative group cursor-pointer"
             >
               {/* Glow effect on hover */}
-              <div className="absolute -inset-2 bg-gradient-to-r from-pink-500/50 to-purple-500/50 rounded-2xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
+              <div className="absolute -inset-2 bg-gradient-to-r from-pink-500/40 to-rose-500/40 rounded-2xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
               
               {/* Image container */}
               <div className="relative w-24 h-32 sm:w-32 sm:h-40 md:w-36 md:h-48 rounded-2xl overflow-hidden border-2 border-white/10 group-hover:border-pink-500/50 transition-all duration-300 shadow-xl">
@@ -116,13 +172,20 @@ const RandomImages = () => {
                 {/* Shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20" />
                 
-                {/* Image */}
-                <img
-                  src={image.url}
-                  alt="Model"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  loading="lazy"
-                />
+                {/* Image or Video */}
+                {isVideoUrl(image.url) ? (
+                  <VideoThumbnail 
+                    url={image.url}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                ) : (
+                  <img
+                    src={image.url}
+                    alt="Model"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
+                )}
                 
                 {/* Username badge */}
                 {image.modelUsername && (

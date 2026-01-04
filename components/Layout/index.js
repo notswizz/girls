@@ -7,7 +7,7 @@ import BottomNav from './components/BottomNav';
  * @param {boolean} fullHeight - If true, uses fixed height for full-page layouts (like Manage)
  * @param {boolean} hideBottomNav - If true, hides the bottom navigation
  */
-const Layout = ({ children, title = 'hot girl shit', fullHeight = false, hideBottomNav = false }) => {
+const Layout = ({ children, title = 'fap bank', fullHeight = false, hideBottomNav = false }) => {
   return (
     <div className="min-h-screen min-h-[100dvh]">
       <SEO title={title} />

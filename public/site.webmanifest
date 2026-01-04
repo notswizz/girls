@@ -1,6 +1,6 @@
 {
-  "name": "hot girl shit",
-  "short_name": "hot girl shit",
+  "name": "fap bank",
+  "short_name": "fap bank",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,8 +13,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#FF6AB1",
+  "theme_color": "#EC4899",
   "background_color": "#121212",
   "display": "standalone",
   "start_url": "/"
-} 
+}

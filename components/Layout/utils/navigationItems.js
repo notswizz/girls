@@ -1,10 +1,10 @@
-import { FaStar, FaCog } from 'react-icons/fa';
+import { FaTrophy, FaPiggyBank } from 'react-icons/fa';
 
 /**
  * Shared navigation items for the application
- * Core tabs: Rate (with gallery/explore toggle), Manage (with analytics)
+ * Core tabs: Rate (head-to-head rating), Bank (manage collection)
  */
 export const navigationItems = [
-  { name: 'rate', path: '/rate', icon: <FaStar className="mr-2" /> },
-  { name: 'manage', path: '/manage', icon: <FaCog className="mr-2" /> },
+  { name: 'rate', path: '/rate', icon: <FaTrophy className="mr-2" /> },
+  { name: 'bank', path: '/manage', icon: <FaPiggyBank className="mr-2" /> },
 ];

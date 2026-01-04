@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { FaPiggyBank } from 'react-icons/fa';
 import DesktopNavigation from './DesktopNavigation';
 import MobileNavigation from './MobileNavigation';
 
@@ -32,8 +33,13 @@ const Header = () => {
         <div className="flex justify-between items-center h-14 md:h-20">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="font-display font-bold text-lg md:text-2xl text-cyber">
-              hot girl shit
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg shadow-pink-500/20 group-hover:shadow-pink-500/40 transition-shadow">
+                <FaPiggyBank className="text-white text-xs md:text-sm" />
+              </div>
+              <span className="font-display font-black text-lg md:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-rose-200">
+                fap bank
+              </span>
             </Link>
           </div>
           
