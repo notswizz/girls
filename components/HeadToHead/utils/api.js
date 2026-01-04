@@ -25,9 +25,17 @@ export const checkAnonymousAccess = async () => {
 
 /**
  * Fetch images for comparison
+ * @param {string[]} recentModels - Array of model IDs to avoid (minimum 6 ratings apart)
  */
-export const fetchComparisonImages = async () => {
-  const response = await fetch('/api/images/compare?count=2');
+export const fetchComparisonImages = async (recentModels = []) => {
+  const params = new URLSearchParams({ count: '2' });
+  
+  // Add recent models to avoid repetition
+  if (recentModels.length > 0) {
+    params.append('recentModels', recentModels.join(','));
+  }
+  
+  const response = await fetch(`/api/images/compare?${params.toString()}`);
   
   if (!response.ok) {
     const errorData = await response.json();

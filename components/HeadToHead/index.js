@@ -13,12 +13,16 @@ import MobileSwipeRating from './components/MobileSwipeRating';
 import ErrorDisplay from './components/ErrorDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 
+// Maximum number of recent models to track (minimum ratings apart)
+const RECENT_MODELS_LIMIT = 6;
+
 const HeadToHeadCompare = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImageId, setSelectedImageId] = useState(null);
   const [celebratingId, setCelebratingId] = useState(null);
+  const [recentModels, setRecentModels] = useState([]);
   const { data: session, status } = useSession();
   const hasFetched = useRef(false);
 
@@ -29,8 +33,19 @@ const HeadToHeadCompare = () => {
       setSelectedImageId(null);
       setCelebratingId(null);
       
-      const fetchedImages = await fetchComparisonImages();
+      const fetchedImages = await fetchComparisonImages(recentModels);
       setImages(fetchedImages);
+      
+      // Track models shown in this comparison (to avoid showing same model within 6 ratings)
+      const newModelIds = fetchedImages
+        .map(img => img.modelId?.toString() || img.modelId)
+        .filter(Boolean);
+      
+      setRecentModels(prev => {
+        const updated = [...prev, ...newModelIds];
+        // Keep only the last RECENT_MODELS_LIMIT models
+        return updated.slice(-RECENT_MODELS_LIMIT);
+      });
     } catch (err) {
       // Don't log AUTH_REQUIRED as an error - it's expected when not logged in
       if (err.message === 'AUTH_REQUIRED') {

@@ -15,6 +15,10 @@ export default async function handler(req, res) {
     if (!session) {
       return res.status(401).json({ message: 'Must be logged in to rate' });
     }
+    
+    // Parse recently shown models to avoid (minimum 6 ratings apart)
+    const { recentModels = '' } = req.query;
+    const recentModelIds = recentModels ? recentModels.split(',').filter(Boolean) : [];
 
     // Get all PUBLIC models only (explicitly exclude private models and AI models)
     const allModels = await db.collection('models').find({ isActive: true }).toArray();
@@ -73,12 +77,27 @@ export default async function handler(req, res) {
       });
     }
 
+    // Filter out images from recently shown models (minimum 6 ratings apart rule)
+    let availableImages = allImages;
+    if (recentModelIds.length > 0) {
+      availableImages = allImages.filter(img => {
+        const imgModelId = img.modelId?.toString() || img.modelId;
+        return !recentModelIds.includes(imgModelId);
+      });
+      
+      // If not enough images after filtering, fall back to all images
+      if (availableImages.length < 2) {
+        console.log(`Not enough images after filtering recent models, using all ${allImages.length}`);
+        availableImages = allImages;
+      }
+    }
+
     // Shuffle and pick 2 images, preferring different models
-    const shuffled = allImages.sort(() => Math.random() - 0.5);
+    const shuffled = availableImages.sort(() => Math.random() - 0.5);
     const firstImage = shuffled[0];
     const firstModelId = firstImage.modelId?.toString() || firstImage.modelId;
     
-    // Try to find image from different model
+    // Try to find image from different model (also excluding recent models)
     let secondImage = shuffled.find(img => {
       const imgModelId = img.modelId?.toString() || img.modelId;
       return imgModelId !== firstModelId;

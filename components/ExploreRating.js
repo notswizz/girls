@@ -7,6 +7,9 @@ import { useAIGeneration } from '../context/AIGenerationContext';
 import { AIGenerationIndicator } from './GlobalAIModal';
 import AIPromptModal from './AIPromptModal';
 
+// Maximum number of recent models to track (minimum ratings apart)
+const RECENT_MODELS_LIMIT = 6;
+
 export default function ExploreRating() {
   const { data: session, status } = useSession();
   const [images, setImages] = useState([]);
@@ -15,6 +18,7 @@ export default function ExploreRating() {
   const [celebrating, setCelebrating] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [recentModels, setRecentModels] = useState([]);
   const containerRef = useRef(null);
   
   // AI Generation - using global context
@@ -42,10 +46,18 @@ export default function ExploreRating() {
     setPromptModalOpen(false);
   };
 
-  const fetchImages = async () => {
+  const fetchImages = async (currentRecentModels = recentModels) => {
     try {
       setLoading(true);
-      const res = await fetch('/api/explore/compare');
+      
+      // Build URL with recent models to avoid repetition
+      const params = new URLSearchParams();
+      if (currentRecentModels.length > 0) {
+        params.append('recentModels', currentRecentModels.join(','));
+      }
+      
+      const url = `/api/explore/compare${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url);
       const data = await res.json();
       
       if (data.success && data.images?.length >= 2) {
@@ -54,6 +66,16 @@ export default function ExploreRating() {
         if (containerRef.current) {
           containerRef.current.scrollTo({ left: 0, behavior: 'instant' });
         }
+        
+        // Track models shown (to avoid showing same model within 6 ratings)
+        const newModelIds = data.images
+          .map(img => img.modelId?.toString() || img.modelId)
+          .filter(Boolean);
+        
+        setRecentModels(prev => {
+          const updated = [...prev, ...newModelIds];
+          return updated.slice(-RECENT_MODELS_LIMIT);
+        });
       } else {
         setImages([]);
       }

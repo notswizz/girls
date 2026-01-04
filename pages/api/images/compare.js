@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       }
       
       // Parse query parameters
-      const { count = 2, exclude = '' } = req.query;
+      const { count = 2, exclude = '', recentModels = '' } = req.query;
       const countNum = parseInt(count, 10);
       
       // Validate count
@@ -65,6 +65,12 @@ export default async function handler(req, res) {
             return false;
           }
         }).map(id => new ObjectId(id));
+      }
+      
+      // Parse recently shown models to avoid (minimum 6 ratings apart)
+      let recentModelIds = [];
+      if (recentModels) {
+        recentModelIds = recentModels.split(',').filter(Boolean);
       }
       
       // Build query object - only show user's own images, exclude AI generated content
@@ -135,16 +141,31 @@ export default async function handler(req, res) {
       
       console.log(`Found ${modelsWithImages.length} models with images for user ${userId}`);
       
+      // Filter out recently shown models (minimum 6 ratings apart rule)
+      let availableModels = modelsWithImages;
+      if (recentModelIds.length > 0) {
+        availableModels = modelsWithImages.filter(m => {
+          const modelIdStr = m.modelId?.toString() || m.modelId;
+          return !recentModelIds.includes(modelIdStr);
+        });
+        
+        // If not enough models after filtering, fall back to all models
+        if (availableModels.length < countNum) {
+          console.log(`Not enough models after filtering recent (${availableModels.length}), using all ${modelsWithImages.length}`);
+          availableModels = modelsWithImages;
+        }
+      }
+      
       // Check if we have enough models to compare
-      if (modelsWithImages.length < countNum) {
+      if (availableModels.length < countNum) {
         return res.status(400).json({ 
           success: false, 
-          message: `Not enough models with images. Need ${countNum}, but only found ${modelsWithImages.length}.` 
+          message: `Not enough models with images. Need ${countNum}, but only found ${availableModels.length}.` 
         });
       }
       
       // Randomly select models
-      const shuffledModels = modelsWithImages.sort(() => 0.5 - Math.random()).slice(0, countNum);
+      const shuffledModels = availableModels.sort(() => 0.5 - Math.random()).slice(0, countNum);
       
       console.log(`Selected ${shuffledModels.length} random models for comparison`);
       
