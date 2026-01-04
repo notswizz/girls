@@ -304,21 +304,35 @@ export default function Home() {
                     <span className="text-pink-400/60 text-xs">View all →</span>
                   </div>
                   <div className="flex gap-2 overflow-hidden">
-                    {images.slice(0, 6).map((img, i) => (
-                      <motion.div
-                        key={img._id || i}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.45 + i * 0.03 }}
-                        className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5 border border-white/10"
-                      >
-                        <img
-                          src={img.url}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      </motion.div>
-                    ))}
+                    {images.slice(0, 6).map((img, i) => {
+                      const isVideo = img.url?.includes('.mp4') || img.url?.includes('video') || img.type === 'video';
+                      return (
+                        <motion.div
+                          key={img._id || i}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.45 + i * 0.03 }}
+                          className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5 border border-white/10"
+                        >
+                          {isVideo ? (
+                            <video
+                              src={img.url}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                          ) : (
+                            <img
+                              src={img.url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
                     {images.length > 6 && (
                       <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                         <span className="text-white/40 text-xs font-medium">+{images.length - 6}</span>
