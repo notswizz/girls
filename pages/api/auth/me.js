@@ -40,6 +40,10 @@ export default async function handler(req, res) {
       isAdmin: user.isAdmin,
       ratingsCount: user.ratingsCount,
       createdAt: user.createdAt,
+      tokens: user.tokens || 0,
+      tokensFromWins: userDoc.tokensFromWins || 0,
+      referralCount: user.referralCount || 0,
+      referralTokensEarned: user.referralTokensEarned || 0,
     };
 
     return res.status(200).json({

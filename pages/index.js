@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
-import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay } from 'react-icons/fa';
+import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
@@ -264,12 +264,13 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="grid grid-cols-3 gap-3 w-full max-w-md"
+              className="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-lg"
             >
               {[
                 { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600' },
                 { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: 'Your collection', color: 'from-pink-500 to-rose-600' },
                 { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: 'AI content', color: 'from-purple-500 to-violet-600' },
+                { href: '/referrals', icon: FaGift, title: 'Refer', subtitle: 'Earn tokens', color: 'from-emerald-500 to-teal-600' },
               ].map((item, i) => (
                 <Link href={item.href} key={item.title}>
                   <motion.div
@@ -278,13 +279,13 @@ export default function Home() {
                     transition={{ delay: 0.2 + i * 0.05 }}
                     whileHover={{ scale: 1.05, y: -4 }}
                     whileTap={{ scale: 0.95 }}
-                    className="relative p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all text-center"
+                    className="relative p-3 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all text-center"
                   >
-                    <div className={`w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg`}>
-                      <item.icon className="text-white text-lg" />
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg`}>
+                      <item.icon className="text-white text-base sm:text-lg" />
                     </div>
-                    <div className="text-white font-semibold text-sm">{item.title}</div>
-                    <div className="text-white/40 text-[10px] mt-0.5">{item.subtitle}</div>
+                    <div className="text-white font-semibold text-xs sm:text-sm">{item.title}</div>
+                    <div className="text-white/40 text-[9px] sm:text-[10px] mt-0.5">{item.subtitle}</div>
                   </motion.div>
                 </Link>
               ))}

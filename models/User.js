@@ -18,6 +18,11 @@ class User {
     // Token system fields
     tokens = 0, // spendable tokens, default 0
     revealHistory = [], // array of { modelId, timestamp, cost }
+    // Referral system fields
+    referralCode = null, // Unique code for this user to share
+    referredBy = null, // User ID of who referred them
+    referralCount = 0, // Number of successful referrals
+    referralTokensEarned = 0, // Total tokens earned from referrals
   }) {
     this._id = _id;
     this.name = name;
@@ -32,6 +37,10 @@ class User {
     this.lastLoginAt = lastLoginAt;
     this.tokens = tokens;
     this.revealHistory = revealHistory;
+    this.referralCode = referralCode;
+    this.referredBy = referredBy;
+    this.referralCount = referralCount;
+    this.referralTokensEarned = referralTokensEarned;
   }
 
   // Format for database insertion
@@ -49,6 +58,10 @@ class User {
       lastLoginAt: this.lastLoginAt,
       tokens: this.tokens,
       revealHistory: this.revealHistory,
+      referralCode: this.referralCode,
+      referredBy: this.referredBy,
+      referralCount: this.referralCount,
+      referralTokensEarned: this.referralTokensEarned,
     };
   }
 
@@ -69,6 +82,10 @@ class User {
       lastLoginAt: doc.lastLoginAt || null,
       tokens: doc.tokens || 0,
       revealHistory: doc.revealHistory || [],
+      referralCode: doc.referralCode || null,
+      referredBy: doc.referredBy || null,
+      referralCount: doc.referralCount || 0,
+      referralTokensEarned: doc.referralTokensEarned || 0,
     });
   }
 

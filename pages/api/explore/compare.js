@@ -16,6 +16,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: 'Must be logged in to rate' });
     }
     
+    // Get current user ID to exclude their own images
+    const currentUserId = session.user.id;
+    
     // Parse recently shown models to avoid (minimum 6 ratings apart)
     const { recentModels = '' } = req.query;
     const recentModelIds = recentModels ? recentModels.split(',').filter(Boolean) : [];
@@ -53,10 +56,19 @@ export default async function handler(req, res) {
     
     let allEligibleImages = [];
     
+    // Build user ID exclusion conditions (handle both string and ObjectId formats)
+    const userIdExclusions = [
+      { userId: { $ne: currentUserId } }
+    ];
+    if (currentUserId && ObjectId.isValid(currentUserId)) {
+      userIdExclusions.push({ userId: { $ne: new ObjectId(currentUserId) } });
+    }
+    
     for (const model of publicModels) {
       const modelIdStr = model._id.toString();
       
       // Get top 10 images for this model, sorted by ELO (owner's rating determines quality)
+      // EXCLUDE current user's own images
       const topImages = await db.collection('images')
         .find({
           isActive: true,
@@ -64,6 +76,8 @@ export default async function handler(req, res) {
             { modelId: model._id },
             { modelId: modelIdStr }
           ],
+          // Exclude current user's own images
+          userId: { $ne: currentUserId },
           // Exclude AI generated images
           $and: [
             { $or: [
@@ -80,7 +94,13 @@ export default async function handler(req, res) {
       allEligibleImages.push(...topImages);
     }
     
-    console.log(`Total eligible images (top ${TOP_IMAGES_PER_MODEL} per model): ${allEligibleImages.length}`);
+    // Additional filter to catch any edge cases where userId format differs
+    allEligibleImages = allEligibleImages.filter(img => {
+      const imgUserId = img.userId?.toString();
+      return imgUserId !== currentUserId;
+    });
+    
+    console.log(`Total eligible images (top ${TOP_IMAGES_PER_MODEL} per model, excluding user's own): ${allEligibleImages.length}`);
 
     if (allEligibleImages.length < 2) {
       return res.status(200).json({

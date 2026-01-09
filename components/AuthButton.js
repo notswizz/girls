@@ -1,7 +1,8 @@
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { FaGoogle, FaSignOutAlt, FaUser, FaFire, FaImages, FaCrown, FaChartLine } from "react-icons/fa";
+import { FaGoogle, FaSignOutAlt, FaUser, FaFire, FaImages, FaCrown, FaChartLine, FaCoins, FaGift } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
@@ -96,74 +97,88 @@ export default function AuthButton() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 mt-2 w-72 rounded-2xl shadow-2xl bg-gray-900/95 backdrop-blur-xl border border-white/10 z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-80 rounded-2xl shadow-2xl bg-[#0d0d14] border border-white/10 z-50 overflow-hidden"
             >
-              {/* Header with user info */}
-              <div className="bg-gradient-to-r from-pink-600 to-purple-600 px-5 py-4">
+              {/* Compact Header */}
+              <div className="p-4 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
-                    <span className="text-xl font-bold text-white">{session.user.name?.charAt(0).toUpperCase()}</span>
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <span className="text-lg font-bold text-white">{session.user.name?.charAt(0).toUpperCase()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-bold truncate">{session.user.name}</p>
-                    <p className="text-white/70 text-xs truncate">{session.user.email}</p>
+                    <p className="text-white font-semibold truncate text-sm">{session.user.name}</p>
+                    <p className="text-white/40 text-xs truncate">{session.user.email}</p>
+                  </div>
+                  {/* Token balance inline */}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/25">
+                    <FaCoins className="text-amber-400 text-xs" />
+                    <span className="text-amber-300 font-bold text-sm">
+                      {loadingStats ? '·' : (userStats?.tokens || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
               
-              {/* Live Stats Grid */}
-              <div className="p-4">
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Ratings */}
-                  <div className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
-                    <FaFire className="text-pink-400 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-white">
-                      {loadingStats ? '·' : (userStats?.ratingsCount || 0)}
-                    </div>
-                    <div className="text-[10px] text-white/40 uppercase tracking-wide">Votes</div>
+              {/* Main Content */}
+              <div className="p-3">
+                {/* Stats Row - Compact */}
+                <div className="flex items-center gap-1 p-2 rounded-xl bg-white/[0.02]">
+                  <div className="flex-1 text-center py-2">
+                    <div className="text-lg font-bold text-white">{loadingStats ? '·' : (userStats?.ratingsCount || 0)}</div>
+                    <div className="text-[10px] text-white/30 uppercase">Votes</div>
                   </div>
-                  
-                  {/* Models */}
-                  <div className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
-                    <FaCrown className="text-purple-400 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-white">
-                      {loadingStats ? '·' : (liveStats?.models || 0)}
-                    </div>
-                    <div className="text-[10px] text-white/40 uppercase tracking-wide">Models</div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="flex-1 text-center py-2">
+                    <div className="text-lg font-bold text-white">{loadingStats ? '·' : (liveStats?.models || 0)}</div>
+                    <div className="text-[10px] text-white/30 uppercase">Models</div>
                   </div>
-                  
-                  {/* Images */}
-                  <div className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
-                    <FaImages className="text-cyan-400 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-white">
-                      {loadingStats ? '·' : (liveStats?.images || 0)}
-                    </div>
-                    <div className="text-[10px] text-white/40 uppercase tracking-wide">Photos</div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="flex-1 text-center py-2">
+                    <div className="text-lg font-bold text-white">{loadingStats ? '·' : (liveStats?.images || 0)}</div>
+                    <div className="text-[10px] text-white/30 uppercase">Photos</div>
                   </div>
                 </div>
-                
-                {/* Activity indicator */}
-                {userStats?.ratingsCount > 0 && (
-                  <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20">
-                    <div className="flex items-center gap-2">
-                      <FaChartLine className="text-pink-400 text-sm" />
-                      <span className="text-white/70 text-xs">
-                        You've rated <span className="text-white font-semibold">{userStats.ratingsCount}</span> matchups!
-                      </span>
+
+                {/* Token Earnings - Only show if has earnings */}
+                {(userStats?.tokensFromWins > 0 || userStats?.referralTokensEarned > 0) && (
+                  <div className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.02]">
+                    <span className="text-[10px] text-white/30 uppercase">Earned:</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      {userStats?.tokensFromWins > 0 && (
+                        <span className="text-xs text-pink-300">
+                          <span className="text-pink-400 font-semibold">{userStats.tokensFromWins}</span> wins
+                        </span>
+                      )}
+                      {userStats?.tokensFromWins > 0 && userStats?.referralTokensEarned > 0 && (
+                        <span className="text-white/20">•</span>
+                      )}
+                      {userStats?.referralTokensEarned > 0 && (
+                        <span className="text-xs text-emerald-300">
+                          <span className="text-emerald-400 font-semibold">{userStats.referralTokensEarned}</span> referrals
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
-              </div>
-              
-              {/* Sign out button */}
-              <div className="px-3 pb-3">
-                <button
-                  onClick={() => signOut()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 transition-all"
-                >
-                  <FaSignOutAlt />
-                  <span>Sign out</span>
-                </button>
+
+                {/* Actions */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Link 
+                    href="/referrals"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all"
+                  >
+                    <FaGift className="text-emerald-400 text-sm" />
+                    <span className="text-xs font-medium text-emerald-300">Invite Friends</span>
+                  </Link>
+                  <button
+                    onClick={() => signOut()}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all"
+                  >
+                    <FaSignOutAlt className="text-white/40 text-sm" />
+                    <span className="text-xs font-medium text-white/50">Sign out</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

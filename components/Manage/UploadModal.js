@@ -215,7 +215,10 @@ export default function UploadModal({ isOpen, onClose, selectedModel, onUploadCo
       </div>
 
       {/* Footer with Upload Button */}
-      <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black/50">
+      <div 
+        className="flex-shrink-0 p-4 border-t border-white/10 bg-black/80 backdrop-blur-lg"
+        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <button
           onClick={handleUpload}
           disabled={isUploading || files.length === 0}

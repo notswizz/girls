@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import { getMongoDBAdapter } from '../../../lib/mongodb/mongodb-adapter';
 import { connectToDatabase } from '../../../lib/mongodb';
 import User from '../../../models/User';
+import { generateReferralCode, REFERRAL_REWARD_TOKENS, REFERRAL_BONUS_TOKENS } from '../../../utils/referralCode';
 
 export const authOptions = {
   providers: [
@@ -62,15 +63,24 @@ export const authOptions = {
       }
       return session;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile, credentials }) {
       try {
         const { db } = await connectToDatabase();
         const users = db.collection('users');
+        const referrals = db.collection('referrals');
         
         // Check if user exists
         const existingUser = await users.findOne({ email: user.email });
         
         if (!existingUser) {
+          // Generate a unique referral code for this new user
+          let referralCode = generateReferralCode();
+          let attempts = 0;
+          while (await users.findOne({ referralCode }) && attempts < 10) {
+            referralCode = generateReferralCode();
+            attempts++;
+          }
+
           // Create new user if they don't exist
           const newUser = new User({
             name: user.name,
@@ -81,15 +91,35 @@ export const authOptions = {
             isAdmin: false,
             createdAt: new Date(),
             lastLoginAt: new Date(),
+            referralCode: referralCode,
           });
           
-          await users.insertOne(newUser.toDatabase());
+          const result = await users.insertOne(newUser.toDatabase());
+          const newUserId = result.insertedId;
+
+          // Check for pending referral (we need to check via a separate API call 
+          // since we can't access cookies here directly - the frontend will handle this)
+          console.log(`[AUTH] New user created: ${user.email} with referral code: ${referralCode}`);
         } else {
           // Update Google ID if not present
           if (!existingUser.googleId) {
             await users.updateOne(
               { email: user.email },
               { $set: { googleId: profile.sub } }
+            );
+          }
+          
+          // Generate referral code if user doesn't have one
+          if (!existingUser.referralCode) {
+            let referralCode = generateReferralCode();
+            let attempts = 0;
+            while (await users.findOne({ referralCode }) && attempts < 10) {
+              referralCode = generateReferralCode();
+              attempts++;
+            }
+            await users.updateOne(
+              { email: user.email },
+              { $set: { referralCode } }
             );
           }
         }

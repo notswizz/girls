@@ -102,6 +102,42 @@ export default async function handler(req, res) {
       { $inc: { communityRatingsCount: 1 } }
     );
 
+    // Award 1 token to the owner of the winning photo (only if voter is NOT the owner)
+    const winnerOwnerId = winnerImage.userId;
+    if (winnerOwnerId && winnerOwnerId !== voterId) {
+      try {
+        // Try to convert to ObjectId if it's a string
+        let ownerQuery;
+        if (ObjectId.isValid(winnerOwnerId)) {
+          ownerQuery = { 
+            $or: [
+              { _id: new ObjectId(winnerOwnerId) },
+              { _id: winnerOwnerId }
+            ]
+          };
+        } else {
+          ownerQuery = { _id: winnerOwnerId };
+        }
+
+        const tokenResult = await db.collection('users').updateOne(
+          ownerQuery,
+          { 
+            $inc: { 
+              tokens: 1,
+              tokensFromWins: 1 // Track tokens earned from wins separately
+            } 
+          }
+        );
+
+        if (tokenResult.modifiedCount > 0) {
+          console.log(`[EXPLORE] Awarded 1 token to user ${winnerOwnerId} for winning vote`);
+        }
+      } catch (tokenError) {
+        // Don't fail the vote if token award fails, just log it
+        console.error('[EXPLORE] Failed to award token to winner owner:', tokenError);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Vote recorded'

@@ -210,7 +210,10 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
             </div>
           </div>
 
-          <div className="pt-2 pb-4">
+          <div 
+            className="pt-2"
+            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+          >
             <button
               type="submit"
               disabled={isCreating || !isValidModelUsername(modelUsername) || !modelName.trim()}

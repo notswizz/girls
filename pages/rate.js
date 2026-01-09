@@ -8,11 +8,11 @@ import { FaLock, FaGlobe } from 'react-icons/fa';
 
 export default function RatePage() {
   const { data: session } = useSession();
-  const [mode, setMode] = useState('gallery'); // 'gallery' or 'explore'
+  const [mode, setMode] = useState('explore'); // 'gallery' or 'explore' - explore is default
   
   // Track if each component has been mounted at least once
-  const [galleryMounted, setGalleryMounted] = useState(true);
-  const [exploreMounted, setExploreMounted] = useState(false);
+  const [galleryMounted, setGalleryMounted] = useState(false);
+  const [exploreMounted, setExploreMounted] = useState(true);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);

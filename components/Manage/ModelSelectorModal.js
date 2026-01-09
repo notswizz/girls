@@ -161,7 +161,10 @@ export default function ModelSelectorModal({
         </div>
 
         {/* Add new model button */}
-        <div className="p-3 border-t border-white/10">
+        <div 
+          className="p-3 border-t border-white/10"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           <button
             onClick={() => { onClose(); onAddModel(); }}
             className="w-full py-4 rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center gap-2 text-white/50 hover:border-pink-500/50 hover:text-pink-400 hover:bg-white/5 transition-all"
