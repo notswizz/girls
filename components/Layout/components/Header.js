@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { FaPiggyBank } from 'react-icons/fa';
 import DesktopNavigation from './DesktopNavigation';
 import MobileNavigation from './MobileNavigation';
+import AuthButton from '../../AuthButton';
 
 /**
  * Header component with logo, navigation and mobile menu
@@ -45,6 +46,11 @@ const Header = () => {
           
           {/* Desktop Navigation */}
           <DesktopNavigation />
+          
+          {/* Mobile Profile Button - visible only on mobile */}
+          <div className="md:hidden">
+            <AuthButton />
+          </div>
           
           {/* Mobile Navigation - hidden since we have bottom nav */}
           <div className="hidden">

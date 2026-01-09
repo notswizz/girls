@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
-import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift } from 'react-icons/fa';
+import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift, FaQuestionCircle } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
@@ -291,6 +291,22 @@ export default function Home() {
               ))}
             </motion.div>
 
+            {/* FAQ Link */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-4"
+            >
+              <Link 
+                href="/faq"
+                className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-xs transition-colors"
+              >
+                <FaQuestionCircle size={12} />
+                <span>How does this work? Read the FAQ</span>
+              </Link>
+            </motion.div>
+
             {/* Recent Photos Preview */}
             {images.length > 0 && (
               <motion.div
@@ -352,7 +368,7 @@ export default function Home() {
   // Feature data
   const features = [
     { icon: FaPiggyBank, title: 'Store', desc: 'Private & encrypted', color: 'from-pink-500 to-rose-600' },
-    { icon: HiSparkles, title: 'Create', desc: 'AI image & video', color: 'from-purple-500 to-violet-600' },
+    { icon: HiSparkles, title: 'Create', desc: 'AI video gen', color: 'from-purple-500 to-violet-600' },
     { icon: FaTrophy, title: 'Rate', desc: 'ELO rankings', color: 'from-amber-500 to-orange-600' },
   ];
 
@@ -509,6 +525,22 @@ export default function Home() {
                     <span>UNLOCK YOUR VAULT</span>
                   </span>
                 </motion.button>
+              </motion.div>
+
+              {/* FAQ Link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.9 }}
+                className="mt-4"
+              >
+                <Link 
+                  href="/faq"
+                  className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-xs transition-colors"
+                >
+                  <FaQuestionCircle size={12} />
+                  <span>Learn more in the FAQ</span>
+                </Link>
               </motion.div>
             </motion.div>
           </div>
