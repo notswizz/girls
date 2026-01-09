@@ -25,15 +25,16 @@ const ImageCard = ({
       transition={{ duration: 0.4, delay: index * 0.1 }}
     >
       <motion.div
+        data-rating-card
         className={`
-          relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer
+          rating-card relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer
           transition-all duration-500 ease-out
           ${isSelected ? 'ring-4 ring-green-400 shadow-[0_0_40px_rgba(74,222,128,0.4)]' : ''}
           ${isLoser ? 'opacity-30 scale-95 grayscale' : ''}
           ${!selectedImageId ? 'active:scale-[0.98]' : ''}
         `}
         whileHover={!selectedImageId && !loading ? { scale: 1.02 } : {}}
-        onClick={() => !loading && !selectedImageId && onSelectWinner(image._id)}
+        onClick={(e) => { e.stopPropagation(); !loading && !selectedImageId && onSelectWinner(image._id); }}
       >
         {/* Image container with aspect ratio for full image display */}
         <div className="relative w-full" style={{ paddingBottom: '133%' }}>

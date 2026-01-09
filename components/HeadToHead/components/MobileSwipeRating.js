@@ -59,7 +59,8 @@ const MobileSwipeRating = ({
     setCurrentIndex(Math.min(Math.max(0, index), images.length - 1));
   };
 
-  const handleTapToVote = (imageId) => {
+  const handleTapToVote = (e, imageId) => {
+    e.stopPropagation(); // Prevent global click sound
     if (selectedImageId || loading || zoomedImage) return;
     onSelectWinner(imageId);
   };
@@ -93,14 +94,15 @@ const MobileSwipeRating = ({
             >
               {/* Image Card - Fixed aspect ratio container */}
               <motion.div
+                data-rating-card
                 className={`
-                  relative rounded-3xl overflow-hidden cursor-pointer
+                  rating-card relative rounded-3xl overflow-hidden cursor-pointer
                   w-full aspect-[3/4]
                   transition-all duration-300
                   ${isLoser ? 'opacity-30 scale-90 grayscale' : ''}
                   ${!selectedImageId ? 'active:scale-[0.98]' : ''}
                 `}
-                onClick={() => handleTapToVote(image._id)}
+                onClick={(e) => handleTapToVote(e, image._id)}
                 animate={{
                   scale: isLoser ? 0.9 : (isCelebrating ? 1.02 : 1),
                 }}

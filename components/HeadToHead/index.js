@@ -3,6 +3,7 @@ import { useSession, signIn } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { FaUpload, FaGoogle } from 'react-icons/fa';
+import { markWinSound } from '../../pages/_app';
 
 // Utils
 import { fetchComparisonImages, submitWinnerSelection } from './utils/api';
@@ -95,6 +96,14 @@ const HeadToHeadCompare = () => {
       
       setSelectedImageId(winnerId);
       setCelebratingId(winnerId);
+      
+      // Play win sound and mark it to prevent click sound
+      try {
+        markWinSound();
+        const winSound = new Audio('/win.wav');
+        winSound.volume = 0.4;
+        winSound.play().catch(() => {});
+      } catch (e) {}
       
       fireCelebrationEffects();
       
