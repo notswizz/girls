@@ -42,6 +42,7 @@ export default async function handler(req, res) {
       createdAt: user.createdAt,
       tokens: user.tokens || 0,
       tokensFromWins: userDoc.tokensFromWins || 0,
+      tokensSpent: userDoc.tokensSpent || 0,
       referralCount: user.referralCount || 0,
       referralTokensEarned: user.referralTokensEarned || 0,
     };

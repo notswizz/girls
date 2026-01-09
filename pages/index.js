@@ -259,33 +259,37 @@ export default function Home() {
               <p className="text-white/40 text-sm">What do you want to do?</p>
             </motion.div>
 
-            {/* Action Cards Grid */}
+            {/* Action Cards Grid - 2x2 on mobile, 4 cols on desktop */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-lg"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-md sm:max-w-lg"
             >
               {[
-                { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600' },
-                { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: 'Your collection', color: 'from-pink-500 to-rose-600' },
-                { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: 'AI content', color: 'from-purple-500 to-violet-600' },
-                { href: '/referrals', icon: FaGift, title: 'Refer', subtitle: 'Earn tokens', color: 'from-emerald-500 to-teal-600' },
+                { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/25' },
+                { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: 'Your collection', color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/25' },
+                { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: 'AI video gen', color: 'from-purple-500 to-violet-600', shadow: 'shadow-purple-500/25' },
+                { href: '/referrals', icon: FaGift, title: 'Refer', subtitle: 'Earn tokens', color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/25' },
               ].map((item, i) => (
                 <Link href={item.href} key={item.title}>
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 + i * 0.05 }}
-                    whileHover={{ scale: 1.05, y: -4 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="relative p-3 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 cursor-pointer transition-all text-center"
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className={`relative p-4 sm:p-4 rounded-2xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 hover:border-white/20 cursor-pointer transition-all`}
                   >
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg`}>
-                      <item.icon className="text-white text-base sm:text-lg" />
+                    <div className="flex items-center gap-3 sm:flex-col sm:text-center">
+                      <div className={`w-12 h-12 sm:w-11 sm:h-11 sm:mx-auto sm:mb-2 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg ${item.shadow}`}>
+                        <item.icon className="text-white text-lg sm:text-base" />
+                      </div>
+                      <div className="flex-1 sm:flex-none">
+                        <div className="text-white font-bold text-sm sm:text-sm">{item.title}</div>
+                        <div className="text-white/40 text-xs sm:text-[10px] mt-0.5">{item.subtitle}</div>
+                      </div>
                     </div>
-                    <div className="text-white font-semibold text-xs sm:text-sm">{item.title}</div>
-                    <div className="text-white/40 text-[9px] sm:text-[10px] mt-0.5">{item.subtitle}</div>
                   </motion.div>
                 </Link>
               ))}

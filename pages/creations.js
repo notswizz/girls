@@ -46,9 +46,7 @@ export default function CreationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [creations, setCreations] = useState([]);
-  const [sourceModels, setSourceModels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedModel, setSelectedModel] = useState('all');
   const [sortBy, setSortBy] = useState('recent'); // 'recent' or 'favorites'
   const [showFilters, setShowFilters] = useState(false);
   const [viewingCreation, setViewingCreation] = useState(null);
@@ -60,7 +58,6 @@ export default function CreationsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (selectedModel !== 'all') params.append('modelId', selectedModel);
       params.append('type', 'video'); // Only fetch videos
       if (sortBy === 'favorites') params.append('favoritesFirst', 'true');
       
@@ -69,7 +66,6 @@ export default function CreationsPage() {
       
       if (response.ok) {
         setCreations(data.creations || []);
-        setSourceModels(data.sourceModels || []);
       }
     } catch (error) {
       console.error('Failed to fetch creations:', error);
@@ -82,7 +78,7 @@ export default function CreationsPage() {
     if (session) {
       fetchCreations();
     }
-  }, [session, selectedModel, sortBy]);
+  }, [session, sortBy]);
 
   // Toggle favorite
   const handleToggleFavorite = async (e, creation) => {
@@ -186,7 +182,7 @@ export default function CreationsPage() {
     );
   }
 
-  const activeFilters = (selectedModel !== 'all' ? 1 : 0) + (sortBy !== 'recent' ? 1 : 0);
+  const activeFilters = sortBy !== 'recent' ? 1 : 0;
   const favoriteCount = creations.filter(c => c.isFavorite).length;
 
   return (
@@ -261,37 +257,6 @@ export default function CreationsPage() {
                   </div>
 
 
-                  {/* Model Filter */}
-                  {sourceModels.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-white/40 w-16">Model:</span>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => setSelectedModel('all')}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                            selectedModel === 'all'
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-white/10 text-white/60 hover:bg-white/20'
-                          }`}
-                        >
-                          All Models
-                        </button>
-                        {sourceModels.map(model => (
-                          <button
-                            key={model.id}
-                            onClick={() => setSelectedModel(model.id)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                              selectedModel === model.id
-                                ? 'bg-purple-500 text-white'
-                                : 'bg-white/10 text-white/60 hover:bg-white/20'
-                            }`}
-                          >
-                            {model.name} ({model.count})
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             )}

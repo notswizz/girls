@@ -1,5 +1,10 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
+import { connectToDatabase } from '../../../lib/mongodb';
+import { ObjectId } from 'mongodb';
+
+// Cost for video generation
+const VIDEO_GENERATION_COST = 100;
 
 export const config = {
   api: {
@@ -24,6 +29,55 @@ export default async function handler(req, res) {
   }
 
   const { referenceImage, prompt, mode = 'image' } = req.body;
+
+  // For video generation, check and deduct tokens
+  if (mode === 'video') {
+    const { db } = await connectToDatabase();
+    const users = db.collection('users');
+    
+    // Get user's current token balance
+    let userId;
+    try {
+      userId = new ObjectId(session.user.id);
+    } catch {
+      userId = session.user.id;
+    }
+    
+    const user = await users.findOne({ 
+      $or: [
+        { _id: userId },
+        { email: session.user.email }
+      ]
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const currentTokens = user.tokens || 0;
+    
+    if (currentTokens < VIDEO_GENERATION_COST) {
+      return res.status(402).json({ 
+        error: 'Insufficient tokens',
+        message: `Video generation requires ${VIDEO_GENERATION_COST} tokens. You have ${currentTokens} tokens.`,
+        required: VIDEO_GENERATION_COST,
+        current: currentTokens,
+      });
+    }
+    
+    // Deduct tokens before starting generation
+    await users.updateOne(
+      { _id: user._id },
+      { 
+        $inc: { 
+          tokens: -VIDEO_GENERATION_COST,
+          tokensSpent: VIDEO_GENERATION_COST,
+        }
+      }
+    );
+    
+    console.log(`[AI] Deducted ${VIDEO_GENERATION_COST} tokens from user ${user.email} for video generation`);
+  }
 
   if (!referenceImage) {
     return res.status(400).json({ error: 'Reference image is required' });

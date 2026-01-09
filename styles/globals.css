@@ -528,3 +528,49 @@ body::before {
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+/* === Custom Cursor === */
+
+/* Base cursor - sleek crosshair with glow (applied to html, inherited by all) */
+html {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='3' fill='%23ff2a6d'/%3E%3Ccircle cx='12' cy='12' r='6' fill='none' stroke='%2305d9e8' stroke-width='1.5' opacity='0.8'/%3E%3Cline x1='12' y1='0' x2='12' y2='6' stroke='%23fff' stroke-width='1' opacity='0.6'/%3E%3Cline x1='12' y1='18' x2='12' y2='24' stroke='%23fff' stroke-width='1' opacity='0.6'/%3E%3Cline x1='0' y1='12' x2='6' y2='12' stroke='%23fff' stroke-width='1' opacity='0.6'/%3E%3Cline x1='18' y1='12' x2='24' y2='12' stroke='%23fff' stroke-width='1' opacity='0.6'/%3E%3C/svg%3E") 12 12, crosshair;
+}
+
+/* Pointer cursor for interactive elements */
+a, button, [role="button"], 
+input[type="submit"], input[type="button"], input[type="reset"],
+select, label[for], .cursor-pointer {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cdefs%3E%3ClinearGradient id='ptrGrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ff2a6d'/%3E%3Cstop offset='100%25' stop-color='%2305d9e8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M5 2 L5 20 L10 15 L15 24 L18 22 L13 14 L20 14 Z' fill='url(%23ptrGrad)' stroke='%23fff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 5 2, pointer;
+}
+
+/* Text cursor */
+input[type="text"], input[type="email"], input[type="password"], 
+input[type="search"], input[type="tel"], input[type="url"],
+input[type="number"], textarea, [contenteditable="true"] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cline x1='12' y1='4' x2='12' y2='20' stroke='%23ff2a6d' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='8' y1='4' x2='16' y2='4' stroke='%2305d9e8' stroke-width='1.5'/%3E%3Cline x1='8' y1='20' x2='16' y2='20' stroke='%2305d9e8' stroke-width='1.5'/%3E%3C/svg%3E") 12 12, text;
+}
+
+/* Grab cursor for draggable elements */
+[draggable="true"], .cursor-grab {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='8' cy='8' r='2' fill='%23ff2a6d'/%3E%3Ccircle cx='16' cy='8' r='2' fill='%23ff2a6d'/%3E%3Ccircle cx='8' cy='14' r='2' fill='%2305d9e8'/%3E%3Ccircle cx='16' cy='14' r='2' fill='%2305d9e8'/%3E%3Ccircle cx='8' cy='20' r='2' fill='%23f9f871'/%3E%3Ccircle cx='16' cy='20' r='2' fill='%23f9f871'/%3E%3C/svg%3E") 12 12, grab;
+}
+
+/* Not allowed cursor */
+[disabled], .cursor-not-allowed {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23ff2a6d' stroke-width='2'/%3E%3Cline x1='6' y1='6' x2='18' y2='18' stroke='%23ff2a6d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+/* Loading/wait cursor */
+.cursor-wait {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%2305d9e8' stroke-width='2' stroke-dasharray='14 42' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='12' r='4' fill='%23ff2a6d'/%3E%3C/svg%3E") 12 12, wait;
+}
+
+/* Zoom in cursor for images */
+.cursor-zoom-in {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='10' cy='10' r='7' fill='none' stroke='%2305d9e8' stroke-width='2'/%3E%3Cline x1='15' y1='15' x2='21' y2='21' stroke='%23ff2a6d' stroke-width='2.5' stroke-linecap='round'/%3E%3Cline x1='7' y1='10' x2='13' y2='10' stroke='%23fff' stroke-width='1.5'/%3E%3Cline x1='10' y1='7' x2='10' y2='13' stroke='%23fff' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, zoom-in;
+}
+
+/* Hide cursor utility */
+.cursor-none {
+  cursor: none !important;
+}
