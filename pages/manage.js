@@ -266,7 +266,7 @@ export default function ManagePage() {
                 />
 
                 {/* Gallery */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-36 md:pb-4">
                   <ImageGallery
                     selectedModel={selectedModel}
                     modelImages={ratingMode === 'gallery' ? modelImages : communityImages}
