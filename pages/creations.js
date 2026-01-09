@@ -131,24 +131,10 @@ export default function CreationsPage() {
     }
   };
 
-  // Handle download
-  const handleDownload = async (creation) => {
-    try {
-      const response = await fetch(creation.url);
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const ext = 'mp4';
-      
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `creation-${creation._id}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
+  // Handle download - open in new tab (avoids CORS issues)
+  const handleDownload = (creation) => {
+    // Open video URL directly - browser will handle download/playback
+    window.open(creation.url, '_blank');
   };
 
 

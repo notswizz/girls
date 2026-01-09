@@ -2,9 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
-import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift, FaQuestionCircle } from 'react-icons/fa';
+import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift, FaQuestionCircle, FaUsers, FaCoins, FaImages, FaVideo } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { motion } from 'framer-motion';
+
+// Format large numbers
+const formatNumber = (num) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num?.toLocaleString() || '0';
+};
 
 // Floating image component
 const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
@@ -154,6 +161,7 @@ export default function Home() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [publicStats, setPublicStats] = useState(null);
 
   useEffect(() => {
     // Check if mobile
@@ -161,6 +169,22 @@ export default function Home() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Fetch public stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats/public');
+        const data = await res.json();
+        if (data.success) {
+          setPublicStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    };
+    fetchStats();
   }, []);
 
   useEffect(() => {
@@ -310,6 +334,37 @@ export default function Home() {
                 <span>How does this work? Read the FAQ</span>
               </Link>
             </motion.div>
+
+            {/* Platform Stats */}
+            {publicStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                className="mt-6 flex items-center justify-center gap-4 sm:gap-6"
+              >
+                {[
+                  { value: publicStats.photos, label: 'Photos', icon: FaImages },
+                  { value: publicStats.models, label: 'Models', icon: FaUsers },
+                  { value: publicStats.users, label: 'Users', icon: FaUsers },
+                  { value: publicStats.votes, label: 'Votes', icon: FaTrophy },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + i * 0.05 }}
+                    className="text-center"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-white/80">
+                      <stat.icon className="text-[10px] text-white/40" />
+                      <span className="font-bold text-sm">{formatNumber(stat.value)}</span>
+                    </div>
+                    <div className="text-white/30 text-[9px] uppercase tracking-wider">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
 
             {/* Recent Photos Preview */}
             {images.length > 0 && (
@@ -499,6 +554,35 @@ export default function Home() {
                   </motion.div>
                 ))}
               </motion.div>
+
+              {/* Live Stats */}
+              {publicStats && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="grid grid-cols-4 gap-2 mb-6"
+                >
+                  {[
+                    { value: publicStats.photos, label: 'Photos', icon: FaImages, color: 'text-pink-400' },
+                    { value: publicStats.models, label: 'Models', icon: FaUsers, color: 'text-purple-400' },
+                    { value: publicStats.users, label: 'Users', icon: FaUsers, color: 'text-amber-400' },
+                    { value: publicStats.creations, label: 'AI Vids', icon: FaVideo, color: 'text-cyan-400' },
+                  ].map((stat, i) => (
+                    <motion.div
+                      key={stat.label}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.75 + i * 0.05 }}
+                      className="text-center py-2"
+                    >
+                      <stat.icon className={`mx-auto mb-1 text-sm ${stat.color} opacity-60`} />
+                      <div className="text-white font-bold text-sm sm:text-base">{formatNumber(stat.value)}</div>
+                      <div className="text-white/30 text-[9px] sm:text-[10px] uppercase tracking-wider">{stat.label}</div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
 
               {/* CTA Button */}
               <motion.div
