@@ -117,8 +117,8 @@ export default function Overview({ models, onSelectModel, onAddModel, isLoading 
         )}
 
 
-        {/* Bottom spacing */}
-        <div className="h-20" />
+        {/* Bottom spacing for mobile action bar */}
+        <div className="h-24 md:h-8" />
       </div>
     </div>
   );

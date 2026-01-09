@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { motion } from 'framer-motion';
-import { FaUsers, FaImages, FaFire, FaTrophy, FaPiggyBank, FaChartLine } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaUsers, FaImages, FaFire, FaTrophy, FaPiggyBank, FaChartLine, FaTimes, FaGlobe, FaLock, FaUser, FaEye } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 
 export default function AdminDashboard() {
@@ -15,6 +15,11 @@ export default function AdminDashboard() {
   const [migrationResult, setMigrationResult] = useState(null);
   const [migrateToEmail, setMigrateToEmail] = useState('');
   const [showMigrateModal, setShowMigrateModal] = useState(false);
+  
+  // User bank modal
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userBank, setUserBank] = useState(null);
+  const [loadingBank, setLoadingBank] = useState(false);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -45,6 +50,25 @@ export default function AdminDashboard() {
       setError('Failed to load admin data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch user's bank
+  const fetchUserBank = async (user) => {
+    setSelectedUser(user);
+    setLoadingBank(true);
+    setUserBank(null);
+    
+    try {
+      const userId = user._id?.toString ? user._id.toString() : String(user._id);
+      const response = await fetch(`/api/admin/user-bank?userId=${encodeURIComponent(userId)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch bank');
+      setUserBank(data);
+    } catch (err) {
+      console.error('Error fetching user bank:', err);
+    } finally {
+      setLoadingBank(false);
     }
   };
 
@@ -242,68 +266,79 @@ export default function AdminDashboard() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/5 text-white/40 text-xs uppercase tracking-wider">
-                  <th className="text-left p-4">User</th>
-                  <th className="text-left p-4">Email</th>
-                  <SortableHeader field="createdAt" label="Joined" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} />
-                  <SortableHeader field="lastLoginAt" label="Last Login" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} />
-                  <SortableHeader field="modelCount" label="Models" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
-                  <SortableHeader field="imageCount" label="Images" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
-                  <SortableHeader field="voteCount" label="Votes" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-white/40">
-                      No users found
-                    </td>
+                <thead>
+                  <tr className="border-b border-white/5 text-white/40 text-xs uppercase tracking-wider">
+                    <th className="text-left p-4">User</th>
+                    <th className="text-left p-4">Email</th>
+                    <SortableHeader field="createdAt" label="Joined" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} />
+                    <SortableHeader field="lastLoginAt" label="Last Login" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} />
+                    <SortableHeader field="modelCount" label="Models" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
+                    <SortableHeader field="imageCount" label="Images" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
+                    <SortableHeader field="voteCount" label="Votes" sortField={sortField} sortDirection={sortDirection} onSort={(f, d) => { setSortField(f); setSortDirection(d); }} align="right" />
+                    <th className="text-right p-4">Action</th>
                   </tr>
-                ) : (
-                  sortUsers(users, sortField, sortDirection).map((user, i) => (
-                    <motion.tr
-                      key={user._id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.03 }}
-                      className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${user.isOrphan ? 'bg-orange-500/5' : ''}`}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${user.isOrphan ? 'bg-gradient-to-br from-orange-500/30 to-amber-500/20 text-orange-300' : 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-white/70'}`}>
-                            {user.isOrphan ? '?' : (user.name?.[0]?.toUpperCase() || '?')}
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-white/40">
+                        No users found
+                      </td>
+                    </tr>
+                  ) : (
+                    sortUsers(users, sortField, sortDirection).map((user, i) => (
+                      <motion.tr
+                        key={user._id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 + i * 0.03 }}
+                        className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${user.isOrphan ? 'bg-orange-500/5' : ''}`}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${user.isOrphan ? 'bg-gradient-to-br from-orange-500/30 to-amber-500/20 text-orange-300' : 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-white/70'}`}>
+                              {user.isOrphan ? '?' : (user.name?.[0]?.toUpperCase() || '?')}
+                            </div>
+                            <div>
+                              <span className="font-medium text-white/90">{user.name || 'Anonymous'}</span>
+                              {user.isOrphan && (
+                                <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded">SESSION</span>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-medium text-white/90">{user.name || 'Anonymous'}</span>
-                            {user.isOrphan && (
-                              <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded">SESSION</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-white/60 text-sm">
-                        {user.email || '-'}
-                      </td>
-                      <td className="p-4 text-white/40 text-sm">
-                        {user.createdAt ? formatDate(user.createdAt) : '-'}
-                      </td>
-                      <td className="p-4 text-white/40 text-sm">
-                        {user.lastLoginAt ? formatDate(user.lastLoginAt) : '-'}
-                      </td>
-                      <td className="p-4 text-right text-white/60">
-                        <span className={user.modelCount > 0 ? 'text-pink-400 font-medium' : ''}>{user.modelCount || 0}</span>
-                      </td>
-                      <td className="p-4 text-right text-white/60">
-                        <span className={user.imageCount > 0 ? 'text-cyan-400 font-medium' : ''}>{user.imageCount || 0}</span>
-                      </td>
-                      <td className="p-4 text-right text-white/60">
-                        <span className={user.voteCount > 0 ? 'text-orange-400 font-medium' : ''}>{user.voteCount || 0}</span>
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
-              </tbody>
+                        </td>
+                        <td className="p-4 text-white/60 text-sm">
+                          {user.email || '-'}
+                        </td>
+                        <td className="p-4 text-white/40 text-sm">
+                          {user.createdAt ? formatDate(user.createdAt) : '-'}
+                        </td>
+                        <td className="p-4 text-white/40 text-sm">
+                          {user.lastLoginAt ? formatDate(user.lastLoginAt) : '-'}
+                        </td>
+                        <td className="p-4 text-right text-white/60">
+                          <span className={user.modelCount > 0 ? 'text-pink-400 font-medium' : ''}>{user.modelCount || 0}</span>
+                        </td>
+                        <td className="p-4 text-right text-white/60">
+                          <span className={user.imageCount > 0 ? 'text-cyan-400 font-medium' : ''}>{user.imageCount || 0}</span>
+                        </td>
+                        <td className="p-4 text-right text-white/60">
+                          <span className={user.voteCount > 0 ? 'text-orange-400 font-medium' : ''}>{user.voteCount || 0}</span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => fetchUserBank(user)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded-lg transition-colors"
+                          >
+                            <FaEye size={10} />
+                            Bank
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </tbody>
             </table>
           </div>
         </motion.div>
@@ -365,6 +400,160 @@ export default function AdminDashboard() {
           </motion.div>
         </div>
       )}
+
+      {/* User Bank Modal */}
+      <AnimatePresence>
+        {selectedUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSelectedUser(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden border border-white/10"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+                    {selectedUser.image ? (
+                      <img src={selectedUser.image} alt="" className="w-12 h-12 rounded-full" />
+                    ) : (
+                      <FaUser className="text-white/40 text-xl" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{selectedUser.name || 'Anonymous'}</h2>
+                    <p className="text-sm text-white/40">{selectedUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <FaTimes className="text-white/40 text-xl" />
+                </button>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(85vh-100px)]">
+                {loadingBank ? (
+                  <div className="flex justify-center items-center h-48">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-8 h-8 rounded-full border-2 border-pink-500/20 border-t-pink-500"
+                    />
+                  </div>
+                ) : userBank ? (
+                  <div className="space-y-6">
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                        <div className="text-2xl font-bold text-white">{userBank.totalModels}</div>
+                        <div className="text-xs text-white/40">Models</div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                        <div className="text-2xl font-bold text-white">{userBank.totalImages}</div>
+                        <div className="text-xs text-white/40">Photos</div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                        <div className="text-2xl font-bold text-cyan-400">
+                          {userBank.models.reduce((sum, m) => sum + (m.communityWins || 0), 0)}
+                        </div>
+                        <div className="text-xs text-white/40">Community Wins</div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                        <div className="text-2xl font-bold text-red-400">
+                          {userBank.models.reduce((sum, m) => sum + (m.communityLosses || 0), 0)}
+                        </div>
+                        <div className="text-xs text-white/40">Community Losses</div>
+                      </div>
+                    </div>
+                    
+                    {/* Models */}
+                    {userBank.models.length === 0 ? (
+                      <div className="text-center py-12 text-white/40">
+                        This user has no models yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-white">Models</h3>
+                        {userBank.models.map(model => (
+                          <div key={model._id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500/30 to-purple-500/30 flex items-center justify-center text-white font-bold">
+                                  {model.name[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-white">{model.name}</span>
+                                    {model.isPublic ? (
+                                      <FaGlobe className="text-emerald-400" size={12} />
+                                    ) : (
+                                      <FaLock className="text-white/30" size={12} />
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-white/40">
+                                    {model.imageCount} photos
+                                    {(model.communityWins > 0 || model.communityLosses > 0) && (
+                                      <span className="ml-2">
+                                        • <span className="text-green-400">{model.communityWins}W</span>
+                                        {' '}<span className="text-red-400">{model.communityLosses}L</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Images grid */}
+                            {model.images && model.images.length > 0 && (
+                              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                                {model.images.slice(0, 16).map(image => (
+                                  <a
+                                    key={image._id}
+                                    href={image.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="aspect-square rounded-lg overflow-hidden bg-black hover:ring-2 hover:ring-pink-500 transition-all"
+                                  >
+                                    <img
+                                      src={image.url}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </a>
+                                ))}
+                                {model.images.length > 16 && (
+                                  <div className="aspect-square rounded-lg bg-white/5 flex items-center justify-center text-white/40 text-xs">
+                                    +{model.images.length - 16}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-white/40">
+                    Failed to load bank data.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

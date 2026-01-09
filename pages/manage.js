@@ -13,7 +13,7 @@ import {
   ImageGallery,
   Toast,
   SignInPrompt,
-  FloatingModelButton,
+  MobileBottomBar,
   ModelHeader,
   Overview,
   manageStyles
@@ -266,7 +266,7 @@ export default function ManagePage() {
                 />
 
                 {/* Gallery */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4">
                   <ImageGallery
                     selectedModel={selectedModel}
                     modelImages={ratingMode === 'gallery' ? modelImages : communityImages}
@@ -287,14 +287,17 @@ export default function ManagePage() {
               />
             )}
 
-            {/* Mobile floating model selector button */}
-            <FloatingModelButton
-              onClick={() => setShowModelSelectorModal(true)}
-              visible={true}
-              modelName={selectedModel?.name}
-            />
           </div>
         </div>
+
+        {/* Mobile Bottom Action Bar */}
+        <MobileBottomBar
+          selectedModel={selectedModel}
+          modelCount={models.length}
+          onSelectModel={() => setShowModelSelectorModal(true)}
+          onAddModel={() => setShowAddModelModal(true)}
+          onUpload={() => selectedModel && setShowUploadModal(true)}
+        />
       </div>
 
       {/* Custom scrollbar hide style */}
