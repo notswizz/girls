@@ -87,22 +87,61 @@ export default async function handler(req, res) {
                       0
                     ]
                   }
-                }
+                },
+                imageIds: { $push: { $toString: '$_id' } }
               } 
             }
           ]).toArray();
+          
+          // Get all image IDs to fetch community stats
+          const allImageIds = modelImagesCount.flatMap(item => item.imageIds || []);
+          
+          // Fetch community ratings for all images at once
+          const communityRatings = await db.collection('community_ratings')
+            .find({ imageId: { $in: allImageIds } })
+            .toArray();
+          
+          // Create a map of imageId -> community stats
+          const imageIdToCommunityStats = {};
+          for (const rating of communityRatings) {
+            imageIdToCommunityStats[rating.imageId] = {
+              wins: rating.wins || 0,
+              losses: rating.losses || 0,
+              score: rating.score || 0
+            };
+          }
           
           // Create a map of model ID to image count
           const modelIdToStats = {};
           modelImagesCount.forEach(item => {
             if (item && item._id) {
+              // Aggregate community stats for this model's images
+              let communityWins = 0;
+              let communityLosses = 0;
+              let topCommunityScore = 0;
+              
+              (item.imageIds || []).forEach(imgId => {
+                const cStats = imageIdToCommunityStats[imgId];
+                if (cStats) {
+                  communityWins += cStats.wins;
+                  communityLosses += cStats.losses;
+                  if (cStats.score > topCommunityScore) {
+                    topCommunityScore = cStats.score;
+                  }
+                }
+              });
+              
               modelIdToStats[item._id.toString()] = {
                 totalImages: item.count,
                 totalWins: item.totalWins,
                 totalLosses: item.totalLosses,
                 averageElo: item.avgElo,
                 highestElo: item.highestElo,
-                ratedImages: item.ratedImagesCount
+                ratedImages: item.ratedImagesCount,
+                // Community stats
+                communityWins,
+                communityLosses,
+                topCommunityScore
               };
             }
           });
@@ -117,12 +156,19 @@ export default async function handler(req, res) {
               totalLosses: 0,
               averageElo: 0,
               highestElo: 0,
-              ratedImages: 0
+              ratedImages: 0,
+              communityWins: 0,
+              communityLosses: 0,
+              topCommunityScore: 0
             };
             
-            // Calculate win rate
+            // Calculate win rate (personal/gallery)
             const totalMatches = stats.totalWins + stats.totalLosses;
             const winRate = totalMatches > 0 ? stats.totalWins / totalMatches : 0;
+            
+            // Calculate community win rate
+            const communityMatches = stats.communityWins + stats.communityLosses;
+            const communityWinRate = communityMatches > 0 ? stats.communityWins / communityMatches : 0;
             
             // Ensure all required fields exist
             return { 
@@ -132,6 +178,11 @@ export default async function handler(req, res) {
               losses: stats.totalLosses || 0,
               winRate: winRate || 0,
               elo: stats.averageElo > 0 ? stats.averageElo : null,
+              // Community stats
+              communityWins: stats.communityWins || 0,
+              communityLosses: stats.communityLosses || 0,
+              communityWinRate: communityWinRate || 0,
+              topCommunityScore: stats.topCommunityScore || 0,
               stats: stats
             };
           });

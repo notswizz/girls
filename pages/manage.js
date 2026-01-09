@@ -37,7 +37,7 @@ export default function ManagePage() {
   const [isLoadingCommunity, setIsLoadingCommunity] = useState(false);
   
   // Rating mode: 'gallery' (my ratings) or 'explore' (community ratings)
-  const [ratingMode, setRatingMode] = useState('gallery');
+  const [ratingMode, setRatingMode] = useState('explore');
   
   // Modal states
   const [showUploadModal, setShowUploadModal] = useState(false);

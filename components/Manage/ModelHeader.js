@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaUpload, FaGlobe, FaLock, FaTrophy, FaFire, FaChartLine, FaUsers } from 'react-icons/fa';
+import { FaUpload, FaGlobe, FaLock, FaTrophy, FaFire, FaChartLine, FaUsers, FaArrowLeft } from 'react-icons/fa';
 
 export default function ModelHeader({ 
   selectedModel, 
@@ -50,43 +50,43 @@ export default function ModelHeader({
   };
 
   return (
-    <div className="flex-shrink-0 bg-gradient-to-b from-white/[0.03] to-transparent">
+    <div className="flex-shrink-0 border-b border-white/5">
       {/* Header row */}
-      <div className="px-4 py-4 flex items-center gap-4">
+      <div className="px-4 py-4 sm:py-5 flex items-center gap-3 sm:gap-4">
         {/* Model Avatar */}
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center">
-          <span className="text-xl font-bold text-white/80">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-pink-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-lg">
+          <span className="text-2xl sm:text-3xl font-black text-white/90">
             {selectedModel.name[0]?.toUpperCase()}
           </span>
         </div>
         
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold text-white truncate">{selectedModel.name}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{selectedModel.name}</h1>
             <motion.button
               onClick={togglePublic}
               disabled={isUpdating}
               whileTap={{ scale: 0.95 }}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                 selectedModel.isPublic 
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                  : 'bg-white/5 text-white/40 border border-white/10'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30' 
+                  : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'
               }`}
             >
-              {selectedModel.isPublic ? <FaGlobe size={8} /> : <FaLock size={8} />}
+              {selectedModel.isPublic ? <FaGlobe size={10} /> : <FaLock size={10} />}
               {selectedModel.isPublic ? 'Public' : 'Private'}
             </motion.button>
           </div>
-          <p className="text-white/40 text-sm">{imageCount} photos</p>
+          <p className="text-white/40 text-sm mt-0.5">{imageCount} photos</p>
         </div>
         
         <motion.button
           onClick={onUploadClick}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/20"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40"
         >
-          <FaUpload size={12} />
+          <FaUpload size={14} />
           <span className="hidden sm:inline">Upload</span>
         </motion.button>
       </div>
@@ -94,9 +94,9 @@ export default function ModelHeader({
       {/* Rating Mode Toggle + Stats */}
       <div className="px-4 pb-4 flex flex-wrap items-center gap-3">
         {/* Mode Toggle */}
-        <div className="relative inline-flex bg-white/5 rounded-xl p-1 border border-white/10">
+        <div className="relative inline-flex bg-black/30 rounded-xl p-1 border border-white/10">
           <motion.div
-            className="absolute top-1 bottom-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-600"
+            className="absolute top-1 bottom-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-600 shadow-lg"
             initial={false}
             animate={{
               left: ratingMode === 'gallery' ? '4px' : '50%',
@@ -106,7 +106,7 @@ export default function ModelHeader({
           />
           <button
             onClick={() => onRatingModeChange('gallery')}
-            className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`relative z-10 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
               ratingMode === 'gallery' ? 'text-white' : 'text-white/50 hover:text-white/70'
             }`}
           >
@@ -115,7 +115,7 @@ export default function ModelHeader({
           </button>
           <button
             onClick={() => onRatingModeChange('explore')}
-            className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`relative z-10 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
               ratingMode === 'explore' ? 'text-white' : 'text-white/50 hover:text-white/70'
             }`}
           >
@@ -128,24 +128,25 @@ export default function ModelHeader({
         {analytics.totalMatches > 0 && (
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             <StatPill 
-              icon={<FaTrophy className="text-yellow-400" size={10} />}
+              icon={<FaTrophy className="text-yellow-400" size={11} />}
               value={analytics.score}
               label="score"
+              highlight
             />
             <StatPill 
-              icon={<span className="text-[10px]">⚔️</span>}
+              icon={<span className="text-xs">⚔️</span>}
               value={`${analytics.wins}-${analytics.losses}`}
               label={`${Math.round(analytics.winRate * 100)}%`}
             />
             {ratingMode === 'gallery' && analytics.avgElo && (
               <StatPill 
-                icon={<FaChartLine className="text-cyan-400" size={10} />}
+                icon={<FaChartLine className="text-cyan-400" size={11} />}
                 value={analytics.avgElo}
                 label="elo"
               />
             )}
             <StatPill 
-              icon={<FaFire className="text-orange-400" size={10} />}
+              icon={<FaFire className="text-orange-400" size={11} />}
               value={analytics.totalMatches}
               label="votes"
             />
@@ -156,12 +157,16 @@ export default function ModelHeader({
   );
 }
 
-function StatPill({ icon, value, label }) {
+function StatPill({ icon, value, label, highlight }) {
   return (
-    <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg border border-white/5">
+    <div className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
+      highlight 
+        ? 'bg-yellow-500/10 border-yellow-500/20' 
+        : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+    }`}>
       {icon}
-      <span className="text-xs font-bold text-white">{value}</span>
-      <span className="text-[10px] text-white/40">{label}</span>
+      <span className="text-sm font-bold text-white">{value}</span>
+      <span className="text-[10px] text-white/40 uppercase tracking-wider">{label}</span>
     </div>
   );
 }

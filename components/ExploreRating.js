@@ -5,6 +5,7 @@ import { FaGoogle, FaHeart, FaSearchPlus, FaImages, FaVideo } from 'react-icons/
 import { useAIGeneration } from '../context/AIGenerationContext';
 import { AIGenerationIndicator } from './GlobalAIModal';
 import AIPromptModal from './AIPromptModal';
+import { markWinSound } from '../pages/_app';
 
 // Maximum number of recent models to track (minimum ratings apart)
 const RECENT_MODELS_LIMIT = 6;
@@ -107,22 +108,57 @@ export default function ExploreRating() {
 
     setSelectedId(winnerId);
     setCelebrating(true);
+    
+    // Play win sound and mark it to prevent click sound
+    try {
+      markWinSound();
+      const winSound = new Audio('/win.wav');
+      winSound.volume = 0.4;
+      winSound.play().catch(() => {});
+    } catch (e) {}
 
     try {
-      await fetch('/api/explore/vote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ winnerId, loserId })
-      });
+      // Build URL for pre-fetching next images
+      const params = new URLSearchParams();
+      if (recentModels.length > 0) {
+        params.append('recentModels', recentModels.join(','));
+      }
+      const nextUrl = `/api/explore/compare${params.toString() ? '?' + params.toString() : ''}`;
+      
+      // Submit vote and pre-fetch next images in parallel
+      const [, nextRes] = await Promise.all([
+        fetch('/api/explore/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ winnerId, loserId })
+        }),
+        fetch(nextUrl)
+      ]);
+      
+      const nextData = await nextRes.json();
 
+      // Brief celebration then show next
       setTimeout(() => {
         setCelebrating(false);
         setSelectedId(null);
-        fetchImages();
-      }, 1000);
+        if (nextData.success && nextData.images?.length >= 2) {
+          setImages(nextData.images);
+          setCurrentIndex(0);
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ left: 0, behavior: 'instant' });
+          }
+          const newModelIds = nextData.images
+            .map(img => img.modelId?.toString() || img.modelId)
+            .filter(Boolean);
+          setRecentModels(prev => [...prev, ...newModelIds].slice(-RECENT_MODELS_LIMIT));
+        } else {
+          fetchImages();
+        }
+      }, 400);
     } catch (err) {
       console.error('Error voting:', err);
       setCelebrating(false);
+      setSelectedId(null);
     }
   };
 

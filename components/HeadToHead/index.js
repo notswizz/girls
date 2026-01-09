@@ -107,19 +107,26 @@ const HeadToHeadCompare = () => {
       
       fireCelebrationEffects();
       
-      await submitWinnerSelection(
-        winnerId, 
-        loserId, 
-        session?.user?.id || null
-      );
+      // Submit vote and pre-fetch next images in parallel
+      const [, nextImages] = await Promise.all([
+        submitWinnerSelection(winnerId, loserId, session?.user?.id || null),
+        fetchComparisonImages(recentModels)
+      ]);
       
+      // Brief celebration then show next
       setTimeout(() => {
-        setLoading(true);
-        setTimeout(() => {
-          setCelebratingId(null);
+        setCelebratingId(null);
+        setSelectedImageId(null);
+        if (nextImages?.length >= 2) {
+          setImages(nextImages);
+          const newModelIds = nextImages
+            .map(img => img.modelId?.toString() || img.modelId)
+            .filter(Boolean);
+          setRecentModels(prev => [...prev, ...newModelIds].slice(-RECENT_MODELS_LIMIT));
+        } else {
           fetchImages();
-        }, 300);
-      }, 800);
+        }
+      }, 400);
     } catch (err) {
       console.error('Error selecting winner:', err);
       setCelebratingId(null);
