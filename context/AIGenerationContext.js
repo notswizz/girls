@@ -597,6 +597,168 @@ export function AIGenerationProvider({ children }) {
     setShowModal(true);
   }, []);
 
+  // Extension state
+  const [isExtending, setIsExtending] = useState(false);
+  const [parentVideoId, setParentVideoId] = useState(null);
+  const [parentVideoUrl, setParentVideoUrl] = useState(null);
+  const [existingPlaylist, setExistingPlaylist] = useState([]); // All existing videos in the chain
+
+  // Extract last frame from video and start extension
+  // playlist: array of {url, prompt} for existing videos in the chain
+  const startExtension = useCallback(async (videoUrl, videoId, promptText = '', playlist = []) => {
+    setIsExtending(true);
+    setParentVideoId(videoId);
+    setParentVideoUrl(videoUrl);
+    setExistingPlaylist(playlist);
+    setShowModal(true); // Show modal immediately
+    setProgress('Extracting last frame from video...');
+    setGenerationType('video');
+    
+    try {
+      console.log('[Extension] Starting frame extraction from:', videoUrl);
+      
+      let lastFrameUrl = null;
+      
+      // Try client-side extraction first (without CORS to avoid load errors)
+      try {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        // Don't set crossOrigin - it causes load failures on some S3 configs
+        
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('timeout')), 15000);
+          
+          video.onloadedmetadata = () => {
+            video.currentTime = Math.max(0, video.duration - 0.1);
+          };
+          
+          video.onseeked = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          
+          video.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('load failed'));
+          };
+          
+          video.src = videoUrl;
+          video.load();
+        });
+
+        // Try to extract frame
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          lastFrameUrl = canvas.toDataURL('image/jpeg', 0.9);
+          console.log('[Extension] Client-side frame extracted');
+        } catch (taintedError) {
+          console.log('[Extension] Canvas tainted, will use server proxy');
+        }
+        
+        video.remove();
+        canvas.remove();
+      } catch (clientErr) {
+        console.log('[Extension] Client extraction failed:', clientErr.message);
+      }
+      
+      // If client-side failed, try server-side proxy
+      if (!lastFrameUrl) {
+        setProgress('Fetching video via server...');
+        console.log('[Extension] Trying server-side proxy');
+        
+        const proxyRes = await fetch('/api/ai/extract-frame-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoUrl })
+        });
+        
+        if (proxyRes.ok) {
+          const data = await proxyRes.json();
+          
+          if (data.videoDataUrl) {
+            // Load the proxied video and extract frame
+            setProgress('Extracting frame...');
+            console.log('[Extension] Got proxied video, extracting frame');
+            
+            const video = document.createElement('video');
+            video.muted = true;
+            video.playsInline = true;
+            
+            await new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => reject(new Error('timeout')), 30000);
+              
+              video.onloadedmetadata = () => {
+                video.currentTime = Math.max(0, video.duration - 0.1);
+              };
+              
+              video.onseeked = () => {
+                clearTimeout(timeout);
+                resolve();
+              };
+              
+              video.onerror = () => {
+                clearTimeout(timeout);
+                reject(new Error('proxy video load failed'));
+              };
+              
+              video.src = data.videoDataUrl;
+            });
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            lastFrameUrl = canvas.toDataURL('image/jpeg', 0.9);
+            
+            video.remove();
+            canvas.remove();
+            console.log('[Extension] Frame extracted from proxied video');
+          }
+        }
+      }
+      
+      // If still no frame, just proceed with the prompt only (AI will generate from scratch continuation)
+      if (!lastFrameUrl) {
+        console.log('[Extension] Could not extract frame, proceeding with prompt only');
+        // Use original video URL as reference - AI can sometimes work with video URLs
+        lastFrameUrl = videoUrl;
+      }
+      
+      // Start generation
+      const finalPrompt = promptText || 'Continue the motion naturally';
+      console.log('[Extension] Starting generation');
+      
+      await startGeneration(lastFrameUrl, finalPrompt, 'video', { 
+        id: null, 
+        name: 'Extension',
+        parentVideoId: videoId 
+      });
+      
+    } catch (err) {
+      console.error('[Extension] Error:', err);
+      setError('Failed to start extension: ' + err.message);
+      setIsExtending(false);
+      setProgress('');
+      throw err;
+    }
+  }, [startGeneration, setError, setShowModal, setProgress, setGenerationType]);
+
+  // Reset extension state when generation resets
+  const resetGenerationWithExtension = useCallback(() => {
+    resetGeneration();
+    setIsExtending(false);
+    setParentVideoId(null);
+    setParentVideoUrl(null);
+    setExistingPlaylist([]);
+  }, [resetGeneration]);
+
   const value = {
     // State
     isGenerating,
@@ -610,11 +772,16 @@ export function AIGenerationProvider({ children }) {
     showModal,
     sourceModelId,
     sourceModelName,
+    isExtending,
+    parentVideoId,
+    parentVideoUrl,
+    existingPlaylist,
     
     // Actions
     startGeneration,
+    startExtension,
     cancelGeneration,
-    resetGeneration,
+    resetGeneration: resetGenerationWithExtension,
     closeModal,
     openModal,
     setPrompt,

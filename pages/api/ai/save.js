@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'You must be logged in to save AI content' });
   }
 
-  const { url, prompt, type, isExtractedFrame, sourceModelId, sourceModelName } = req.body;
+  const { url, prompt, type, isExtractedFrame, sourceModelId, sourceModelName, parentVideoId } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     const s3Url = await uploadToS3(url, saveType);
     console.log(`Uploaded to S3: ${s3Url}`);
     
-    const savedImage = await saveToAICreations(s3Url, finalPrompt, session.user.id, saveType, sourceModelId, sourceModelName);
+    const savedImage = await saveToAICreations(s3Url, finalPrompt, session.user.id, saveType, sourceModelId, sourceModelName, parentVideoId);
     return res.status(200).json({
       success: true,
       savedImage
@@ -110,7 +110,7 @@ async function uploadToS3(sourceUrl, type) {
 }
 
 // Save generated content to AI creations collection (doesn't participate in ratings)
-async function saveToAICreations(url, prompt, userId, type, sourceModelId, sourceModelName) {
+async function saveToAICreations(url, prompt, userId, type, sourceModelId, sourceModelName, parentVideoId) {
   const { db } = await connectToDatabase();
   const { ObjectId } = require('mongodb');
   
@@ -125,6 +125,8 @@ async function saveToAICreations(url, prompt, userId, type, sourceModelId, sourc
     // Track source model for filtering
     sourceModelId: sourceModelId ? new ObjectId(sourceModelId) : null,
     sourceModelName: sourceModelName || null,
+    // Track parent video for extensions (playlist feature)
+    parentVideoId: parentVideoId ? new ObjectId(parentVideoId) : null,
   };
   
   const insertResult = await db.collection('ai_creations').insertOne(creationData);

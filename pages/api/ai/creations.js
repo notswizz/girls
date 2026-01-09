@@ -23,9 +23,11 @@ export default async function handler(req, res) {
     // (for backwards compatibility with previously saved AI content)
     
     // 1. Query for new ai_creations collection
+    // Exclude extensions (videos with parentVideoId) - they'll be nested under parents
     const newQuery = {
       userId: session.user.id,
-      isActive: { $ne: false }
+      isActive: { $ne: false },
+      parentVideoId: { $eq: null } // Only get root videos, not extensions
     };
 
     // Filter by source model if specified
@@ -51,7 +53,7 @@ export default async function handler(req, res) {
     }
 
     // Fetch from both collections in parallel
-    const [newCreations, oldCreations] = await Promise.all([
+    const [newCreations, oldCreations, allExtensions] = await Promise.all([
       db.collection('ai_creations')
         .find(newQuery)
         .sort({ createdAt: -1 })
@@ -59,8 +61,33 @@ export default async function handler(req, res) {
       db.collection('images')
         .find(oldQuery)
         .sort({ createdAt: -1 })
+        .toArray(),
+      // Fetch all extensions for this user to attach to parent videos
+      db.collection('ai_creations')
+        .find({ 
+          userId: session.user.id, 
+          parentVideoId: { $ne: null },
+          isActive: { $ne: false }
+        })
+        .sort({ createdAt: 1 }) // Sort by creation order for playlist
         .toArray()
     ]);
+
+    // Create a map of extensions by parent video ID
+    const extensionsByParent = {};
+    for (const ext of allExtensions) {
+      const parentId = ext.parentVideoId.toString();
+      if (!extensionsByParent[parentId]) {
+        extensionsByParent[parentId] = [];
+      }
+      extensionsByParent[parentId].push(ext);
+    }
+
+    // Attach extensions to their parent videos
+    const newCreationsWithExtensions = newCreations.map(creation => ({
+      ...creation,
+      extensions: extensionsByParent[creation._id.toString()] || []
+    }));
 
     // Normalize old creations to match new format
     const normalizedOldCreations = oldCreations.map(img => ({
@@ -80,7 +107,7 @@ export default async function handler(req, res) {
     }));
 
     // Merge all creations
-    let allCreations = [...newCreations, ...normalizedOldCreations];
+    let allCreations = [...newCreationsWithExtensions, ...normalizedOldCreations];
     
     // Sort: favorites first if requested, then by date
     if (favoritesFirst === 'true') {

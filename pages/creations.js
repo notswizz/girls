@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown } from 'react-icons/fa';
+import { FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown, FaPlus, FaPlay, FaList } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import Layout from '../components/Layout';
+import { useAIGeneration } from '../context/AIGenerationContext';
 
 // Video thumbnail component with hover to play
 function VideoThumbnail({ src, className, onClick }) {
@@ -42,9 +43,93 @@ function VideoThumbnail({ src, className, onClick }) {
   );
 }
 
+// Playlist Player Component
+function PlaylistPlayer({ videos, onClose }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const videoRef = useRef(null);
+
+  const handleVideoEnd = () => {
+    if (currentIndex < videos.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const currentVideo = videos[currentIndex];
+
+  return (
+    <div className="space-y-4">
+      {/* Current video */}
+      <div className="relative">
+        <video
+          ref={videoRef}
+          key={currentVideo._id}
+          src={currentVideo.url}
+          className="w-full max-h-[60vh] object-contain rounded-xl"
+          controls
+          autoPlay
+          playsInline
+          onEnded={handleVideoEnd}
+        />
+        
+        {/* Playlist indicator */}
+        {videos.length > 1 && (
+          <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-sm flex items-center gap-2 text-sm">
+            <FaList className="text-purple-400" size={12} />
+            <span className="text-white font-medium">{currentIndex + 1}</span>
+            <span className="text-white/50">/ {videos.length}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Playlist thumbnails */}
+      {videos.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {videos.map((video, idx) => (
+            <button
+              key={video._id}
+              onClick={() => setCurrentIndex(idx)}
+              className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                idx === currentIndex 
+                  ? 'border-purple-500 ring-2 ring-purple-500/30' 
+                  : 'border-white/10 hover:border-white/30'
+              }`}
+            >
+              <video
+                src={video.url}
+                className="w-full h-full object-cover"
+                muted
+                preload="metadata"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <span className="text-white font-bold text-sm">{idx + 1}</span>
+              </div>
+              {idx === currentIndex && (
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
+                  <FaPlay className="text-white text-xs" />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Current prompt */}
+      {currentVideo.prompt && (
+        <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+          <p className="text-xs text-white/40 mb-1">
+            {videos.length > 1 ? `Segment ${currentIndex + 1} Prompt` : 'Prompt'}
+          </p>
+          <p className="text-white/80 text-sm">{currentVideo.prompt}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CreationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { startExtension } = useAIGeneration();
   const [creations, setCreations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('recent'); // 'recent' or 'favorites'
@@ -52,6 +137,9 @@ export default function CreationsPage() {
   const [viewingCreation, setViewingCreation] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [togglingFavorite, setTogglingFavorite] = useState(null);
+  const [showExtendPrompt, setShowExtendPrompt] = useState(null);
+  const [extendPrompt, setExtendPrompt] = useState('');
+  const [extending, setExtending] = useState(false);
 
   // Fetch creations
   const fetchCreations = async () => {
@@ -135,6 +223,51 @@ export default function CreationsPage() {
   const handleDownload = (creation) => {
     // Open video URL directly - browser will handle download/playback
     window.open(creation.url, '_blank');
+  };
+
+  // Handle extend video
+  const handleExtend = (creation) => {
+    setShowExtendPrompt(creation);
+    setExtendPrompt('');
+  };
+
+  const submitExtend = async () => {
+    if (!showExtendPrompt || extending) return;
+    
+    setExtending(true);
+    try {
+      // Get all videos in the playlist
+      const allVideos = getPlaylistVideos(showExtendPrompt);
+      // Use the LAST video's URL for frame extraction (could be an extension)
+      const lastVideo = allVideos[allVideos.length - 1];
+      // But always use the root video's ID as parent (to keep extensions grouped)
+      const rootVideoId = showExtendPrompt._id;
+      
+      console.log('[Extend] Using last video:', lastVideo.url);
+      console.log('[Extend] Root video ID:', rootVideoId);
+      console.log('[Extend] Existing playlist:', allVideos.length, 'videos');
+      
+      // Pass the existing playlist for preview
+      const playlist = allVideos.map(v => ({ url: v.url, prompt: v.prompt }));
+      await startExtension(lastVideo.url, rootVideoId, extendPrompt || 'Continue the motion naturally', playlist);
+      // Close modals after extension starts
+      setShowExtendPrompt(null);
+      setViewingCreation(null);
+    } catch (err) {
+      console.error('Extension error:', err);
+      alert('Failed to start extension: ' + err.message);
+    } finally {
+      setExtending(false);
+    }
+  };
+
+  // Get all videos for playlist (parent + extensions)
+  const getPlaylistVideos = (creation) => {
+    const videos = [creation];
+    if (creation.extensions && creation.extensions.length > 0) {
+      videos.push(...creation.extensions);
+    }
+    return videos;
   };
 
 
@@ -288,9 +421,17 @@ export default function CreationsPage() {
                     src={creation.url}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white/80">
-                    <FaVideo size={8} />
-                    Video
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                    {creation.extensions && creation.extensions.length > 0 && (
+                      <div className="px-2 py-1 rounded-full bg-purple-500/80 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white font-medium">
+                        <FaList size={8} />
+                        {creation.extensions.length + 1}
+                      </div>
+                    )}
+                    <div className="px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white/80">
+                      <FaVideo size={8} />
+                      Video
+                    </div>
                   </div>
 
                   {/* Favorite Button */}
@@ -363,28 +504,25 @@ export default function CreationsPage() {
             {/* Content */}
             <div className="flex-1 flex items-center justify-center p-4 overflow-auto" onClick={(e) => e.stopPropagation()}>
               <div className="max-w-4xl w-full">
-                <video
-                  src={viewingCreation.url}
-                  className="w-full max-h-[60vh] object-contain rounded-xl"
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
+                {/* Playlist Player or Single Video */}
+                <PlaylistPlayer 
+                  videos={getPlaylistVideos(viewingCreation)} 
+                  onClose={() => setViewingCreation(null)}
                 />
 
-                {/* Prompt */}
-                {viewingCreation.prompt && (
-                  <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                    <p className="text-xs text-white/40 mb-1">Prompt</p>
-                    <p className="text-white/80 text-sm">{viewingCreation.prompt}</p>
-                  </div>
-                )}
-
                 {/* Actions */}
-                <div className="flex gap-3 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4">
+                  {/* Extend Video */}
+                  <button
+                    onClick={() => handleExtend(viewingCreation)}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 font-medium flex items-center justify-center gap-2 hover:from-purple-500/30 hover:to-pink-500/30 transition-all border border-purple-500/30"
+                  >
+                    <FaPlus size={14} />
+                    Extend Video
+                  </button>
                   <button
                     onClick={() => handleDownload(viewingCreation)}
-                    className="flex-1 py-3 rounded-xl bg-purple-500/20 text-purple-300 font-medium flex items-center justify-center gap-2 hover:bg-purple-500/30 transition-all border border-purple-500/30"
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-white/70 font-medium flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/10"
                   >
                     <FaDownload size={14} />
                     Download
@@ -392,14 +530,91 @@ export default function CreationsPage() {
                   <button
                     onClick={() => handleDelete(viewingCreation._id)}
                     disabled={deleting === viewingCreation._id}
-                    className="px-6 py-3 rounded-xl bg-red-500/20 text-red-300 font-medium flex items-center justify-center gap-2 hover:bg-red-500/30 transition-all border border-red-500/30"
+                    className="px-6 py-3 rounded-xl bg-red-500/10 text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all border border-red-500/20"
                   >
                     <FaTrash size={14} />
-                    {deleting === viewingCreation._id ? 'Deleting...' : 'Delete'}
+                    {deleting === viewingCreation._id ? '...' : 'Delete'}
                   </button>
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Extend Prompt Modal */}
+      <AnimatePresence>
+        {showExtendPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setShowExtendPrompt(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-gradient-to-b from-gray-900 to-black rounded-2xl border border-white/10 overflow-hidden"
+            >
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FaPlus className="text-purple-400" />
+                  Extend Video
+                </h3>
+                <p className="text-white/50 text-sm mt-1">
+                  We'll use the last frame to continue the video
+                </p>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="text-white/60 text-sm mb-2 block">
+                    Motion prompt (optional)
+                  </label>
+                  <textarea
+                    value={extendPrompt}
+                    onChange={(e) => setExtendPrompt(e.target.value)}
+                    placeholder="Continue the motion naturally..."
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 resize-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                    rows={3}
+                    autoFocus
+                  />
+                  <p className="text-white/30 text-xs mt-2">
+                    Leave empty to auto-continue the motion
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowExtendPrompt(null)}
+                    disabled={extending}
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-medium hover:bg-white/10 transition-all disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitExtend}
+                    disabled={extending}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                  >
+                    {extending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Extracting frame...
+                      </>
+                    ) : (
+                      <>
+                        <HiSparkles />
+                        Generate Extension
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

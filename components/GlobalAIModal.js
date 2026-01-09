@@ -1,8 +1,327 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { FaList } from 'react-icons/fa';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaVideo, FaTimes, FaSpinner, FaTrash, FaDownload, FaCheck, FaBrain } from 'react-icons/fa';
+import { FaVideo, FaTimes, FaSpinner, FaTrash, FaDownload, FaCheck, FaBrain, FaGamepad } from 'react-icons/fa';
 import { useAIGeneration } from '../context/AIGenerationContext';
+
+// Mini Game - Pop the Bubbles
+function BubblePopGame({ onClose }) {
+  const [score, setScore] = useState(0);
+  const [bubbles, setBubbles] = useState([]);
+  const [pops, setPops] = useState([]);
+  const [highScore, setHighScore] = useState(0);
+  const gameRef = useRef(null);
+  const nextIdRef = useRef(0);
+
+  // Load high score from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('bubblePopHighScore');
+    if (saved) setHighScore(parseInt(saved, 10));
+  }, []);
+
+  // Save high score
+  useEffect(() => {
+    if (score > highScore) {
+      setHighScore(score);
+      localStorage.setItem('bubblePopHighScore', score.toString());
+    }
+  }, [score, highScore]);
+
+  // Spawn bubbles
+  useEffect(() => {
+    const spawnBubble = () => {
+      const id = nextIdRef.current++;
+      const size = 30 + Math.random() * 40;
+      const colors = [
+        { bg: 'from-pink-500 to-purple-500', glow: 'rgba(236,72,153,0.5)' },
+        { bg: 'from-purple-500 to-indigo-500', glow: 'rgba(168,85,247,0.5)' },
+        { bg: 'from-cyan-400 to-blue-500', glow: 'rgba(34,211,238,0.5)' },
+        { bg: 'from-yellow-400 to-orange-500', glow: 'rgba(250,204,21,0.5)' },
+      ];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const points = Math.round((70 - size) / 10) + 1; // Smaller = more points
+      
+      setBubbles(prev => [...prev, {
+        id,
+        x: 10 + Math.random() * 80, // percentage
+        size,
+        color,
+        points,
+        speed: 2 + Math.random() * 3,
+        wobble: Math.random() * 10 - 5,
+      }]);
+    };
+
+    const interval = setInterval(spawnBubble, 800);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Move bubbles up and remove escaped ones
+  useEffect(() => {
+    const moveInterval = setInterval(() => {
+      setBubbles(prev => prev
+        .map(b => ({ ...b, y: (b.y || 100) - b.speed }))
+        .filter(b => b.y > -20)
+      );
+    }, 50);
+    return () => clearInterval(moveInterval);
+  }, []);
+
+  // Pop bubble
+  const popBubble = useCallback((bubble, e) => {
+    e.stopPropagation();
+    
+    // Play pop sound
+    try {
+      const audio = new Audio('/click.wav');
+      audio.volume = 0.3;
+      audio.play();
+    } catch (err) {}
+
+    // Add pop effect
+    setPops(prev => [...prev, { 
+      id: bubble.id, 
+      x: bubble.x, 
+      y: bubble.y || 100,
+      color: bubble.color 
+    }]);
+    
+    // Remove pop effect after animation
+    setTimeout(() => {
+      setPops(prev => prev.filter(p => p.id !== bubble.id));
+    }, 300);
+
+    // Add score
+    setScore(prev => prev + bubble.points);
+    
+    // Remove bubble
+    setBubbles(prev => prev.filter(b => b.id !== bubble.id));
+  }, []);
+
+  return (
+    <div className="relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+              {score}
+            </div>
+            <div className="text-[10px] text-white/40 uppercase tracking-wider">Score</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-yellow-400">{highScore}</div>
+            <div className="text-[10px] text-white/40 uppercase tracking-wider">Best</div>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="px-3 py-1.5 rounded-lg bg-white/10 text-white/60 text-xs hover:bg-white/20 transition-colors"
+        >
+          Close Game
+        </button>
+      </div>
+
+      {/* Game Area */}
+      <div 
+        ref={gameRef}
+        className="relative h-48 bg-gradient-to-b from-purple-900/30 to-black/50 rounded-2xl border border-white/10 overflow-hidden"
+        style={{ touchAction: 'none' }}
+      >
+        {/* Background stars */}
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white/20 rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+          />
+        ))}
+
+        {/* Bubbles */}
+        <AnimatePresence>
+          {bubbles.map(bubble => (
+            <motion.button
+              key={bubble.id}
+              initial={{ y: '100%', scale: 0 }}
+              animate={{ 
+                y: `${bubble.y || 100}%`,
+                scale: 1,
+                x: [0, bubble.wobble, -bubble.wobble, 0],
+              }}
+              exit={{ scale: 0 }}
+              transition={{ 
+                y: { duration: 0 },
+                x: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+              }}
+              onClick={(e) => popBubble(bubble, e)}
+              className={`absolute rounded-full bg-gradient-to-br ${bubble.color.bg} cursor-pointer`}
+              style={{
+                width: bubble.size,
+                height: bubble.size,
+                left: `${bubble.x}%`,
+                bottom: `${bubble.y || 0}%`,
+                transform: 'translateX(-50%)',
+                boxShadow: `0 0 20px ${bubble.color.glow}, inset 0 0 20px rgba(255,255,255,0.3)`,
+              }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              {/* Shine effect */}
+              <div 
+                className="absolute w-1/3 h-1/3 bg-white/40 rounded-full"
+                style={{ top: '15%', left: '20%' }}
+              />
+              {/* Points indicator */}
+              <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs drop-shadow-lg">
+                +{bubble.points}
+              </span>
+            </motion.button>
+          ))}
+        </AnimatePresence>
+
+        {/* Pop effects */}
+        <AnimatePresence>
+          {pops.map(pop => (
+            <motion.div
+              key={`pop-${pop.id}`}
+              initial={{ scale: 1, opacity: 1 }}
+              animate={{ scale: 2, opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`absolute w-12 h-12 rounded-full bg-gradient-to-br ${pop.color.bg}`}
+              style={{
+                left: `${pop.x}%`,
+                bottom: `${pop.y}%`,
+                transform: 'translate(-50%, 50%)',
+                filter: 'blur(4px)',
+              }}
+            />
+          ))}
+        </AnimatePresence>
+
+        {/* Instructions */}
+        {bubbles.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">
+            Tap bubbles to pop them!
+          </div>
+        )}
+      </div>
+
+      <p className="text-center text-white/30 text-[10px] mt-2">
+        Smaller bubbles = more points!
+      </p>
+    </div>
+  );
+}
+
+// Extension Preview - Plays all clips back to back
+function ExtensionPreview({ existingPlaylist, extensionUrl }) {
+  const [currentClip, setCurrentClip] = useState(0);
+  const videoRef = useRef(null);
+  
+  // Build clips array: existing playlist + new extension
+  const clips = [
+    ...existingPlaylist.map((v, i) => ({ 
+      url: v.url, 
+      label: i === 0 ? 'Original' : `Part ${i + 1}` 
+    })),
+    { url: extensionUrl, label: 'New Extension' }
+  ];
+
+  const handleVideoEnd = () => {
+    if (currentClip < clips.length - 1) {
+      setCurrentClip(prev => prev + 1);
+    } else {
+      // Loop back to start
+      setCurrentClip(0);
+    }
+  };
+
+  // Auto-play when clip changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [currentClip]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-white/40 text-xs">Preview Combined Clips</p>
+        <div className="flex items-center gap-2">
+          {clips.map((clip, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentClip(idx)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                currentClip === idx
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-white/10 text-white/50 hover:bg-white/20'
+              }`}
+            >
+              {clip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Video Player */}
+      <div className="relative">
+        <video
+          ref={videoRef}
+          key={clips[currentClip].url}
+          src={clips[currentClip].url}
+          className="w-full rounded-xl shadow-lg border border-purple-500/30"
+          controls
+          autoPlay
+          muted
+          playsInline
+          onEnded={handleVideoEnd}
+        />
+        
+        {/* Clip indicator */}
+        <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-sm flex items-center gap-2 text-sm">
+          <span className="text-purple-400 font-bold">{currentClip + 1}</span>
+          <span className="text-white/50">/ {clips.length}</span>
+          <span className="text-white/70 ml-1">{clips[currentClip].label}</span>
+        </div>
+      </div>
+      
+      {/* Timeline thumbnails */}
+      <div className="flex gap-2">
+        {clips.map((clip, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentClip(idx)}
+            className={`relative flex-1 aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+              currentClip === idx 
+                ? 'border-purple-500 ring-2 ring-purple-500/30' 
+                : 'border-white/10 hover:border-white/30'
+            }`}
+          >
+            <video
+              src={clip.url}
+              className="w-full h-full object-cover"
+              muted
+              preload="metadata"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <span className="text-white text-xs font-medium">{clip.label}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+      
+      <p className="text-center text-white/30 text-xs">
+        Videos will play back-to-back automatically
+      </p>
+    </div>
+  );
+}
 
 // Awesome AI Loading Animation Component
 function AILoadingAnimation({ generationType, progress }) {
@@ -306,6 +625,7 @@ export default function GlobalAIModal() {
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   
   const {
     isGenerating,
@@ -321,6 +641,10 @@ export default function GlobalAIModal() {
     setError,
     sourceModelId,
     sourceModelName,
+    isExtending,
+    parentVideoId,
+    parentVideoUrl,
+    existingPlaylist,
   } = useAIGeneration();
 
   useEffect(() => {
@@ -338,6 +662,13 @@ export default function GlobalAIModal() {
       document.body.style.overflow = '';
     };
   }, [showModal]);
+
+  // Reset game when result arrives or modal closes
+  useEffect(() => {
+    if (result || !showModal) {
+      setShowGame(false);
+    }
+  }, [result, showModal]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -357,6 +688,7 @@ export default function GlobalAIModal() {
           type: generationType,
           sourceModelId: sourceModelId,
           sourceModelName: sourceModelName,
+          parentVideoId: parentVideoId,
         }),
       });
 
@@ -473,7 +805,27 @@ export default function GlobalAIModal() {
 
           {/* Loading State */}
           {isGenerating && !result && (
-            <AILoadingAnimation generationType={generationType} progress={progress} />
+            <div className="space-y-4">
+              {showGame ? (
+                <BubblePopGame onClose={() => setShowGame(false)} />
+              ) : (
+                <>
+                  <AILoadingAnimation generationType={generationType} progress={progress} />
+                  
+                  {/* Play Game Button */}
+                  <motion.button
+                    onClick={() => setShowGame(true)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1 }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-white font-medium flex items-center justify-center gap-2 hover:from-purple-500/30 hover:to-pink-500/30 transition-all"
+                  >
+                    <FaGamepad className="text-purple-400" />
+                    Play Mini Game While Waiting
+                  </motion.button>
+                </>
+              )}
+            </div>
           )}
 
           {/* Error State */}
@@ -502,19 +854,29 @@ export default function GlobalAIModal() {
           {/* Result Display */}
           {result && !saveSuccess && (
             <div className="space-y-4">
-              <p className="text-white/40 text-xs">
-                Generated Video
-              </p>
-              
-              <video
-                src={result}
-                className="w-full rounded-xl shadow-lg border border-purple-500/30"
-                controls
-                autoPlay
-                loop
-                muted
-                playsInline
-              />
+              {/* Extension Preview - All clips */}
+              {isExtending && existingPlaylist.length > 0 ? (
+                <ExtensionPreview 
+                  existingPlaylist={existingPlaylist} 
+                  extensionUrl={result} 
+                />
+              ) : (
+                <>
+                  <p className="text-white/40 text-xs">
+                    Generated Video
+                  </p>
+                  
+                  <video
+                    src={result}
+                    className="w-full rounded-xl shadow-lg border border-purple-500/30"
+                    controls
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                </>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-2">
@@ -537,7 +899,7 @@ export default function GlobalAIModal() {
                   ) : (
                     <>
                       <FaVideo />
-                      Save Video to Creations
+                      {isExtending ? 'Save Extension to Creations' : 'Save Video to Creations'}
                     </>
                   )}
                 </button>
