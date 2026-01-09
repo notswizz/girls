@@ -199,7 +199,7 @@ export default function ModelSelectorModal({
         {/* Add new model button */}
         <div 
           className="p-4 border-t border-white/5"
-          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+          style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
         >
           <motion.button
             onClick={() => { onClose(); onAddModel(); }}

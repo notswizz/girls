@@ -212,7 +212,7 @@ export default function AddModelModal({ isOpen, onClose, onModelCreated }) {
 
           <div 
             className="pt-2"
-            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+            style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
           >
             <button
               type="submit"
