@@ -20,15 +20,16 @@ const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
   
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.3 }}
+      initial={{ opacity: 0, scale: 0.3, y: 20 }}
       animate={{ 
-        opacity: isMobile ? 0.7 : 1, 
+        opacity: 1, 
         scale: position.scale,
-        rotate: position.rotate
+        rotate: position.rotate,
+        y: 0
       }}
       transition={{ 
         duration: 0.8, 
-        delay: 0.05 + index * 0.08,
+        delay: 0.05 + index * 0.06,
         ease: [0.22, 1, 0.36, 1]
       }}
       whileHover={!isMobile ? { 
@@ -59,13 +60,11 @@ const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
         zIndex: position.z || 1,
       }}
     >
-      {/* Glow effect - desktop only */}
-      {!isMobile && (
-        <div className="absolute -inset-3 bg-gradient-to-r from-pink-500/60 via-purple-500/60 to-rose-500/60 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-300" />
-      )}
+      {/* Glow effect */}
+      <div className={`absolute -inset-3 bg-gradient-to-r from-pink-500/60 via-purple-500/60 to-rose-500/60 rounded-2xl blur-xl ${isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'} transition-all duration-300`} />
       
       {/* Image frame */}
-      <div className={`relative w-full h-full overflow-hidden shadow-xl border border-white/10 ${isMobile ? 'rounded-lg' : 'rounded-xl sm:rounded-2xl group-hover:border-pink-500/60'} transition-all duration-200`}>
+      <div className={`relative w-full h-full overflow-hidden border-2 border-white/30 ${isMobile ? 'rounded-xl shadow-2xl shadow-black/50' : 'rounded-xl sm:rounded-2xl shadow-xl group-hover:border-pink-500/60'} transition-all duration-200`}>
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 z-10" />
         
@@ -103,25 +102,33 @@ const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
 // Generate scattered positions for images - responsive for mobile/desktop
 const generatePositions = (count, isMobile = false) => {
   if (isMobile) {
-    // Mobile: Smaller images in corners, leaving center clear
+    // Mobile: Smaller images moved closer to center
     const mobilePositions = [
-      // Top left area
-      { x: '-5%', y: '2%', width: '80px', height: '100px', rotate: -8, scale: 1, z: 2 },
-      { x: '8%', y: '12%', width: '70px', height: '90px', rotate: 6, scale: 0.9, z: 1 },
+      // Top corners - moved inside more
+      { x: '2%', y: '0%', width: '90px', height: '115px', rotate: -12, scale: 1, z: 30 },
+      { x: '68%', y: '-2%', width: '95px', height: '120px', rotate: 10, scale: 1, z: 30 },
       
-      // Top right area
-      { x: '78%', y: '2%', width: '75px', height: '95px', rotate: 10, scale: 0.95, z: 2 },
-      { x: '88%', y: '14%', width: '65px', height: '85px', rotate: -5, scale: 0.85, z: 1 },
+      // Upper sides - moved inside more
+      { x: '-2%', y: '14%', width: '85px', height: '108px', rotate: 8, scale: 1, z: 25 },
+      { x: '72%', y: '12%', width: '88px', height: '112px', rotate: -10, scale: 1, z: 25 },
       
-      // Bottom left area
-      { x: '-3%', y: '75%', width: '72px', height: '92px', rotate: 8, scale: 0.9, z: 2 },
-      { x: '10%', y: '85%', width: '68px', height: '88px', rotate: -10, scale: 0.85, z: 1 },
+      // Mid sides
+      { x: '-10%', y: '32%', width: '80px', height: '102px', rotate: -6, scale: 0.95, z: 22 },
+      { x: '82%', y: '35%', width: '82px', height: '105px', rotate: 8, scale: 0.95, z: 22 },
       
-      // Bottom right area
-      { x: '80%', y: '78%', width: '70px', height: '90px', rotate: -6, scale: 0.9, z: 2 },
-      { x: '88%', y: '88%', width: '65px', height: '82px', rotate: 5, scale: 0.8, z: 1 },
+      // Lower sides
+      { x: '-12%', y: '52%', width: '85px', height: '108px', rotate: 10, scale: 1, z: 25 },
+      { x: '80%', y: '50%', width: '88px', height: '112px', rotate: -8, scale: 1, z: 25 },
+      
+      // Bottom corners
+      { x: '-8%', y: '72%', width: '92px', height: '118px', rotate: -8, scale: 1, z: 30 },
+      { x: '76%', y: '70%', width: '95px', height: '120px', rotate: 10, scale: 1, z: 30 },
+      
+      // Very bottom
+      { x: '-5%', y: '88%', width: '85px', height: '108px', rotate: 12, scale: 0.95, z: 28 },
+      { x: '78%', y: '86%', width: '88px', height: '112px', rotate: -10, scale: 0.95, z: 28 },
     ];
-    return mobilePositions.slice(0, Math.min(count, 8));
+    return mobilePositions.slice(0, Math.min(count, 12));
   }
   
   // Desktop positions
@@ -366,58 +373,6 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* Recent Photos Preview */}
-            {images.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="mt-8 w-full max-w-md"
-              >
-                <Link href="/manage" className="block">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-white/50 text-xs font-medium">Recent in collection</span>
-                    <span className="text-pink-400/60 text-xs">View all →</span>
-                  </div>
-                  <div className="flex gap-2 overflow-hidden">
-                    {images.slice(0, 6).map((img, i) => {
-                      const isVideo = img.url?.includes('.mp4') || img.url?.includes('video') || img.type === 'video';
-                      return (
-                        <motion.div
-                          key={img._id || i}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.45 + i * 0.03 }}
-                          className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5 border border-white/10"
-                        >
-                          {isVideo ? (
-                            <video
-                              src={img.url}
-                              className="w-full h-full object-cover"
-                              muted
-                              playsInline
-                              preload="metadata"
-                            />
-                          ) : (
-                            <img
-                              src={img.url}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                          )}
-                        </motion.div>
-                      );
-                    })}
-                    {images.length > 6 && (
-                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                        <span className="text-white/40 text-xs font-medium">+{images.length - 6}</span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              </motion.div>
-            )}
           </div>
         </div>
       </Layout>
@@ -483,18 +438,18 @@ export default function Home() {
           </a>
         </motion.footer>
 
-        {/* Center content - above images */}
-        <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+        {/* Center content - images can overlap */}
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <div className="text-center px-4 pointer-events-auto max-w-xl">
             {/* Glassmorphism card */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="relative p-6 sm:p-10 rounded-3xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl"
+              className="relative p-6 sm:p-10 rounded-3xl bg-black/10 backdrop-blur-sm border border-white/5"
             >
               {/* Glow behind card */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-xl -z-10" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl -z-10" />
               
               {/* Lock icon */}
               <motion.div
@@ -567,7 +522,7 @@ export default function Home() {
                     { value: publicStats.photos, label: 'Photos', icon: FaImages, color: 'text-pink-400' },
                     { value: publicStats.models, label: 'Models', icon: FaUsers, color: 'text-purple-400' },
                     { value: publicStats.users, label: 'Users', icon: FaUsers, color: 'text-amber-400' },
-                    { value: publicStats.creations, label: 'AI Vids', icon: FaVideo, color: 'text-cyan-400' },
+                    { value: publicStats.votes, label: 'Ratings', icon: FaTrophy, color: 'text-cyan-400' },
                   ].map((stat, i) => (
                     <motion.div
                       key={stat.label}
