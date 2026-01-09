@@ -58,7 +58,9 @@ export default function ManagePage() {
       const res = await fetch(`/api/models?t=${Date.now()}`);
       const data = await res.json();
       if (data.models) {
-        const sorted = data.models.sort((a, b) => a.name.localeCompare(b.name));
+        // Filter out any model named "AI" (legacy AI creations) and sort
+        const filtered = data.models.filter(m => m.name?.toLowerCase() !== 'ai');
+        const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
         setModels(sorted);
       }
     } catch (err) {

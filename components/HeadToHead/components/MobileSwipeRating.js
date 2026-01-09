@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCrown, FaHeart, FaSearchPlus, FaTrophy, FaImages, FaImage, FaVideo, FaMagic, FaRobot } from 'react-icons/fa';
-import { HiSparkles } from 'react-icons/hi';
+import { FaCrown, FaHeart, FaSearchPlus, FaTrophy, FaImages, FaVideo } from 'react-icons/fa';
 import { useAIGeneration } from '../../../context/AIGenerationContext';
 import { AIGenerationIndicator } from '../../GlobalAIModal';
 import AIPromptModal from '../../AIPromptModal';
@@ -22,15 +21,13 @@ const MobileSwipeRating = ({
   // AI Generation - using global context
   const { startGeneration, isGenerating } = useAIGeneration();
   const [promptModalOpen, setPromptModalOpen] = useState(false);
-  const [promptMode, setPromptMode] = useState('image');
   const [promptReferenceImage, setPromptReferenceImage] = useState(null);
   const [currentAiImage, setCurrentAiImage] = useState(null);
   
-  const handleOpenAiModal = (e, image, mode) => {
+  const handleOpenAiModal = (e, image) => {
     e.stopPropagation();
     setPromptReferenceImage(image.url);
     setCurrentAiImage(image);
-    setPromptMode(mode);
     setPromptModalOpen(true);
   };
   
@@ -40,7 +37,7 @@ const MobileSwipeRating = ({
       id: currentAiImage.modelId,
       name: currentAiImage.modelName || currentAiImage.modelUsername
     } : null;
-    startGeneration(promptReferenceImage, prompt, promptMode, modelInfo);
+    startGeneration(promptReferenceImage, prompt, 'video', modelInfo);
     setPromptModalOpen(false);
   };
 
@@ -154,26 +151,15 @@ const MobileSwipeRating = ({
                   
                   {/* Bottom controls bar */}
                   <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between gap-2 p-3">
-                    {/* AI Buttons */}
-                    <div className="flex items-center gap-2">
-                      <motion.button
-                        onClick={(e) => handleOpenAiModal(e, image, 'image')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 transition-all shadow-lg"
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <HiSparkles className="text-cyan-400" size={14} />
-                        <span className="text-xs font-medium text-white">Photo</span>
-                      </motion.button>
-                      
-                      <motion.button
-                        onClick={(e) => handleOpenAiModal(e, image, 'video')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 transition-all shadow-lg"
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <FaVideo className="text-purple-400" size={12} />
-                        <span className="text-xs font-medium text-white">Video</span>
-                      </motion.button>
-                    </div>
+                    {/* AI Video Button */}
+                    <motion.button
+                      onClick={(e) => handleOpenAiModal(e, image)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 transition-all shadow-lg"
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <FaVideo className="text-purple-400" size={12} />
+                      <span className="text-xs font-medium text-white">AI Video</span>
+                    </motion.button>
                     
                     {/* Zoom Button */}
                     <motion.button
@@ -270,7 +256,7 @@ const MobileSwipeRating = ({
       <AIPromptModal
         isOpen={promptModalOpen}
         onClose={() => setPromptModalOpen(false)}
-        mode={promptMode}
+        mode="video"
         referenceImageUrl={promptReferenceImage}
         onSubmit={handlePromptSubmit}
         isGenerating={isGenerating}

@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaVideo, FaTimes, FaMagic, FaSpinner, FaSave, FaTrash, FaDownload } from 'react-icons/fa';
+import { FaVideo, FaTimes, FaMagic, FaSpinner, FaSave, FaTrash, FaDownload } from 'react-icons/fa';
 
 const AIGenerateModal = ({ 
   isOpen, 
   onClose, 
-  mode, // 'image' or 'video'
+  mode = 'video', // Only video is now supported
   referenceImageUrl,
   onSaved 
 }) => {
@@ -76,11 +76,7 @@ const AIGenerateModal = ({
         // Still processing - update progress
         setPollCount(prev => prev + 1);
         const elapsed = Math.round(pollCount * 2); // 2 seconds per poll
-        if (type === 'video') {
-          setProgress(`Generating video... ${elapsed}s (may take 2-5 min)`);
-        } else {
-          setProgress(`Generating image... ${elapsed}s`);
-        }
+        setProgress(`Generating video... ${elapsed}s (may take 2-5 min)`);
       }
     } catch (err) {
       console.error('Poll error:', err);
@@ -98,7 +94,7 @@ const AIGenerateModal = ({
     setError(null);
     setGeneratedContent(null);
     setPollCount(0);
-    setProgress(mode === 'video' ? 'Starting video generation...' : 'Starting image generation...');
+    setProgress('Starting video generation...');
 
     try {
       const response = await fetch('/api/ai/generate', {
@@ -121,7 +117,7 @@ const AIGenerateModal = ({
 
       if (data.predictionId) {
         // Start polling for result
-        setProgress(mode === 'video' ? 'Generating video... 0s (may take 2-5 min)' : 'Generating image... 0s');
+        setProgress('Generating video... 0s (may take 2-5 min)');
         
         // Poll every 2 seconds
         pollIntervalRef.current = setInterval(() => {
@@ -255,21 +251,17 @@ const AIGenerateModal = ({
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${mode === 'video' ? 'bg-purple-500/20' : 'bg-pink-500/20'}`}>
-                {mode === 'video' ? (
-                  <FaVideo className="text-purple-400" />
-                ) : (
-                  <FaImage className="text-pink-400" />
-                )}
+              <div className="p-2 rounded-xl bg-purple-500/20">
+                <FaVideo className="text-purple-400" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">
-                  {generatedContent ? 'Preview AI Creation' : `Generate AI ${mode === 'video' ? 'Video' : 'Image'}`}
+                  {generatedContent ? 'Preview AI Video' : 'Generate AI Video'}
                 </h2>
                 <p className="text-white/50 text-xs">
                   {generatedContent 
-                    ? (generatedType === 'video' ? 'Download to phone or discard' : 'Save to your AI gallery or discard')
-                    : 'Describe what you want to create'
+                    ? 'Download to phone or save to gallery'
+                    : 'Describe the motion you want to create'
                   }
                 </p>
               </div>
@@ -289,22 +281,14 @@ const AIGenerateModal = ({
             <div className="p-4">
               {/* Preview */}
               <div className="relative rounded-xl overflow-hidden bg-black/50 mb-4">
-                {generatedType === 'video' ? (
-                  <video
-                    src={generatedContent}
-                    controls
-                    autoPlay
-                    loop
-                    muted
-                    className="w-full max-h-[60vh] object-contain"
-                  />
-                ) : (
-                  <img
-                    src={generatedContent}
-                    alt="AI Generated"
-                    className="w-full max-h-[60vh] object-contain"
-                  />
-                )}
+                <video
+                  src={generatedContent}
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  className="w-full max-h-[60vh] object-contain"
+                />
               </div>
 
               {/* Prompt used */}
@@ -357,25 +341,20 @@ const AIGenerateModal = ({
                   </button>
                 </div>
                 
-                {/* Download option for videos */}
-                {generatedType === 'video' && (
-                  <button
-                    onClick={handleDownload}
-                    disabled={saving}
-                    className="w-full py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-all text-sm"
-                  >
-                    <FaDownload size={12} />
-                    Or download to phone
-                  </button>
-                )}
+                {/* Download option */}
+                <button
+                  onClick={handleDownload}
+                  disabled={saving}
+                  className="w-full py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-all text-sm"
+                >
+                  <FaDownload size={12} />
+                  Or download to phone
+                </button>
               </div>
 
               {/* Tip */}
               <p className="mt-3 text-center text-white/30 text-xs">
-                {generatedType === 'video' 
-                  ? 'Videos saved to gallery can be viewed in Manage → AI'
-                  : 'Saved images appear in Manage → AI gallery'
-                }
+                Videos saved to gallery can be viewed in Creations
               </p>
             </div>
           ) : (
@@ -397,15 +376,12 @@ const AIGenerateModal = ({
                 {/* Prompt Input */}
                 <div className="mb-4">
                   <label className="block text-white/60 text-sm mb-2">
-                    {mode === 'video' ? 'What should happen in the video?' : 'Describe the image you want'}
+                    What should happen in the video?
                   </label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={mode === 'video' 
-                      ? "e.g., She turns and smiles at the camera, wind blowing through her hair..."
-                      : "e.g., Same person in a elegant red dress at a sunset beach..."
-                    }
+                    placeholder="e.g., She turns and smiles at the camera, wind blowing through her hair..."
                     className="w-full h-32 p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 resize-none"
                     disabled={loading}
                   />
@@ -437,9 +413,7 @@ const AIGenerateModal = ({
                     transition-all duration-200
                     ${loading || !prompt.trim()
                       ? 'bg-white/10 text-white/30 cursor-not-allowed'
-                      : mode === 'video'
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/30'
-                        : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30'
+                      : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/30'
                     }
                   `}
                 >
@@ -451,17 +425,14 @@ const AIGenerateModal = ({
                   ) : (
                     <>
                       <FaMagic />
-                      Generate {mode === 'video' ? 'Video' : 'Image'}
+                      Generate Video
                     </>
                   )}
                 </button>
 
                 {/* Info */}
                 <p className="mt-3 text-center text-white/30 text-xs">
-                  {mode === 'video' 
-                    ? 'Video generation may take 2-5 minutes'
-                    : 'Image generation takes about 30 seconds'
-                  }
+                  Video generation may take 2-5 minutes
                 </p>
               </div>
             </>

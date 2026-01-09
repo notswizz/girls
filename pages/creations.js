@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown } from 'react-icons/fa';
+import { FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import Layout from '../components/Layout';
 
@@ -49,7 +49,6 @@ export default function CreationsPage() {
   const [sourceModels, setSourceModels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedModel, setSelectedModel] = useState('all');
-  const [selectedType, setSelectedType] = useState('all');
   const [sortBy, setSortBy] = useState('recent'); // 'recent' or 'favorites'
   const [showFilters, setShowFilters] = useState(false);
   const [viewingCreation, setViewingCreation] = useState(null);
@@ -62,7 +61,7 @@ export default function CreationsPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (selectedModel !== 'all') params.append('modelId', selectedModel);
-      if (selectedType !== 'all') params.append('type', selectedType);
+      params.append('type', 'video'); // Only fetch videos
       if (sortBy === 'favorites') params.append('favoritesFirst', 'true');
       
       const response = await fetch(`/api/ai/creations?${params}`);
@@ -83,7 +82,7 @@ export default function CreationsPage() {
     if (session) {
       fetchCreations();
     }
-  }, [session, selectedModel, selectedType, sortBy]);
+  }, [session, selectedModel, sortBy]);
 
   // Toggle favorite
   const handleToggleFavorite = async (e, creation) => {
@@ -142,7 +141,7 @@ export default function CreationsPage() {
       const response = await fetch(creation.url);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
-      const ext = creation.type === 'video' ? 'mp4' : 'png';
+      const ext = 'mp4';
       
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -156,10 +155,6 @@ export default function CreationsPage() {
     }
   };
 
-  // Check if URL is video
-  const isVideo = (url) => {
-    return url?.includes('.mp4') || url?.includes('video');
-  };
 
   if (status === 'loading') {
     return (
@@ -191,7 +186,7 @@ export default function CreationsPage() {
     );
   }
 
-  const activeFilters = (selectedModel !== 'all' ? 1 : 0) + (selectedType !== 'all' ? 1 : 0) + (sortBy !== 'recent' ? 1 : 0);
+  const activeFilters = (selectedModel !== 'all' ? 1 : 0) + (sortBy !== 'recent' ? 1 : 0);
   const favoriteCount = creations.filter(c => c.isFavorite).length;
 
   return (
@@ -265,30 +260,6 @@ export default function CreationsPage() {
                     </div>
                   </div>
 
-                  {/* Type Filter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/40 w-16">Type:</span>
-                    <div className="flex gap-2">
-                      {[
-                        { value: 'all', label: 'All' },
-                        { value: 'image', label: 'Images', icon: FaImage },
-                        { value: 'video', label: 'Videos', icon: FaVideo }
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setSelectedType(opt.value)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
-                            selectedType === opt.value
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-white/10 text-white/60 hover:bg-white/20'
-                          }`}
-                        >
-                          {opt.icon && <opt.icon size={10} />}
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Model Filter */}
                   {sourceModels.length > 0 && (
@@ -362,30 +333,14 @@ export default function CreationsPage() {
                   className="group relative aspect-square rounded-xl overflow-hidden bg-black border border-white/10 hover:border-purple-500/50 transition-all cursor-pointer"
                   onClick={() => setViewingCreation(creation)}
                 >
-                  {creation.type === 'video' || isVideo(creation.url) ? (
-                    <>
-                      <VideoThumbnail
-                        src={creation.url}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white/80">
-                        <FaVideo size={8} />
-                        Video
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <img
-                        src={creation.url}
-                        alt={creation.prompt}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white/80">
-                        <FaImage size={8} />
-                        Image
-                      </div>
-                    </>
-                  )}
+                  <VideoThumbnail
+                    src={creation.url}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1 text-[10px] text-white/80">
+                    <FaVideo size={8} />
+                    Video
+                  </div>
 
                   {/* Favorite Button */}
                   <button
@@ -426,10 +381,10 @@ export default function CreationsPage() {
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  {viewingCreation.type === 'video' || isVideo(viewingCreation.url) ? <FaVideo className="text-white text-sm" /> : <FaImage className="text-white text-sm" />}
+                  <FaVideo className="text-white text-sm" />
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium">AI {viewingCreation.type === 'video' || isVideo(viewingCreation.url) ? 'Video' : 'Image'}</p>
+                  <p className="text-white text-sm font-medium">AI Video</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -457,22 +412,14 @@ export default function CreationsPage() {
             {/* Content */}
             <div className="flex-1 flex items-center justify-center p-4 overflow-auto" onClick={(e) => e.stopPropagation()}>
               <div className="max-w-4xl w-full">
-                {viewingCreation.type === 'video' || isVideo(viewingCreation.url) ? (
-                  <video
-                    src={viewingCreation.url}
-                    className="w-full max-h-[60vh] object-contain rounded-xl"
-                    controls
-                    autoPlay
-                    loop
-                    playsInline
-                  />
-                ) : (
-                  <img
-                    src={viewingCreation.url}
-                    alt={viewingCreation.prompt}
-                    className="w-full max-h-[60vh] object-contain rounded-xl"
-                  />
-                )}
+                <video
+                  src={viewingCreation.url}
+                  className="w-full max-h-[60vh] object-contain rounded-xl"
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                />
 
                 {/* Prompt */}
                 {viewingCreation.prompt && (

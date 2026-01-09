@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaVideo, FaTimes, FaMagic, FaSpinner } from 'react-icons/fa';
+import { FaVideo, FaTimes, FaMagic, FaSpinner } from 'react-icons/fa';
 
 export default function AIPromptModal({ 
   isOpen, 
   onClose, 
-  mode, // 'image' or 'video'
+  mode = 'video', // Now only 'video' is supported
   referenceImageUrl,
   onSubmit,
   isGenerating 
@@ -57,19 +57,15 @@ export default function AIPromptModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              mode === 'video' 
-                ? 'bg-gradient-to-br from-pink-500 to-red-500' 
-                : 'bg-gradient-to-br from-purple-500 to-pink-500'
-            }`}>
-              {mode === 'video' ? <FaVideo className="text-white" /> : <FaImage className="text-white" />}
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+              <FaVideo className="text-white" />
             </div>
             <div>
               <h3 className="text-white font-semibold">
-                Generate AI {mode === 'video' ? 'Video' : 'Image'}
+                Generate AI Video
               </h3>
               <p className="text-white/40 text-xs">
-                {mode === 'video' ? 'Create a video from this image' : 'Transform this image with AI'}
+                Bring this image to life with AI
               </p>
             </div>
           </div>
@@ -98,16 +94,13 @@ export default function AIPromptModal({
           {/* Prompt Input */}
           <div>
             <label className="block text-white/60 text-sm mb-2">
-              Describe what you want
+              Describe the motion you want
             </label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={mode === 'video' 
-                ? "e.g., Make her wave at the camera and smile..." 
-                : "e.g., Transform into a fantasy princess with magical effects..."
-              }
+              placeholder="e.g., Make her wave at the camera and smile..."
               className="w-full h-24 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 resize-none focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20"
               autoFocus
             />
@@ -116,10 +109,7 @@ export default function AIPromptModal({
           {/* Tips */}
           <div className="bg-white/5 rounded-xl p-3">
             <p className="text-white/40 text-xs">
-              💡 {mode === 'video' 
-                ? 'Tip: Describe the motion and action you want to see. Videos take 2-5 minutes to generate.'
-                : 'Tip: Be specific about the style, mood, and changes you want to see.'
-              }
+              💡 Tip: Describe the motion and action you want to see. Videos take 2-5 minutes to generate.
             </p>
           </div>
 
@@ -144,7 +134,7 @@ export default function AIPromptModal({
             ) : (
               <>
                 <FaMagic />
-                Generate {mode === 'video' ? 'Video' : 'Image'}
+                Generate Video
               </>
             )}
           </button>

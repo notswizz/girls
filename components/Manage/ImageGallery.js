@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaCamera, FaImages, FaUsers, FaPlay, FaVideo } from 'react-icons/fa';
-import { HiSparkles } from 'react-icons/hi';
 import { useAIGeneration } from '../../context/AIGenerationContext';
 import AIPromptModal from '../AIPromptModal';
 
@@ -21,13 +20,11 @@ export default function ImageGallery({
 }) {
   const { startGeneration, isGenerating } = useAIGeneration();
   const [promptModalOpen, setPromptModalOpen] = useState(false);
-  const [promptMode, setPromptMode] = useState('image');
   const [promptReferenceImage, setPromptReferenceImage] = useState(null);
 
-  const handleOpenAiModal = (e, image, mode) => {
+  const handleOpenAiModal = (e, image) => {
     e.stopPropagation();
     setPromptReferenceImage(image.url);
-    setPromptMode(mode);
     setPromptModalOpen(true);
   };
 
@@ -36,7 +33,7 @@ export default function ImageGallery({
       id: selectedModel._id || selectedModel.id,
       name: selectedModel.name || selectedModel.username
     } : null;
-    startGeneration(promptReferenceImage, prompt, promptMode, modelInfo);
+    startGeneration(promptReferenceImage, prompt, 'video', modelInfo);
     setPromptModalOpen(false);
   };
 
@@ -187,7 +184,7 @@ export default function ImageGallery({
               )}
             </div>
 
-            {/* Hover Overlay with AI Buttons */}
+            {/* Hover Overlay with AI Video Button */}
             <div className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/70 backdrop-blur-sm">
               <div className="text-center mb-4">
                 <div className="text-2xl font-bold text-white">
@@ -198,27 +195,15 @@ export default function ImageGallery({
                 </div>
               </div>
               
-              <div className="flex gap-2">
-                <motion.button
-                  onClick={(e) => handleOpenAiModal(e, image, 'image')}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 hover:border-cyan-400/50 transition-all"
-                >
-                  <HiSparkles className="text-cyan-400" size={14} />
-                  <span className="text-xs font-semibold text-cyan-300">AI</span>
-                </motion.button>
-                
-                <motion.button
-                  onClick={(e) => handleOpenAiModal(e, image, 'video')}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-violet-500/20 border border-purple-500/30 hover:border-purple-400/50 transition-all"
-                >
-                  <FaVideo className="text-purple-400" size={12} />
-                  <span className="text-xs font-semibold text-purple-300">Video</span>
-                </motion.button>
-              </div>
+              <motion.button
+                onClick={(e) => handleOpenAiModal(e, image)}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500/20 to-violet-500/20 border border-purple-500/30 hover:border-purple-400/50 transition-all"
+              >
+                <FaVideo className="text-purple-400" size={14} />
+                <span className="text-xs font-semibold text-purple-300">AI Video</span>
+              </motion.button>
             </div>
           </motion.div>
         );
@@ -227,7 +212,7 @@ export default function ImageGallery({
       <AIPromptModal
         isOpen={promptModalOpen}
         onClose={() => setPromptModalOpen(false)}
-        mode={promptMode}
+        mode="video"
         referenceImageUrl={promptReferenceImage}
         onSubmit={handlePromptSubmit}
         isGenerating={isGenerating}

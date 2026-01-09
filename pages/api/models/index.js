@@ -21,7 +21,11 @@ export default async function handler(req, res) {
           console.log('GET /api/models - Fetching models');
           
           // Build query - filter by user if logged in
-          const query = { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
+          const query = { 
+            $or: [{ isActive: true }, { isActive: { $exists: false } }],
+            // Exclude any model named "AI" (legacy AI creations model)
+            name: { $not: { $regex: /^AI$/i } }
+          };
           
           // If user is logged in, only show their models
           if (session?.user?.id) {
@@ -36,7 +40,7 @@ export default async function handler(req, res) {
             });
           }
           
-          // Find all models belonging to the user
+          // Find all models belonging to the user (excluding "AI" model)
           const models = await db
             .collection('models')
             .find(query)
