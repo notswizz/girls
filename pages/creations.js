@@ -170,45 +170,58 @@ export default function CreationsPage() {
     }
   }, [session, sortBy]);
 
-  // Handle vote (upvote/downvote)
+  // Handle vote (upvote/downvote) - unlimited votes allowed
   const handleVote = async (e, creation, voteType) => {
     e.stopPropagation();
     
-    const currentVote = creation.userVote || 0;
-    // Toggle: if same vote, remove it; otherwise set new vote
-    const newVote = currentVote === voteType ? 0 : voteType;
+    // Optimistic update for instant feedback
+    setCreations(prev => prev.map(c => 
+      c._id === creation._id 
+        ? { 
+            ...c, 
+            upvotes: (c.upvotes || 0) + (voteType === 1 ? 1 : 0),
+            downvotes: (c.downvotes || 0) + (voteType === -1 ? 1 : 0),
+            score: ((c.upvotes || 0) + (voteType === 1 ? 1 : 0)) - ((c.downvotes || 0) + (voteType === -1 ? 1 : 0))
+          } 
+        : c
+    ));
     
-    setVotingId(creation._id);
+    // Update viewing modal too
+    if (viewingCreation?._id === creation._id) {
+      setViewingCreation(prev => ({ 
+        ...prev, 
+        upvotes: (prev.upvotes || 0) + (voteType === 1 ? 1 : 0),
+        downvotes: (prev.downvotes || 0) + (voteType === -1 ? 1 : 0),
+        score: ((prev.upvotes || 0) + (voteType === 1 ? 1 : 0)) - ((prev.downvotes || 0) + (voteType === -1 ? 1 : 0))
+      }));
+    }
+    
     try {
       const response = await fetch(`/api/ai/creations/${creation._id}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vote: newVote })
+        body: JSON.stringify({ vote: voteType })
       });
       
       if (response.ok) {
         const data = await response.json();
-        // Update the creation in state
+        // Sync with server counts
         setCreations(prev => prev.map(c => 
           c._id === creation._id 
-            ? { ...c, upvotes: data.upvotes, downvotes: data.downvotes, score: data.score, userVote: data.vote } 
+            ? { ...c, upvotes: data.upvotes, downvotes: data.downvotes, score: data.score } 
             : c
         ));
-        // Update viewing creation if open
         if (viewingCreation?._id === creation._id) {
           setViewingCreation(prev => ({ 
             ...prev, 
             upvotes: data.upvotes, 
             downvotes: data.downvotes, 
-            score: data.score, 
-            userVote: data.vote 
+            score: data.score
           }));
         }
       }
     } catch (error) {
       console.error('Failed to vote:', error);
-    } finally {
-      setVotingId(null);
     }
   };
 
@@ -492,43 +505,26 @@ export default function CreationsPage() {
                     {creation.isFavorite ? <FaHeart size={12} /> : <FaRegHeart size={12} />}
                   </button>
 
-                  {/* Vote Buttons - Bottom Left */}
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                  {/* Vote Buttons - Bottom Left - Always visible */}
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 z-10">
                     <button
                       onClick={(e) => handleVote(e, creation, 1)}
-                      disabled={votingId === creation._id}
-                      className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${
-                        creation.userVote === 1
-                          ? 'bg-green-500/80 text-white'
-                          : 'bg-black/40 text-white/60 hover:text-green-400 hover:bg-black/60'
-                      }`}
+                      className="p-2 rounded-full backdrop-blur-md border transition-all shadow-lg bg-black/70 text-white/80 border-white/20 hover:text-green-400 hover:border-green-400/50 hover:bg-green-500/20 active:scale-90"
                     >
-                      <FaThumbsUp size={10} />
+                      <FaThumbsUp size={12} />
                     </button>
-                    {(creation.upvotes > 0 || creation.downvotes > 0) && (
-                      <span className={`text-xs font-bold px-1 ${
-                        creation.score > 0 ? 'text-green-400' : 
-                        creation.score < 0 ? 'text-red-400' : 'text-white/60'
-                      }`}>
-                        {creation.score > 0 ? '+' : ''}{creation.score || 0}
-                      </span>
-                    )}
+                    <span className={`text-sm font-bold px-1.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/20 min-w-[2rem] text-center ${
+                      (creation.score || 0) > 0 ? 'text-green-400' : 
+                      (creation.score || 0) < 0 ? 'text-red-400' : 'text-white/70'
+                    }`}>
+                      {(creation.score || 0) > 0 ? '+' : ''}{creation.score || 0}
+                    </span>
                     <button
                       onClick={(e) => handleVote(e, creation, -1)}
-                      disabled={votingId === creation._id}
-                      className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${
-                        creation.userVote === -1
-                          ? 'bg-red-500/80 text-white'
-                          : 'bg-black/40 text-white/60 hover:text-red-400 hover:bg-black/60'
-                      }`}
+                      className="p-2 rounded-full backdrop-blur-md border transition-all shadow-lg bg-black/70 text-white/80 border-white/20 hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/20 active:scale-90"
                     >
-                      <FaThumbsDown size={10} />
+                      <FaThumbsDown size={12} />
                     </button>
-                  </div>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 pointer-events-none">
-                    <p className="text-white text-xs line-clamp-2">{creation.prompt}</p>
                   </div>
                 </motion.div>
               ))}
@@ -562,12 +558,7 @@ export default function CreationsPage() {
                 <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleVote(e, viewingCreation, 1); }}
-                    disabled={votingId === viewingCreation._id}
-                    className={`p-1.5 rounded-full transition-all ${
-                      viewingCreation.userVote === 1
-                        ? 'bg-green-500/30 text-green-400'
-                        : 'text-white/60 hover:text-green-400'
-                    }`}
+                    className="p-1.5 rounded-full transition-all text-white/60 hover:text-green-400 hover:bg-green-500/20 active:scale-90"
                   >
                     <FaThumbsUp size={14} />
                   </button>
@@ -579,12 +570,7 @@ export default function CreationsPage() {
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleVote(e, viewingCreation, -1); }}
-                    disabled={votingId === viewingCreation._id}
-                    className={`p-1.5 rounded-full transition-all ${
-                      viewingCreation.userVote === -1
-                        ? 'bg-red-500/30 text-red-400'
-                        : 'text-white/60 hover:text-red-400'
-                    }`}
+                    className="p-1.5 rounded-full transition-all text-white/60 hover:text-red-400 hover:bg-red-500/20 active:scale-90"
                   >
                     <FaThumbsDown size={14} />
                   </button>

@@ -101,12 +101,19 @@ export default function ExploreRating() {
     }
   };
 
-  const handleVote = async (winnerId) => {
+  const handleVote = async (winnerIdRaw) => {
     if (zoomedImage) return;
-    const loserId = images.find(img => img._id !== winnerId)?._id;
+    
+    // Normalize IDs to strings
+    const winnerId = winnerIdRaw?.toString ? winnerIdRaw.toString() : winnerIdRaw;
+    const loserImg = images.find(img => {
+      const imgId = img._id?.toString ? img._id.toString() : img._id;
+      return imgId !== winnerId;
+    });
+    const loserId = loserImg?._id?.toString ? loserImg._id.toString() : loserImg?._id;
     if (!loserId) return;
 
-    setSelectedId(winnerId);
+    setSelectedId(winnerIdRaw);
     setCelebrating(true);
     
     // Play win sound and mark it to prevent click sound
@@ -126,7 +133,7 @@ export default function ExploreRating() {
       const nextUrl = `/api/explore/compare${params.toString() ? '?' + params.toString() : ''}`;
       
       // Submit vote and pre-fetch next images in parallel
-      const [, nextRes] = await Promise.all([
+      const [voteRes, nextRes] = await Promise.all([
         fetch('/api/explore/vote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -135,7 +142,25 @@ export default function ExploreRating() {
         fetch(nextUrl)
       ]);
       
+      const voteData = await voteRes.json();
       const nextData = await nextRes.json();
+      
+      // Update current images with new ELO ratings immediately
+      if (voteData?.ratings) {
+        const winnerNewElo = voteData.ratings.winner.newElo;
+        const loserNewElo = voteData.ratings.loser.newElo;
+        
+        setImages(prev => prev.map(img => {
+          const imgId = img._id?.toString ? img._id.toString() : img._id;
+          if (imgId === winnerId) {
+            return { ...img, elo: winnerNewElo };
+          }
+          if (imgId === loserId) {
+            return { ...img, elo: loserNewElo };
+          }
+          return img;
+        }));
+      }
 
       // Brief celebration then show next
       setTimeout(() => {
@@ -154,7 +179,7 @@ export default function ExploreRating() {
         } else {
           fetchImages();
         }
-      }, 400);
+      }, 600); // Longer delay to see ELO change
     } catch (err) {
       console.error('Error voting:', err);
       setCelebrating(false);
@@ -284,11 +309,21 @@ export default function ExploreRating() {
                   
                   {/* Top info - ELO only */}
                   <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end p-3">
-                    {image.elo && (
-                      <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 shadow-lg">
-                        <span className="text-xs font-bold text-white">{Math.round(image.elo)}</span>
-                      </div>
-                    )}
+                    <motion.div 
+                      key={image.elo || 1500}
+                      initial={{ scale: 1.3, backgroundColor: isWinner ? 'rgba(34, 197, 94, 0.8)' : isLoser ? 'rgba(239, 68, 68, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}
+                      animate={{ scale: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+                      transition={{ duration: 0.5 }}
+                      className={`px-3 py-1.5 rounded-full backdrop-blur-sm border shadow-lg ${
+                        isWinner ? 'border-green-400/60' : isLoser ? 'border-red-400/40' : 'border-white/20'
+                      }`}
+                    >
+                      <span className={`text-sm font-bold ${
+                        isWinner ? 'text-green-300' : isLoser ? 'text-red-300' : 'text-white'
+                      }`}>
+                        {Math.round(image.elo || 1500)}
+                      </span>
+                    </motion.div>
                   </div>
                   
                   {/* Bottom controls */}

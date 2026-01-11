@@ -5,7 +5,8 @@ import { ObjectId } from 'mongodb';
 
 /**
  * Handle upvote/downvote for AI creations
- * POST - Cast a vote (upvote: 1, downvote: -1, remove: 0)
+ * POST - Cast a vote (upvote: 1, downvote: -1)
+ * Users can vote multiple times with no cooldown
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -18,10 +19,10 @@ export default async function handler(req, res) {
   }
 
   const { id } = req.query;
-  const { vote } = req.body; // 1 = upvote, -1 = downvote, 0 = remove vote
+  const { vote } = req.body; // 1 = upvote, -1 = downvote
 
-  if (vote !== 1 && vote !== -1 && vote !== 0) {
-    return res.status(400).json({ error: 'Vote must be 1, -1, or 0' });
+  if (vote !== 1 && vote !== -1) {
+    return res.status(400).json({ error: 'Vote must be 1 or -1' });
   }
 
   try {
@@ -34,81 +35,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid creation ID' });
     }
 
-    const voterId = session.user.id;
-
     // Check if creation exists
     const creation = await db.collection('ai_creations').findOne({ _id: creationId });
     if (!creation) {
       return res.status(404).json({ error: 'Creation not found' });
     }
 
-    // Get existing vote by this user
-    const existingVote = await db.collection('creation_votes').findOne({
-      creationId: creationId,
-      voterId: voterId
-    });
+    // Simply increment upvotes or downvotes - no tracking, no limits
+    const updateOps = {
+      $inc: vote === 1 ? { upvotes: 1 } : { downvotes: 1 }
+    };
 
-    const previousVote = existingVote?.vote || 0;
-
-    if (vote === 0) {
-      // Remove vote
-      if (existingVote) {
-        await db.collection('creation_votes').deleteOne({
-          creationId: creationId,
-          voterId: voterId
-        });
-      }
-    } else {
-      // Upsert vote
-      await db.collection('creation_votes').updateOne(
-        { creationId: creationId, voterId: voterId },
-        {
-          $set: {
-            vote: vote,
-            updatedAt: new Date()
-          },
-          $setOnInsert: {
-            createdAt: new Date()
-          }
-        },
-        { upsert: true }
-      );
-    }
-
-    // Calculate vote delta for updating creation
-    const voteDelta = vote - previousVote;
-
-    // Update the creation's vote counts
-    const updateOps = {};
-    
-    if (voteDelta !== 0) {
-      if (vote === 1 || previousVote === 1) {
-        // Upvote changed
-        updateOps.$inc = updateOps.$inc || {};
-        if (vote === 1 && previousVote !== 1) {
-          updateOps.$inc.upvotes = 1;
-        } else if (vote !== 1 && previousVote === 1) {
-          updateOps.$inc.upvotes = -1;
-        }
-      }
-      
-      if (vote === -1 || previousVote === -1) {
-        // Downvote changed
-        updateOps.$inc = updateOps.$inc || {};
-        if (vote === -1 && previousVote !== -1) {
-          updateOps.$inc.downvotes = 1;
-        } else if (vote !== -1 && previousVote === -1) {
-          updateOps.$inc.downvotes = -1;
-        }
-      }
-    }
-
-    if (Object.keys(updateOps).length > 0) {
-      await db.collection('ai_creations').updateOne(
-        { _id: creationId },
-        updateOps
-      );
-    }
+    await db.collection('ai_creations').updateOne(
+      { _id: creationId },
+      updateOps
+    );
 
     // Get updated counts
     const updatedCreation = await db.collection('ai_creations').findOne({ _id: creationId });

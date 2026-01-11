@@ -110,6 +110,7 @@ export default function Home() {
   const [images, setImages] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [publicStats, setPublicStats] = useState(null);
+  const [userStats, setUserStats] = useState({ photos: 0, models: 0, creations: 0 });
 
   useEffect(() => {
     // Check if mobile immediately
@@ -127,11 +128,55 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Fetch images for logged-OUT users landing page
+  // Fetch user's personal stats when logged in
   useEffect(() => {
-    // Skip if logged in or still loading session
-    if (status === 'loading' || session) return;
+    if (!session) return;
     
+    // Fetch models count
+    fetch('/api/models')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const models = data.models || [];
+          const totalPhotos = models.reduce((sum, m) => sum + (m.imageCount || 0), 0);
+          setUserStats(prev => ({ ...prev, models: models.length, photos: totalPhotos }));
+        }
+      })
+      .catch(() => {});
+    
+    // Fetch creations count
+    fetch('/api/ai/creations?type=video&limit=1')
+      .then(res => res.json())
+      .then(data => {
+        if (data.creations) {
+          setUserStats(prev => ({ ...prev, creations: data.total || data.creations.length }));
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
+  // Fetch images - different sources for logged in vs logged out
+  useEffect(() => {
+    if (status === 'loading') return;
+    
+    // Logged IN: fetch user's own images
+    if (session) {
+      fetch('/api/images?limit=50&sort=highest-elo')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.images?.length > 0) {
+            const activeImages = data.images.filter(img => img.isActive && img.url);
+            // Take top images by ELO, shuffle a bit for variety
+            const topImages = activeImages.slice(0, 20);
+            const shuffled = topImages.sort(() => 0.3 - Math.random());
+            setImages(shuffled.slice(0, 12));
+          }
+        })
+        .catch(err => console.error('Failed to fetch images:', err));
+      return;
+    }
+    
+    // Logged OUT: fetch public images
     fetch('/api/images?allUsers=true&limit=50')
       .then(res => res.json())
       .then(data => {
@@ -188,7 +233,28 @@ export default function Home() {
     ogType: "website"
   };
 
-  // Logged in user - dashboard view (no scroll)
+  // Logged-in dashboard positions - scattered around edges (larger images)
+  const dashboardPositions = [
+    // Left side
+    { x: '0%', y: '8%', width: '140px', height: '185px', rotate: -8, scale: 1, z: 2 },
+    { x: '2%', y: '42%', width: '130px', height: '170px', rotate: 6, scale: 0.95, z: 1 },
+    { x: '0%', y: '72%', width: '135px', height: '175px', rotate: -5, scale: 0.9, z: 2 },
+    // Right side
+    { x: '86%', y: '6%', width: '135px', height: '175px', rotate: 8, scale: 0.95, z: 2 },
+    { x: '84%', y: '40%', width: '145px', height: '190px', rotate: -6, scale: 1, z: 3 },
+    { x: '87%', y: '70%', width: '130px', height: '170px', rotate: 5, scale: 0.9, z: 2 },
+    // Top area
+    { x: '14%', y: '3%', width: '120px', height: '155px', rotate: 10, scale: 0.9, z: 1 },
+    { x: '74%', y: '2%', width: '115px', height: '150px', rotate: -10, scale: 0.85, z: 1 },
+    // Bottom area
+    { x: '12%', y: '78%', width: '115px', height: '150px', rotate: -8, scale: 0.85, z: 1 },
+    { x: '76%', y: '80%', width: '120px', height: '155px', rotate: 7, scale: 0.85, z: 1 },
+    // Inner scattered (closer to center, still visible)
+    { x: '22%', y: '22%', width: '110px', height: '145px', rotate: -4, scale: 0.85, z: 1 },
+    { x: '68%', y: '25%', width: '115px', height: '150px', rotate: 5, scale: 0.85, z: 1 },
+  ];
+
+  // Logged in user - dashboard view with floating images
   if (session) {
     return (
       <Layout {...seoProps} fullHeight>
@@ -197,76 +263,134 @@ export default function Home() {
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-pink-600/10 rounded-full blur-[120px]" />
             <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px]" />
+            <div className="absolute top-1/2 right-0 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[80px]" />
           </div>
 
+          {/* Floating Images from User's Collection - Desktop only */}
+          {!isMobile && images.length > 0 && images.map((img, i) => {
+            if (i >= dashboardPositions.length) return null;
+            return (
+              <FloatingImage
+                key={img._id || i}
+                src={img.url}
+                position={dashboardPositions[i]}
+                index={i}
+                isVideo={false}
+                isMobile={false}
+              />
+            );
+          })}
+
           {/* Main content - centered */}
-          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20 pt-16">
-            {/* Welcome header */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-xl shadow-pink-500/30">
-                <FaPiggyBank className="text-2xl text-white" />
+          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20 pt-16 relative z-20">
+            {/* Glassmorphism card container */}
+            <div className="relative p-6 sm:p-8 rounded-3xl bg-black/20 backdrop-blur-md border border-white/10 max-w-lg w-full">
+              {/* Glow behind card */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-pink-500/5 rounded-3xl blur-xl -z-10" />
+              
+              {/* Welcome header */}
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-xl shadow-pink-500/30">
+                  <FaPiggyBank className="text-xl text-white" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                  Welcome back
+                </h1>
+                <p className="text-white/40 text-sm">What do you want to do?</p>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                Welcome back
-              </h1>
-              <p className="text-white/40 text-sm">What do you want to do?</p>
-            </div>
 
-            {/* Action Cards Grid - 2x2 on mobile, 4 cols on desktop */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-md sm:max-w-lg">
-              {[
-                { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/25' },
-                { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: 'Your collection', color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/25' },
-                { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: 'AI video gen', color: 'from-purple-500 to-violet-600', shadow: 'shadow-purple-500/25' },
-                { href: '/referrals', icon: FaGift, title: 'Refer', subtitle: 'Earn tokens', color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/25' },
-              ].map((item) => (
-                <Link href={item.href} key={item.title}>
-                  <div className="relative p-4 sm:p-4 rounded-2xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 hover:border-white/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all">
-                    <div className="flex items-center gap-3 sm:flex-col sm:text-center">
-                      <div className={`w-12 h-12 sm:w-11 sm:h-11 sm:mx-auto sm:mb-2 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg ${item.shadow}`}>
-                        <item.icon className="text-white text-lg sm:text-base" />
-                      </div>
-                      <div className="flex-1 sm:flex-none">
-                        <div className="text-white font-bold text-sm sm:text-sm">{item.title}</div>
-                        <div className="text-white/40 text-xs sm:text-[10px] mt-0.5">{item.subtitle}</div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* FAQ Link */}
-            <div className="mt-4">
-              <Link 
-                href="/faq"
-                className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-xs transition-colors"
-              >
-                <FaQuestionCircle size={12} />
-                <span>How does this work? Read the FAQ</span>
-              </Link>
-            </div>
-
-            {/* Platform Stats */}
-            {publicStats && (
-              <div className="mt-6 flex items-center justify-center gap-4 sm:gap-6">
+              {/* Action Cards Grid - 2x2 on mobile, 4 cols on desktop */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 {[
-                  { value: publicStats.photos, label: 'Photos', icon: FaImages },
-                  { value: publicStats.models, label: 'Models', icon: FaUsers },
-                  { value: publicStats.users, label: 'Users', icon: FaUsers },
-                  { value: publicStats.votes, label: 'Votes', icon: FaTrophy },
-                ].map((stat) => (
-                  <div key={stat.label} className="text-center">
-                    <div className="flex items-center justify-center gap-1.5 text-white/80">
-                      <stat.icon className="text-[10px] text-white/40" />
-                      <span className="font-bold text-sm">{formatNumber(stat.value)}</span>
+                  { href: '/rate', icon: FaTrophy, title: 'Rate', subtitle: 'Head-to-head', color: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/25' },
+                  { href: '/manage', icon: FaPiggyBank, title: 'Bank', subtitle: userStats.photos > 0 ? `${userStats.photos} / ${userStats.models}` : '0 / 0', color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/25' },
+                  { href: '/creations', icon: HiSparkles, title: 'Creations', subtitle: userStats.creations > 0 ? `${userStats.creations} vids` : 'AI video', color: 'from-purple-500 to-violet-600', shadow: 'shadow-purple-500/25' },
+                  { href: '/referrals', icon: FaGift, title: 'Refer', subtitle: 'Earn tokens', color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/25' },
+                ].map((item) => (
+                  <Link href={item.href} key={item.title}>
+                    <div className="relative p-3 sm:p-4 rounded-xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] border border-white/10 hover:border-white/25 hover:bg-white/[0.1] hover:scale-[1.03] active:scale-[0.98] cursor-pointer transition-all group">
+                      <div className="flex items-center gap-3 sm:flex-col sm:text-center">
+                        <div className={`w-10 h-10 sm:w-11 sm:h-11 sm:mx-auto sm:mb-1 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg ${item.shadow} group-hover:scale-110 transition-transform`}>
+                          <item.icon className="text-white text-base sm:text-base" />
+                        </div>
+                        <div className="flex-1 sm:flex-none">
+                          <div className="text-white font-bold text-sm">{item.title}</div>
+                          <div className="text-white/40 text-xs sm:text-[10px]">{item.subtitle}</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-white/30 text-[9px] uppercase tracking-wider">{stat.label}</div>
-                  </div>
+                  </Link>
                 ))}
               </div>
-            )}
 
+              {/* FAQ Link */}
+              <div className="text-center">
+                <Link 
+                  href="/faq"
+                  className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-xs transition-colors"
+                >
+                  <FaQuestionCircle size={12} />
+                  <span>How does this work? Read the FAQ</span>
+                </Link>
+              </div>
+
+              {/* Platform Stats */}
+              {publicStats && (
+                <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-center gap-4 sm:gap-6">
+                  {[
+                    { value: publicStats.photos, label: 'Photos', icon: FaImages },
+                    { value: publicStats.models, label: 'Models', icon: FaUsers },
+                    { value: publicStats.users, label: 'Users', icon: FaUsers },
+                    { value: publicStats.votes, label: 'Votes', icon: FaTrophy },
+                  ].map((stat) => (
+                    <div key={stat.label} className="text-center">
+                      <div className="flex items-center justify-center gap-1.5 text-white/80">
+                        <stat.icon className="text-[10px] text-white/40" />
+                        <span className="font-bold text-sm">{formatNumber(stat.value)}</span>
+                      </div>
+                      <div className="text-white/30 text-[9px] uppercase tracking-wider">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Top Picks Preview - Mobile only */}
+            {isMobile && images.length > 0 && (
+              <div className="mt-6 w-full max-w-lg">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="text-white/50 text-xs font-medium">Your Top Pics</span>
+                  <Link href="/manage" className="text-pink-400 text-xs">View all →</Link>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {images.slice(0, 6).map((img, i) => (
+                    <motion.div
+                      key={img._id || i}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex-shrink-0 relative"
+                    >
+                      <Link href="/manage">
+                        <div className="w-20 h-28 rounded-xl overflow-hidden border border-white/20 shadow-lg">
+                          <img
+                            src={img.url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          {img.elo && img.elo > 1500 && (
+                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-sm">
+                              <span className="text-[9px] font-bold text-amber-400">{Math.round(img.elo)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Layout>

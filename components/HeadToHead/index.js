@@ -89,13 +89,19 @@ const HeadToHeadCompare = () => {
     }
   }, [session]);
   
-  const handleSelectWinner = async (winnerId) => {
+  const handleSelectWinner = async (winnerIdRaw) => {
     try {
-      const loserId = images.find(img => img._id !== winnerId)?._id;
+      // Normalize IDs to strings for consistent comparison
+      const winnerId = winnerIdRaw?.toString ? winnerIdRaw.toString() : winnerIdRaw;
+      const loserImg = images.find(img => {
+        const imgId = img._id?.toString ? img._id.toString() : img._id;
+        return imgId !== winnerId;
+      });
+      const loserId = loserImg?._id?.toString ? loserImg._id.toString() : loserImg?._id;
       if (!loserId) return;
       
-      setSelectedImageId(winnerId);
-      setCelebratingId(winnerId);
+      setSelectedImageId(winnerIdRaw);
+      setCelebratingId(winnerIdRaw);
       
       // Play win sound and mark it to prevent click sound
       try {
@@ -108,10 +114,27 @@ const HeadToHeadCompare = () => {
       fireCelebrationEffects();
       
       // Submit vote and pre-fetch next images in parallel
-      const [, nextImages] = await Promise.all([
+      const [submitResult, nextImages] = await Promise.all([
         submitWinnerSelection(winnerId, loserId, session?.user?.id || null),
         fetchComparisonImages(recentModels)
       ]);
+      
+      // Update current images with new ELO ratings immediately (so user sees the change)
+      if (submitResult?.newRatings) {
+        const winnerNewElo = submitResult.newRatings.winner.newRating;
+        const loserNewElo = submitResult.newRatings.loser.newRating;
+        
+        setImages(prev => prev.map(img => {
+          const imgId = img._id?.toString ? img._id.toString() : img._id;
+          if (imgId === winnerId) {
+            return { ...img, elo: winnerNewElo };
+          }
+          if (imgId === loserId) {
+            return { ...img, elo: loserNewElo };
+          }
+          return img;
+        }));
+      }
       
       // Brief celebration then show next
       setTimeout(() => {
@@ -126,7 +149,7 @@ const HeadToHeadCompare = () => {
         } else {
           fetchImages();
         }
-      }, 400);
+      }, 600); // Slightly longer to see the ELO change
     } catch (err) {
       console.error('Error selecting winner:', err);
       setCelebratingId(null);

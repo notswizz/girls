@@ -145,10 +145,22 @@ const MobileSwipeRating = ({
                   
                   {/* Top info bar - ELO only */}
                   <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-end p-3">
-                    {/* ELO badge - always show */}
-                    <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 shadow-lg">
-                      <span className="text-xs font-bold text-white">{Math.round(image.elo || 1500)}</span>
-                    </div>
+                    {/* ELO badge - always show, animates on change */}
+                    <motion.div 
+                      key={image.elo || 1500}
+                      initial={{ scale: 1.3, backgroundColor: isWinner ? 'rgba(34, 197, 94, 0.8)' : isLoser ? 'rgba(239, 68, 68, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}
+                      animate={{ scale: 1, backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+                      transition={{ duration: 0.5 }}
+                      className={`px-3 py-1.5 rounded-full backdrop-blur-sm border shadow-lg ${
+                        isWinner ? 'border-green-400/60' : isLoser ? 'border-red-400/40' : 'border-white/20'
+                      }`}
+                    >
+                      <span className={`text-sm font-bold ${
+                        isWinner ? 'text-green-300' : isLoser ? 'text-red-300' : 'text-white'
+                      }`}>
+                        {Math.round(image.elo || 1500)}
+                      </span>
+                    </motion.div>
                   </div>
                   
                   {/* Bottom controls bar */}
