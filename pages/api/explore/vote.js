@@ -147,14 +147,14 @@ export default async function handler(req, res) {
           ownerQuery,
           { 
             $inc: { 
-              tokens: 1,
+              unclaimedPoints: 1,
               tokensFromWins: 1 // Track tokens earned from wins separately
             } 
           }
         );
 
         if (tokenResult.modifiedCount > 0) {
-          console.log(`[EXPLORE] Awarded 1 token to user ${winnerOwnerId} for winning vote`);
+          console.log(`[EXPLORE] Awarded 1 unclaimed point to user ${winnerOwnerId} for winning vote`);
         }
       } catch (tokenError) {
         // Don't fail the vote if token award fails, just log it

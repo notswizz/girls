@@ -101,13 +101,13 @@ export default async function handler(req, res) {
             .find({ imageId: { $in: allImageIds } })
             .toArray();
           
-          // Create a map of imageId -> community stats
+          // Create a map of imageId -> community stats (now with ELO)
           const imageIdToCommunityStats = {};
           for (const rating of communityRatings) {
             imageIdToCommunityStats[rating.imageId] = {
               wins: rating.wins || 0,
               losses: rating.losses || 0,
-              score: rating.score || 0
+              elo: rating.elo || 1500
             };
           }
           
@@ -118,18 +118,26 @@ export default async function handler(req, res) {
               // Aggregate community stats for this model's images
               let communityWins = 0;
               let communityLosses = 0;
-              let topCommunityScore = 0;
+              let communityEloSum = 0;
+              let communityEloCount = 0;
+              let topCommunityElo = 0;
               
               (item.imageIds || []).forEach(imgId => {
                 const cStats = imageIdToCommunityStats[imgId];
                 if (cStats) {
                   communityWins += cStats.wins;
                   communityLosses += cStats.losses;
-                  if (cStats.score > topCommunityScore) {
-                    topCommunityScore = cStats.score;
+                  if (cStats.elo) {
+                    communityEloSum += cStats.elo;
+                    communityEloCount++;
+                    if (cStats.elo > topCommunityElo) {
+                      topCommunityElo = cStats.elo;
+                    }
                   }
                 }
               });
+              
+              const avgCommunityElo = communityEloCount > 0 ? communityEloSum / communityEloCount : 0;
               
               modelIdToStats[item._id.toString()] = {
                 totalImages: item.count,
@@ -141,7 +149,8 @@ export default async function handler(req, res) {
                 // Community stats
                 communityWins,
                 communityLosses,
-                topCommunityScore
+                avgCommunityElo,
+                topCommunityElo
               };
             }
           });
@@ -159,7 +168,8 @@ export default async function handler(req, res) {
               ratedImages: 0,
               communityWins: 0,
               communityLosses: 0,
-              topCommunityScore: 0
+              avgCommunityElo: 0,
+              topCommunityElo: 0
             };
             
             // Calculate win rate (personal/gallery)
@@ -170,6 +180,13 @@ export default async function handler(req, res) {
             const communityMatches = stats.communityWins + stats.communityLosses;
             const communityWinRate = communityMatches > 0 ? stats.communityWins / communityMatches : 0;
             
+            // Calculate best ELO - use gallery ELO, community ELO, or model's own ELO
+            const galleryElo = stats.averageElo > 0 ? stats.averageElo : 0;
+            const communityElo = stats.avgCommunityElo > 0 ? stats.avgCommunityElo : 0;
+            const modelElo = model.elo || 0;
+            // Use the highest available ELO, default to 1500 if none
+            const bestElo = Math.max(galleryElo, communityElo, modelElo) || 1500;
+            
             // Ensure all required fields exist
             return { 
               ...model, 
@@ -177,12 +194,14 @@ export default async function handler(req, res) {
               wins: stats.totalWins || 0,
               losses: stats.totalLosses || 0,
               winRate: winRate || 0,
-              elo: stats.averageElo > 0 ? stats.averageElo : null,
+              elo: bestElo,
+              galleryElo: galleryElo || 1500,
               // Community stats
               communityWins: stats.communityWins || 0,
               communityLosses: stats.communityLosses || 0,
               communityWinRate: communityWinRate || 0,
-              topCommunityScore: stats.topCommunityScore || 0,
+              communityElo: communityElo || 1500,
+              topCommunityElo: stats.topCommunityElo || 1500,
               stats: stats
             };
           });

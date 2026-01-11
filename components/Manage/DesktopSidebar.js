@@ -86,13 +86,23 @@ export default function DesktopSidebar({ models, selectedModel, onSelectModel, o
             </motion.button>
           </div>
         ) : (
-          models.map((model, i) => {
+          // Sort models by ELO (highest first)
+          [...models]
+            .sort((a, b) => (b.elo || 1500) - (a.elo || 1500))
+            .map((model, i) => {
             const isSelected = selectedModel?._id === model._id;
-            // Use community stats instead of personal stats
-            const wins = model.communityWins || 0;
-            const losses = model.communityLosses || 0;
+            const elo = model.elo || 1500;
+            const wins = model.communityWins || model.wins || 0;
+            const losses = model.communityLosses || model.losses || 0;
             const totalVotes = wins + losses;
-            const winRate = totalVotes > 0 ? Math.round((wins / totalVotes) * 100) : 0;
+            
+            // ELO tier colors
+            const getEloColor = (elo) => {
+              if (elo >= 1800) return 'text-yellow-400';
+              if (elo >= 1600) return 'text-purple-400';
+              if (elo >= 1400) return 'text-cyan-400';
+              return 'text-white/60';
+            };
             
             return (
               <motion.button
@@ -109,8 +119,13 @@ export default function DesktopSidebar({ models, selectedModel, onSelectModel, o
                     : 'bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10'}
                 `}
               >
-                {/* Name row */}
+                {/* Name row with rank */}
                 <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${
+                    i < 3 ? 'text-yellow-400' : 'text-white/30'
+                  }`}>
+                    #{i + 1}
+                  </div>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${
                     isSelected 
                       ? 'bg-gradient-to-br from-pink-500/40 to-purple-500/40 text-white' 
@@ -126,21 +141,17 @@ export default function DesktopSidebar({ models, selectedModel, onSelectModel, o
                   )}
                 </div>
                 
-                {/* Stats row */}
+                {/* Stats row - ELO prominent */}
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="text-white/50">{model.imageCount || 0} photos</span>
+                  <span className={`font-bold ${getEloColor(elo)}`}>{Math.round(elo)} ELO</span>
+                  <span className="text-white/20">•</span>
                   {totalVotes > 0 ? (
                     <>
-                      <span className="text-white/20">•</span>
                       <span className="text-green-400 font-medium">{wins}W</span>
                       <span className="text-red-400 font-medium">{losses}L</span>
-                      <span className="text-white/20">•</span>
-                      <span className={`font-medium ${winRate >= 50 ? 'text-green-400' : 'text-white/50'}`}>
-                        {winRate}%
-                      </span>
                     </>
                   ) : (
-                    <span className="text-white/30 italic">No votes yet</span>
+                    <span className="text-white/30">{model.imageCount || 0} photos</span>
                   )}
                 </div>
               </motion.button>

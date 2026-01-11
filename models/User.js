@@ -17,6 +17,9 @@ class User {
     lastLoginAt = null,
     // Token system fields
     tokens = 0, // spendable tokens, default 0
+    unclaimedPoints = 0, // points waiting to be claimed
+    lastClaimAt = null, // when they last claimed points
+    totalPointsClaimed = 0, // lifetime total claimed
     revealHistory = [], // array of { modelId, timestamp, cost }
     // Referral system fields
     referralCode = null, // Unique code for this user to share
@@ -36,6 +39,9 @@ class User {
     this.ratingsCount = ratingsCount;
     this.lastLoginAt = lastLoginAt;
     this.tokens = tokens;
+    this.unclaimedPoints = unclaimedPoints;
+    this.lastClaimAt = lastClaimAt;
+    this.totalPointsClaimed = totalPointsClaimed;
     this.revealHistory = revealHistory;
     this.referralCode = referralCode;
     this.referredBy = referredBy;
@@ -57,6 +63,9 @@ class User {
       ratingsCount: this.ratingsCount,
       lastLoginAt: this.lastLoginAt,
       tokens: this.tokens,
+      unclaimedPoints: this.unclaimedPoints,
+      lastClaimAt: this.lastClaimAt,
+      totalPointsClaimed: this.totalPointsClaimed,
       revealHistory: this.revealHistory,
       referralCode: this.referralCode,
       referredBy: this.referredBy,
@@ -81,6 +90,9 @@ class User {
       ratingsCount: doc.ratingsCount || 0,
       lastLoginAt: doc.lastLoginAt || null,
       tokens: doc.tokens || 0,
+      unclaimedPoints: doc.unclaimedPoints || 0,
+      lastClaimAt: doc.lastClaimAt || null,
+      totalPointsClaimed: doc.totalPointsClaimed || 0,
       revealHistory: doc.revealHistory || [],
       referralCode: doc.referralCode || null,
       referredBy: doc.referredBy || null,

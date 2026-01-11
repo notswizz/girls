@@ -16,21 +16,15 @@ export default function Overview({ models, onSelectModel, onAddModel, isLoading 
 
   const stats = calculateOverviewStats(models);
   
-  const rankedModels = [...models]
-    .filter(m => (m.communityWins || 0) + (m.communityLosses || 0) > 0)
-    .sort((a, b) => {
-      // Sort by win rate, then by total votes
-      const aWins = a.communityWins || 0;
-      const aLosses = a.communityLosses || 0;
-      const bWins = b.communityWins || 0;
-      const bLosses = b.communityLosses || 0;
-      const aTotal = aWins + aLosses;
-      const bTotal = bWins + bLosses;
-      const aRate = aTotal > 0 ? aWins / aTotal : 0;
-      const bRate = bTotal > 0 ? bWins / bTotal : 0;
-      if (bRate !== aRate) return bRate - aRate;
-      return bTotal - aTotal;
-    });
+  // Sort all models by ELO (highest first)
+  const sortedModels = [...models].sort((a, b) => {
+    const aElo = a.elo || 1500;
+    const bElo = b.elo || 1500;
+    return bElo - aElo;
+  });
+  
+  // For podium, filter to those with votes
+  const rankedModels = sortedModels.filter(m => (m.communityWins || 0) + (m.communityLosses || 0) > 0);
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-b from-transparent via-purple-950/10 to-transparent">
@@ -83,8 +77,8 @@ export default function Overview({ models, onSelectModel, onAddModel, isLoading 
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {models.map((model, i) => (
-                <ModelCard key={model._id} model={model} index={i} onClick={() => onSelectModel(model)} />
+              {sortedModels.map((model, i) => (
+                <ModelCard key={model._id} model={model} index={i} rank={i + 1} onClick={() => onSelectModel(model)} />
               ))}
             </div>
           </motion.div>
@@ -126,10 +120,9 @@ export default function Overview({ models, onSelectModel, onAddModel, isLoading 
 
 // Podium Card Component
 function PodiumCard({ model, rank, onClick }) {
-  const wins = model.communityWins || 0;
-  const losses = model.communityLosses || 0;
-  const totalVotes = wins + losses;
-  const winRate = totalVotes > 0 ? Math.round((wins / totalVotes) * 100) : 0;
+  const elo = model.elo || 1500;
+  const wins = model.communityWins || model.wins || 0;
+  const losses = model.communityLosses || model.losses || 0;
   
   const heights = { 1: 'h-32 sm:h-40', 2: 'h-24 sm:h-32', 3: 'h-20 sm:h-28' };
   const widths = { 1: 'w-28 sm:w-36', 2: 'w-24 sm:w-32', 3: 'w-24 sm:w-32' };
@@ -173,7 +166,8 @@ function PodiumCard({ model, rank, onClick }) {
             <span className="mx-1">·</span>
             <span className="text-red-300 font-medium">{losses}L</span>
           </div>
-          <div className="text-white font-bold text-base sm:text-lg">{winRate}%</div>
+          <div className="text-white font-bold text-base sm:text-lg">{Math.round(elo)}</div>
+          <div className="text-white/50 text-[10px] uppercase tracking-wider">ELO</div>
         </div>
       </div>
     </motion.div>
@@ -181,11 +175,19 @@ function PodiumCard({ model, rank, onClick }) {
 }
 
 // Model Card Component
-function ModelCard({ model, index, onClick }) {
-  const wins = model.communityWins || 0;
-  const losses = model.communityLosses || 0;
+function ModelCard({ model, index, rank, onClick }) {
+  const elo = model.elo || 1500;
+  const wins = model.communityWins || model.wins || 0;
+  const losses = model.communityLosses || model.losses || 0;
   const totalVotes = wins + losses;
-  const winRate = totalVotes > 0 ? Math.round((wins / totalVotes) * 100) : 0;
+  
+  // ELO tier colors
+  const getEloColor = (elo) => {
+    if (elo >= 1800) return 'text-yellow-400';
+    if (elo >= 1600) return 'text-purple-400';
+    if (elo >= 1400) return 'text-cyan-400';
+    return 'text-white/60';
+  };
   
   return (
     <motion.div
@@ -200,9 +202,16 @@ function ModelCard({ model, index, onClick }) {
         {/* Hover glow */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-pink-500/10 via-transparent to-purple-500/10" />
         
+        {/* Rank badge */}
+        <div className="absolute top-3 left-3">
+          <span className={`text-xs font-bold ${rank <= 3 ? 'text-yellow-400' : 'text-white/40'}`}>
+            #{rank}
+          </span>
+        </div>
+        
         {/* Public indicator */}
         {model.isPublic && (
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 right-3">
             <FaGlobe className="text-emerald-400" size={10} />
           </div>
         )}
@@ -219,27 +228,22 @@ function ModelCard({ model, index, onClick }) {
           <div className="text-white font-semibold text-sm truncate group-hover:text-pink-300 transition-colors">
             {model.name}
           </div>
-          <div className="text-white/40 text-xs mt-1">
-            {model.imageCount || 0} photos
+          
+          {/* ELO Rating - prominent */}
+          <div className={`text-xl font-bold mt-1 ${getEloColor(elo)}`}>
+            {Math.round(elo)}
           </div>
+          <div className="text-white/30 text-[10px] uppercase tracking-wider">ELO</div>
           
           {/* Record */}
           {totalVotes > 0 ? (
             <div className="mt-2 flex items-center justify-center gap-2 text-xs">
               <span className="text-green-400 font-medium">{wins}W</span>
               <span className="text-red-400 font-medium">{losses}L</span>
-              <span className={`font-medium ${winRate >= 50 ? 'text-green-400' : 'text-white/40'}`}>
-                {winRate}%
-              </span>
             </div>
           ) : (
-            <div className="mt-2 text-white/30 text-xs italic">No votes</div>
+            <div className="mt-1 text-white/30 text-xs">{model.imageCount || 0} photos</div>
           )}
-        </div>
-        
-        {/* Arrow indicator */}
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <FaArrowRight className="text-pink-400 text-xs" />
         </div>
       </div>
     </motion.div>

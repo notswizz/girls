@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { AIGenerationProvider } from "../context/AIGenerationContext";
 import GlobalAIModal, { AIGenerationIndicator } from "../components/GlobalAIModal";
 import ReferralTracker from "../components/ReferralTracker";
+import ClaimPointsButton from "../components/ClaimPointsButton";
 
 // Global click sound - skip when win sound was just played
 let lastWinSoundTime = 0;
@@ -65,6 +66,7 @@ export default function App({ Component, pageProps }) {
         <Component {...pageProps} />
         <GlobalAIModal />
         <AIGenerationIndicator />
+        <ClaimPointsButton />
         <Analytics />
       </AIGenerationProvider>
     </SessionProvider>
