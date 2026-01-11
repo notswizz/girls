@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
 import { AnimatePresence } from 'framer-motion';
 
-// Import modular components
+// Import static components that are always needed
 import {
-  UploadModal,
-  AddModelModal,
-  ImageViewerModal,
-  ModelSelectorModal,
   DesktopSidebar,
   ImageGallery,
   Toast,
@@ -18,6 +15,12 @@ import {
   Overview,
   manageStyles
 } from '../components/Manage';
+
+// Dynamic imports for modals - only load when opened
+const UploadModal = dynamic(() => import('../components/Manage/UploadModal'), { ssr: false });
+const AddModelModal = dynamic(() => import('../components/Manage/AddModelModal'), { ssr: false });
+const ImageViewerModal = dynamic(() => import('../components/Manage/ImageViewerModal'), { ssr: false });
+const ModelSelectorModal = dynamic(() => import('../components/Manage/ModelSelectorModal'), { ssr: false });
 
 export default function ManagePage() {
   const { data: session, status } = useSession();
@@ -55,7 +58,7 @@ export default function ManagePage() {
   const fetchModels = async () => {
     try {
       setIsLoadingModels(true);
-      const res = await fetch(`/api/models?t=${Date.now()}`);
+      const res = await fetch('/api/models');
       const data = await res.json();
       if (data.models) {
         // Filter out any model named "AI" (legacy AI creations) and sort
@@ -89,7 +92,7 @@ export default function ManagePage() {
     try {
       setIsLoadingImages(true);
       setModelImages([]);
-      const res = await fetch(`/api/models/${modelId}/images?t=${Date.now()}`);
+      const res = await fetch(`/api/models/${modelId}/images`);
       const data = await res.json();
       if (data.success && data.images) {
         setModelImages(data.images);
@@ -107,7 +110,7 @@ export default function ManagePage() {
     try {
       setIsLoadingCommunity(true);
       setCommunityImages([]);
-      const res = await fetch(`/api/models/${modelId}/community-stats?t=${Date.now()}`);
+      const res = await fetch(`/api/models/${modelId}/community-stats`);
       const data = await res.json();
       if (data.success) {
         setCommunityImages(data.images || []);

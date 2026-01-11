@@ -154,6 +154,7 @@ export default function ImageGallery({
                       muted
                       loop
                       playsInline
+                      preload="none"
                       onMouseEnter={(e) => e.target.play()}
                       onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
                     />
@@ -167,6 +168,7 @@ export default function ImageGallery({
                     alt=""
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
+                    decoding="async"
                   />
                 )}
                 

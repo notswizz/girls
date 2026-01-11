@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 import Layout from '../components/Layout';
-import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift, FaQuestionCircle, FaUsers, FaCoins, FaImages, FaVideo } from 'react-icons/fa';
+import { FaGoogle, FaTrophy, FaLock, FaPiggyBank, FaPlay, FaGift, FaQuestionCircle, FaUsers, FaImages } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
@@ -13,23 +13,24 @@ const formatNumber = (num) => {
   return num?.toLocaleString() || '0';
 };
 
-// Floating image component
-const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
+// Floating image component - memoized to prevent unnecessary re-renders
+const FloatingImage = memo(({ src, position, index, isVideo, isMobile }) => {
   const videoRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.3, y: 20 }}
       animate={{ 
-        opacity: 1, 
+        opacity: isLoaded ? 1 : 0, 
         scale: position.scale,
         rotate: position.rotate,
         y: 0
       }}
       transition={{ 
-        duration: 0.8, 
-        delay: 0.05 + index * 0.06,
+        duration: 0.6, 
+        delay: 0.02 + index * 0.03,
         ease: [0.22, 1, 0.36, 1]
       }}
       whileHover={!isMobile ? { 
@@ -77,7 +78,8 @@ const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="none"
+              onLoadedData={() => setIsLoaded(true)}
             />
             {!isHovered && (
               <div className="absolute inset-0 flex items-center justify-center z-30">
@@ -91,13 +93,16 @@ const FloatingImage = ({ src, position, index, isVideo, isMobile }) => {
           <img
             src={src}
             alt=""
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setIsLoaded(true)}
             className={`w-full h-full object-cover ${!isMobile ? 'transition-transform duration-500 group-hover:scale-110' : ''}`}
           />
         )}
       </div>
     </motion.div>
   );
-};
+});
 
 // Generate scattered positions for images - responsive for mobile/desktop
 const generatePositions = (count, isMobile = false) => {
@@ -199,9 +204,9 @@ export default function Home() {
       try {
         // If logged in, fetch only user's own images
         // If logged out, fetch public images for the landing page
-        const url = session 
-          ? '/api/images?limit=20' 
-          : '/api/images?allUsers=true&limit=100';
+                const url = session 
+                  ? '/api/images?limit=16' 
+                  : '/api/images?allUsers=true&limit=32';
         
         const response = await fetch(url);
         const data = await response.json();

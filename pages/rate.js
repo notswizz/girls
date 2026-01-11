@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
-import HeadToHeadCompare from '../components/HeadToHeadCompare';
-import ExploreRating from '../components/ExploreRating';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FaLock, FaGlobe } from 'react-icons/fa';
+
+// Dynamic imports for heavy components - loads only when needed
+const HeadToHeadCompare = dynamic(() => import('../components/HeadToHeadCompare'), {
+  loading: () => <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-pink-500" /></div>,
+  ssr: false // Disable SSR for faster initial page load
+});
+
+const ExploreRating = dynamic(() => import('../components/ExploreRating'), {
+  loading: () => <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500" /></div>,
+  ssr: false
+});
 
 export default function RatePage() {
   const { data: session } = useSession();

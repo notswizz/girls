@@ -131,6 +131,8 @@ const MobileSwipeRating = ({
                   <img
                     src={image.url}
                     alt=""
+                    loading="eager"
+                    decoding="async"
                     className={`
                       absolute inset-0 w-full h-full object-cover brightness-110
                       transition-all duration-500
