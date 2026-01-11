@@ -142,11 +142,30 @@ export default async function handler(req, res) {
       modelMap[m._id.toString()] = m;
     });
 
+    // Fetch community ELO ratings for these images
+    const imageIds = images.map(img => img._id.toString());
+    const communityRatings = await db.collection('community_ratings')
+      .find({ imageId: { $in: imageIds } })
+      .toArray();
+    
+    // Create a map of imageId -> community rating
+    const communityRatingMap = {};
+    communityRatings.forEach(cr => {
+      communityRatingMap[cr.imageId] = cr;
+    });
+
     const enrichedImages = images.map(img => {
       const imgModelId = img.modelId?.toString() || img.modelId;
+      const imgIdStr = img._id.toString();
+      const communityRating = communityRatingMap[imgIdStr];
+      
       return {
         ...img,
-        modelUsername: modelMap[imgModelId]?.username || null
+        modelUsername: modelMap[imgModelId]?.username || null,
+        // Use community ELO if available, otherwise default to 1500
+        elo: communityRating?.elo || 1500,
+        communityWins: communityRating?.wins || 0,
+        communityLosses: communityRating?.losses || 0
       };
     });
 
