@@ -61,9 +61,9 @@ export default function ManagePage() {
       const res = await fetch('/api/models');
       const data = await res.json();
       if (data.models) {
-        // Filter out any model named "AI" (legacy AI creations) and sort
+        // Filter out any model named "AI" (legacy AI creations) and sort by ELO (highest first)
         const filtered = data.models.filter(m => m.name?.toLowerCase() !== 'ai');
-        const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
+        const sorted = filtered.sort((a, b) => (b.elo || 1500) - (a.elo || 1500));
         setModels(sorted);
       }
     } catch (err) {

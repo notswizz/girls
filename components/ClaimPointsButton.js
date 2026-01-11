@@ -118,16 +118,6 @@ export default function ClaimPointsButton() {
             )}
           </div>
           
-          {/* "Claim" label */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap"
-          >
-            <span className="text-xs text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
-              Tap to claim!
-            </span>
-          </motion.div>
         </motion.button>
       </AnimatePresence>
 
