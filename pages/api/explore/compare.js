@@ -41,10 +41,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // For each public model, get only TOP 10 images by ELO score
-    // This ensures only owner-curated best images appear in Explore
-    const TOP_IMAGES_PER_MODEL = 10;
-    
+    // Get ALL images from public models (no per-model limit)
     let allEligibleImages = [];
     
     // Build user ID exclusion conditions (handle both string and ObjectId formats)
@@ -58,9 +55,9 @@ export default async function handler(req, res) {
     for (const model of publicModels) {
       const modelIdStr = model._id.toString();
       
-      // Get top 10 images for this model, sorted by ELO (owner's rating determines quality)
+      // Get ALL images for this model
       // EXCLUDE current user's own images
-      const topImages = await db.collection('images')
+      const modelImages = await db.collection('images')
         .find({
           isActive: true,
           $or: [
@@ -79,10 +76,9 @@ export default async function handler(req, res) {
           ]
         })
         .sort({ elo: -1, wins: -1, createdAt: -1 }) // Sort by ELO, then wins, then newest
-        .limit(TOP_IMAGES_PER_MODEL)
         .toArray();
       
-      allEligibleImages.push(...topImages);
+      allEligibleImages.push(...modelImages);
     }
     
     // Additional filter to catch any edge cases where userId format differs
