@@ -50,19 +50,17 @@ const FullImageModal = ({ image, onClose }) => {
               </span>
             </div>
             
-            {image.elo && (
-              <div className={`
-                px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-md border flex items-center gap-2
-                ${image.elo > 1400 
-                  ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border-amber-500/50' 
-                  : 'bg-black/50 border-white/10'}
-              `}>
-                <span className={`font-bold text-sm ${image.elo > 1400 ? 'text-amber-400' : 'text-white'}`}>
-                  {Math.round(image.elo)}
-                </span>
-                {image.elo > 1400 && <FaFire className="text-amber-400" />}
-              </div>
-            )}
+            <div className={`
+              px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-md border flex items-center gap-2
+              ${(image.elo || 1500) > 1600 
+                ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border-amber-500/50' 
+                : 'bg-black/50 border-white/10'}
+            `}>
+              <span className={`font-bold text-sm ${(image.elo || 1500) > 1600 ? 'text-amber-400' : 'text-white'}`}>
+                {Math.round(image.elo || 1500)}
+              </span>
+              {(image.elo || 1500) > 1600 && <FaFire className="text-amber-400" />}
+            </div>
           </div>
         </div>
         

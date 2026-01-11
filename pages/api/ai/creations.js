@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'You must be logged in to view creations' });
   }
 
-  const { modelId, type, limit = 50, skip = 0, favoritesFirst } = req.query;
+  const { modelId, type, limit = 50, skip = 0, favoritesFirst, sortBy = 'recent' } = req.query;
 
   try {
     const { db } = await connectToDatabase();
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     }
 
     // Fetch from both collections in parallel
-    const [newCreations, oldCreations, allExtensions] = await Promise.all([
+    const [newCreations, oldCreations, allExtensions, userVotes] = await Promise.all([
       db.collection('ai_creations')
         .find(newQuery)
         .sort({ createdAt: -1 })
@@ -70,8 +70,18 @@ export default async function handler(req, res) {
           isActive: { $ne: false }
         })
         .sort({ createdAt: 1 }) // Sort by creation order for playlist
+        .toArray(),
+      // Fetch user's votes on all creations
+      db.collection('creation_votes')
+        .find({ voterId: session.user.id })
         .toArray()
     ]);
+
+    // Create a map of user's votes by creation ID
+    const userVoteMap = {};
+    for (const v of userVotes) {
+      userVoteMap[v.creationId.toString()] = v.vote;
+    }
 
     // Create a map of extensions by parent video ID
     const extensionsByParent = {};
@@ -83,10 +93,14 @@ export default async function handler(req, res) {
       extensionsByParent[parentId].push(ext);
     }
 
-    // Attach extensions to their parent videos
+    // Attach extensions to their parent videos + add vote data
     const newCreationsWithExtensions = newCreations.map(creation => ({
       ...creation,
-      extensions: extensionsByParent[creation._id.toString()] || []
+      extensions: extensionsByParent[creation._id.toString()] || [],
+      upvotes: creation.upvotes || 0,
+      downvotes: creation.downvotes || 0,
+      score: (creation.upvotes || 0) - (creation.downvotes || 0),
+      userVote: userVoteMap[creation._id.toString()] || 0
     }));
 
     // Normalize old creations to match new format
@@ -103,14 +117,31 @@ export default async function handler(req, res) {
       sourceModelId: null,
       sourceModelName: null,
       // Mark as legacy for potential migration
-      _isLegacy: true
+      _isLegacy: true,
+      // Vote data (legacy items start with 0)
+      upvotes: 0,
+      downvotes: 0,
+      score: 0,
+      userVote: userVoteMap[img._id.toString()] || 0
     }));
 
     // Merge all creations
     let allCreations = [...newCreationsWithExtensions, ...normalizedOldCreations];
     
-    // Sort: favorites first if requested, then by date
-    if (favoritesFirst === 'true') {
+    // Sort based on sortBy parameter
+    if (sortBy === 'votes' || sortBy === 'upvotes') {
+      // Sort by upvotes/score (highest first)
+      allCreations.sort((a, b) => {
+        const scoreDiff = (b.score || 0) - (a.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        // Tie-breaker: more total votes first
+        const totalVotesA = (a.upvotes || 0) + (a.downvotes || 0);
+        const totalVotesB = (b.upvotes || 0) + (b.downvotes || 0);
+        if (totalVotesB !== totalVotesA) return totalVotesB - totalVotesA;
+        // Final tie-breaker: date
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    } else if (favoritesFirst === 'true') {
       allCreations.sort((a, b) => {
         // Favorites first
         if (a.isFavorite && !b.isFavorite) return -1;
@@ -119,6 +150,7 @@ export default async function handler(req, res) {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     } else {
+      // Default: recent first
       allCreations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
 

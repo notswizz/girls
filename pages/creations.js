@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown, FaPlus, FaPlay, FaList } from 'react-icons/fa';
+import { FaVideo, FaFilter, FaTimes, FaDownload, FaTrash, FaHeart, FaRegHeart, FaSortAmountDown, FaPlus, FaPlay, FaList, FaThumbsUp, FaThumbsDown, FaFire } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import Layout from '../components/Layout';
 import { useAIGeneration } from '../context/AIGenerationContext';
@@ -140,6 +140,7 @@ export default function CreationsPage() {
   const [showExtendPrompt, setShowExtendPrompt] = useState(null);
   const [extendPrompt, setExtendPrompt] = useState('');
   const [extending, setExtending] = useState(false);
+  const [votingId, setVotingId] = useState(null);
 
   // Fetch creations
   const fetchCreations = async () => {
@@ -148,6 +149,7 @@ export default function CreationsPage() {
       const params = new URLSearchParams();
       params.append('type', 'video'); // Only fetch videos
       if (sortBy === 'favorites') params.append('favoritesFirst', 'true');
+      if (sortBy === 'votes') params.append('sortBy', 'votes');
       
       const response = await fetch(`/api/ai/creations?${params}`);
       const data = await response.json();
@@ -167,6 +169,48 @@ export default function CreationsPage() {
       fetchCreations();
     }
   }, [session, sortBy]);
+
+  // Handle vote (upvote/downvote)
+  const handleVote = async (e, creation, voteType) => {
+    e.stopPropagation();
+    
+    const currentVote = creation.userVote || 0;
+    // Toggle: if same vote, remove it; otherwise set new vote
+    const newVote = currentVote === voteType ? 0 : voteType;
+    
+    setVotingId(creation._id);
+    try {
+      const response = await fetch(`/api/ai/creations/${creation._id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vote: newVote })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Update the creation in state
+        setCreations(prev => prev.map(c => 
+          c._id === creation._id 
+            ? { ...c, upvotes: data.upvotes, downvotes: data.downvotes, score: data.score, userVote: data.vote } 
+            : c
+        ));
+        // Update viewing creation if open
+        if (viewingCreation?._id === creation._id) {
+          setViewingCreation(prev => ({ 
+            ...prev, 
+            upvotes: data.upvotes, 
+            downvotes: data.downvotes, 
+            score: data.score, 
+            userVote: data.vote 
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to vote:', error);
+    } finally {
+      setVotingId(null);
+    }
+  };
 
   // Toggle favorite
   const handleToggleFavorite = async (e, creation) => {
@@ -354,10 +398,11 @@ export default function CreationsPage() {
                   {/* Sort */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-white/40 w-16">Sort:</span>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {[
                         { value: 'recent', label: 'Recent', icon: FaSortAmountDown },
-                        { value: 'favorites', label: 'Favorites First', icon: FaHeart }
+                        { value: 'votes', label: 'Most Upvoted', icon: FaFire },
+                        { value: 'favorites', label: 'Favorites', icon: FaHeart }
                       ].map(opt => (
                         <button
                           key={opt.value}
@@ -447,6 +492,39 @@ export default function CreationsPage() {
                     {creation.isFavorite ? <FaHeart size={12} /> : <FaRegHeart size={12} />}
                   </button>
 
+                  {/* Vote Buttons - Bottom Left */}
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                    <button
+                      onClick={(e) => handleVote(e, creation, 1)}
+                      disabled={votingId === creation._id}
+                      className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${
+                        creation.userVote === 1
+                          ? 'bg-green-500/80 text-white'
+                          : 'bg-black/40 text-white/60 hover:text-green-400 hover:bg-black/60'
+                      }`}
+                    >
+                      <FaThumbsUp size={10} />
+                    </button>
+                    {(creation.upvotes > 0 || creation.downvotes > 0) && (
+                      <span className={`text-xs font-bold px-1 ${
+                        creation.score > 0 ? 'text-green-400' : 
+                        creation.score < 0 ? 'text-red-400' : 'text-white/60'
+                      }`}>
+                        {creation.score > 0 ? '+' : ''}{creation.score || 0}
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => handleVote(e, creation, -1)}
+                      disabled={votingId === creation._id}
+                      className={`p-1.5 rounded-full backdrop-blur-sm transition-all ${
+                        creation.userVote === -1
+                          ? 'bg-red-500/80 text-white'
+                          : 'bg-black/40 text-white/60 hover:text-red-400 hover:bg-black/60'
+                      }`}
+                    >
+                      <FaThumbsDown size={10} />
+                    </button>
+                  </div>
 
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 pointer-events-none">
@@ -480,6 +558,38 @@ export default function CreationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Upvote/Downvote in modal */}
+                <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleVote(e, viewingCreation, 1); }}
+                    disabled={votingId === viewingCreation._id}
+                    className={`p-1.5 rounded-full transition-all ${
+                      viewingCreation.userVote === 1
+                        ? 'bg-green-500/30 text-green-400'
+                        : 'text-white/60 hover:text-green-400'
+                    }`}
+                  >
+                    <FaThumbsUp size={14} />
+                  </button>
+                  <span className={`text-sm font-bold min-w-[2rem] text-center ${
+                    (viewingCreation.score || 0) > 0 ? 'text-green-400' : 
+                    (viewingCreation.score || 0) < 0 ? 'text-red-400' : 'text-white/60'
+                  }`}>
+                    {(viewingCreation.score || 0) > 0 ? '+' : ''}{viewingCreation.score || 0}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleVote(e, viewingCreation, -1); }}
+                    disabled={votingId === viewingCreation._id}
+                    className={`p-1.5 rounded-full transition-all ${
+                      viewingCreation.userVote === -1
+                        ? 'bg-red-500/30 text-red-400'
+                        : 'text-white/60 hover:text-red-400'
+                    }`}
+                  >
+                    <FaThumbsDown size={14} />
+                  </button>
+                </div>
+                
                 {/* Favorite in modal */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleToggleFavorite(e, viewingCreation); }}

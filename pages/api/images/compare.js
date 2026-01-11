@@ -244,9 +244,17 @@ export default async function handler(req, res) {
         url: img.url.substring(0, 50) + '...' // Truncate URL for readability
       })));
       
+      // Ensure all images have proper ELO values before returning
+      const imagesWithElo = selectedImages.map(img => ({
+        ...img,
+        elo: img.elo || 1500, // Default to 1500 if no ELO set
+        wins: img.wins || 0,
+        losses: img.losses || 0
+      }));
+      
       return res.status(200).json({
         success: true,
-        images: selectedImages
+        images: imagesWithElo
       });
     } catch (error) {
       console.error('Error fetching comparison images:', error);

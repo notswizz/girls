@@ -81,7 +81,7 @@ class Image {
       wins: doc.wins || 0,
       losses: doc.losses || 0,
       winRate: doc.winRate || 0,
-      elo: doc.elo || 1200,
+      elo: doc.elo || 1500,
       lastOpponents: doc.lastOpponents || []
     });
   }
