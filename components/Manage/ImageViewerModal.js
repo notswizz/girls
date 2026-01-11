@@ -30,6 +30,7 @@ export default function ImageViewerModal({ image, onClose, onDelete }) {
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? wins / totalMatches : 0;
   const elo = image.elo || 1500;
+  const isExplore = image.ratingMode === 'explore';
 
   // ELO tier system - adjusted for new 1500 base
   const getEloTier = (elo) => {
