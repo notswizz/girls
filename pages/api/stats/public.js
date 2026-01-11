@@ -58,6 +58,9 @@ export default async function handler(req, res) {
     const totalTokensInCirculation = tokens.totalTokens;
     const totalTokensEverEarned = tokens.totalEarnedFromWins + tokens.totalEarnedFromReferrals;
 
+    // Cache stats for 2 minutes (they don't change that often)
+    res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+    
     return res.status(200).json({
       success: true,
       stats: {

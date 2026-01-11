@@ -27,17 +27,11 @@ export default async function handler(req, res) {
           query.userId = session.user.id;
         } else {
           // For public views (homepage, not logged in), only show images from PUBLIC models
-          // First get all public model IDs
-          const allModels = await db.collection('models').find({ isActive: true }).toArray();
-          
-          console.log('=== PUBLIC MODELS DEBUG ===');
-          console.log('Total active models:', allModels.length);
-          allModels.forEach(m => {
-            console.log(`Model "${m.name}": isPublic=${m.isPublic} (type: ${typeof m.isPublic})`);
-          });
-          
-          publicModels = allModels.filter(m => m.isPublic !== false);
-          console.log('Public models count:', publicModels.length);
+          // Only fetch public models (not all models) - much faster query
+          publicModels = await db.collection('models')
+            .find({ isActive: true, isPublic: { $ne: false } })
+            .project({ _id: 1, username: 1 }) // Only fetch needed fields
+            .toArray();
           
           const publicModelIds = publicModels.map(m => m._id);
           const publicModelIdsStr = publicModels.map(m => m._id.toString());
@@ -120,6 +114,11 @@ export default async function handler(req, res) {
               modelUsername: modelMap[imgModelId]?.username || null
             };
           });
+        }
+        
+        // Add cache headers for public views (1 minute cache)
+        if (allUsers === 'true') {
+          res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
         }
         
         return res.status(200).json({
