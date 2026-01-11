@@ -14,21 +14,21 @@
 
 // Rating constants
 const BASE_RATING = 1500;          // Starting rating (higher base for more room to fall)
-const RATING_FLOOR = 600;          // Absolute minimum
-const RATING_CEILING = 2800;       // Absolute maximum
-const PROVISIONAL_THRESHOLD = 10;  // Matches before considered established
+const RATING_FLOOR = 800;          // Absolute minimum (raised from 600)
+const RATING_CEILING = 2400;       // Absolute maximum (lowered from 2800)
+const PROVISIONAL_THRESHOLD = 15;  // Matches before considered established (raised from 10)
 
-// K-factor constants (higher = more volatile)
-const K_NEW = 80;                  // Brand new images - VERY volatile
-const K_PROVISIONAL = 60;          // Still finding their level
-const K_ESTABLISHED = 40;          // Have a track record
-const K_ELITE = 32;                // Top tier, more stable
+// K-factor constants (LOWERED for less volatility)
+const K_NEW = 40;                  // Brand new images - moderate volatility
+const K_PROVISIONAL = 32;          // Still finding their level
+const K_ESTABLISHED = 24;          // Have a track record
+const K_ELITE = 16;                // Top tier, more stable
 
 // Rating Deviation constants (uncertainty)
-const RD_INITIAL = 350;            // Starting uncertainty
+const RD_INITIAL = 250;            // Starting uncertainty (lowered from 350)
 const RD_MIN = 50;                 // Minimum uncertainty (very confident)
-const RD_MAX = 500;                // Maximum uncertainty
-const RD_DECAY_PER_MATCH = 15;     // How much RD decreases per match
+const RD_MAX = 350;                // Maximum uncertainty (lowered from 500)
+const RD_DECAY_PER_MATCH = 10;     // How much RD decreases per match (slower decay)
 
 /**
  * Calculate Rating Deviation (uncertainty) for an image
@@ -64,17 +64,17 @@ const getKFactor = (rating, matchCount, rd = null) => {
     baseK = K_ELITE;         // 30+: More stable
   }
   
-  // Uncertainty multiplier: higher RD = bigger swings
-  const rdMultiplier = 1 + (ratingDeviation - RD_MIN) / (RD_INITIAL - RD_MIN) * 0.5;
+  // Uncertainty multiplier: higher RD = modestly bigger swings (reduced from 0.5 to 0.25)
+  const rdMultiplier = 1 + (ratingDeviation - RD_MIN) / (RD_INITIAL - RD_MIN) * 0.25;
   
-  // Rating zone adjustments
+  // Rating zone adjustments - gentler extremes
   let ratingMultiplier = 1.0;
-  if (rating > 2400) {
-    ratingMultiplier = 0.7;  // Very top: harder to move
-  } else if (rating > 2000) {
-    ratingMultiplier = 0.85; // Elite: somewhat harder
-  } else if (rating < 900) {
-    ratingMultiplier = 0.8;  // Very bottom: can't fall too fast
+  if (rating > 2200) {
+    ratingMultiplier = 0.85;  // Very top: harder to move
+  } else if (rating > 1900) {
+    ratingMultiplier = 0.92; // Elite: somewhat harder
+  } else if (rating < 1000) {
+    ratingMultiplier = 0.9;  // Very bottom: can't fall too fast
   }
   
   return Math.round(baseK * rdMultiplier * ratingMultiplier);
@@ -94,42 +94,41 @@ const getExpectedScore = (ratingA, ratingB, rdA = RD_INITIAL, rdB = RD_INITIAL) 
 
 /**
  * Calculate how surprising/upset a result is
- * Returns multiplier from 1.0 (expected) to 3.0 (massive upset)
+ * Returns multiplier from 0.85 (expected) to 1.5 (modest upset)
  */
 const getUpsetMultiplier = (winnerRating, loserRating, expectedWinnerScore) => {
-  // If winner was expected to win (>50%), no upset bonus
+  // If winner was expected to win (>50%), slight reduction
   if (expectedWinnerScore >= 0.5) {
-    // Actually penalize slightly for winning when heavily favored
     const dominanceFactor = expectedWinnerScore - 0.5;
-    return Math.max(0.6, 1 - dominanceFactor * 0.5);
+    return Math.max(0.85, 1 - dominanceFactor * 0.3);
   }
   
   // UPSET! Winner was expected to lose
-  // The bigger the upset, the bigger the multiplier
+  // The bigger the upset, the bigger the multiplier (but capped lower)
   const upsetMagnitude = 0.5 - expectedWinnerScore; // 0 to 0.5
   
-  // Exponential upset bonus: small upsets get small bonus, huge upsets get HUGE bonus
-  return 1 + Math.pow(upsetMagnitude * 4, 1.5); // Can go up to ~2.8x
+  // Linear upset bonus: gentler scaling, max ~1.5x
+  return 1 + upsetMagnitude * 1.0;
 };
 
 /**
  * Calculate streak bonus/penalty
- * Winning streaks make wins worth more, losing streaks make losses hurt more
+ * Winning streaks make wins worth slightly more
  */
 const getStreakMultiplier = (wins, losses) => {
   const total = wins + losses;
-  if (total < 3) return 1.0; // Not enough data
+  if (total < 5) return 1.0; // Not enough data
   
   const winRate = wins / total;
   
-  // Hot streak bonus (>70% win rate)
-  if (winRate > 0.7) {
-    return 1.0 + (winRate - 0.7) * 0.5; // Up to 1.15x
+  // Hot streak bonus (>75% win rate) - very modest
+  if (winRate > 0.75) {
+    return 1.0 + (winRate - 0.75) * 0.2; // Up to 1.05x
   }
   
-  // Cold streak penalty (<30% win rate)
-  if (winRate < 0.3) {
-    return 1.0 + (0.3 - winRate) * 0.5; // Up to 1.15x (losses hit harder)
+  // Cold streak penalty (<25% win rate) - very modest
+  if (winRate < 0.25) {
+    return 1.0 + (0.25 - winRate) * 0.2; // Up to 1.05x
   }
   
   return 1.0;
@@ -175,20 +174,20 @@ const calculateNewRatings = (winner, loser) => {
   let winnerDelta = Math.round(winnerK * (1 - expectedWinnerScore));
   let loserDelta = Math.round(loserK * (0 - expectedLoserScore));
   
-  // MINIMUM change guarantee: every match matters
-  if (winnerDelta < 5) winnerDelta = 5;
-  if (loserDelta > -5) loserDelta = -5;
+  // Minimum change guarantee: ensure some movement (reduced from 5 to 2)
+  if (winnerDelta < 2) winnerDelta = 2;
+  if (loserDelta > -2) loserDelta = -2;
   
-  // Provisional bonus: new images beating established ones get extra boost
+  // Provisional bonus: new images beating established ones get modest boost
   if (winnerMatches < PROVISIONAL_THRESHOLD && loserMatches >= PROVISIONAL_THRESHOLD) {
-    const provisionalBonus = Math.round(20 * (1 - expectedWinnerScore));
+    const provisionalBonus = Math.round(8 * (1 - expectedWinnerScore));
     winnerDelta += provisionalBonus;
   }
   
-  // Anti-clustering: if ratings are too close, push them apart more
+  // Anti-clustering: if ratings are very close, push them apart slightly
   const ratingDiff = Math.abs(winnerRating - loserRating);
-  if (ratingDiff < 100) {
-    const clusteringPenalty = Math.round((100 - ratingDiff) / 10);
+  if (ratingDiff < 50) {
+    const clusteringPenalty = Math.round((50 - ratingDiff) / 15);
     winnerDelta += clusteringPenalty;
     loserDelta -= clusteringPenalty;
   }
@@ -231,16 +230,17 @@ const getMatchQuality = (ratingA, ratingB) => {
 
 /**
  * Get a descriptive tier/category based on rating
+ * (adjusted for tighter rating range 800-2400)
  */
 const getRatingTier = (rating) => {
-  if (rating >= 2500) return 'LEGENDARY';
-  if (rating >= 2200) return 'ELITE';
-  if (rating >= 1900) return 'OUTSTANDING';
+  if (rating >= 2200) return 'LEGENDARY';
+  if (rating >= 2000) return 'ELITE';
+  if (rating >= 1800) return 'OUTSTANDING';
   if (rating >= 1650) return 'EXCELLENT';
-  if (rating >= 1400) return 'ABOVE AVERAGE';
-  if (rating >= 1150) return 'AVERAGE';
-  if (rating >= 900)  return 'BELOW AVERAGE';
-  if (rating >= 700)  return 'STRUGGLING';
+  if (rating >= 1500) return 'ABOVE AVERAGE';
+  if (rating >= 1350) return 'AVERAGE';
+  if (rating >= 1200) return 'BELOW AVERAGE';
+  if (rating >= 1000) return 'STRUGGLING';
   return 'BEGINNER';
 };
 
