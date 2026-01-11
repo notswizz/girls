@@ -481,9 +481,20 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="text-base sm:text-lg text-white/50 mb-6 font-light"
+                className="text-base sm:text-lg text-white/50 mb-4 font-light"
               >
                 your private vault
+              </motion.p>
+
+              {/* Description */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                className="text-sm sm:text-base text-white/40 mb-6 leading-relaxed max-w-md mx-auto"
+              >
+                The ultimate secret folder for your favorite pics. Upload your collection, 
+                generate AI videos, and rank your favorites in head-to-head battles with ELO ratings.
               </motion.p>
 
               {/* Feature Cards */}
