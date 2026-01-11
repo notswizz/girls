@@ -112,23 +112,19 @@ export default function ImageGallery({
     );
   }
 
-  // Sort images by ELO/score
+  // Sort images by ELO (highest first)
   const sortedImages = [...modelImages].sort((a, b) => {
-    // Both modes now use ELO - sort by ELO descending
     return (b.elo || 1500) - (a.elo || 1500);
   });
-  
-  const imageRanks = {};
-  sortedImages.forEach((img, i) => { imageRanks[img._id] = i + 1; });
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-        {modelImages.map((image, index) => {
+        {sortedImages.map((image, index) => {
           const wins = image.wins || 0;
           const losses = image.losses || 0;
           const totalMatches = wins + losses;
-          const rank = imageRanks[image._id];
+          const rank = index + 1; // Rank is just the position in sorted array
           const elo = image.elo || 1500;
           const score = image.score || 0;
           const isExplore = ratingMode === 'explore';
