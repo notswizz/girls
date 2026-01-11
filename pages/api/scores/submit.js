@@ -60,11 +60,11 @@ export default async function handler(req, res) {
       if (user) {
         authenticatedUserId = user._id;
         
-        // Update the user's ratings count AND add to unclaimed points
+        // Update the user's ratings count (NO points for own collection - only explore gives points)
         await db.collection('users').updateOne(
           { _id: user._id },
           {
-            $inc: { ratingsCount: 1, unclaimedPoints: 1 },
+            $inc: { ratingsCount: 1 },
             $set: { updatedAt: new Date() }
           }
         );
