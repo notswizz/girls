@@ -104,69 +104,6 @@ const FloatingImage = memo(({ src, position, index, isVideo, isMobile }) => {
   );
 });
 
-// Generate scattered positions for images - responsive for mobile/desktop
-const generatePositions = (count, isMobile = false) => {
-  if (isMobile) {
-    // Mobile: Smaller images moved closer to center
-    const mobilePositions = [
-      // Top corners - moved inside more
-      { x: '2%', y: '0%', width: '90px', height: '115px', rotate: -12, scale: 1, z: 30 },
-      { x: '68%', y: '-2%', width: '95px', height: '120px', rotate: 10, scale: 1, z: 30 },
-      
-      // Upper sides - moved inside more
-      { x: '-2%', y: '14%', width: '85px', height: '108px', rotate: 8, scale: 1, z: 25 },
-      { x: '72%', y: '12%', width: '88px', height: '112px', rotate: -10, scale: 1, z: 25 },
-      
-      // Mid sides
-      { x: '-10%', y: '32%', width: '80px', height: '102px', rotate: -6, scale: 0.95, z: 22 },
-      { x: '82%', y: '35%', width: '82px', height: '105px', rotate: 8, scale: 0.95, z: 22 },
-      
-      // Lower sides
-      { x: '-12%', y: '52%', width: '85px', height: '108px', rotate: 10, scale: 1, z: 25 },
-      { x: '80%', y: '50%', width: '88px', height: '112px', rotate: -8, scale: 1, z: 25 },
-      
-      // Bottom corners
-      { x: '-8%', y: '72%', width: '92px', height: '118px', rotate: -8, scale: 1, z: 30 },
-      { x: '76%', y: '70%', width: '95px', height: '120px', rotate: 10, scale: 1, z: 30 },
-      
-      // Very bottom
-      { x: '-5%', y: '88%', width: '85px', height: '108px', rotate: 12, scale: 0.95, z: 28 },
-      { x: '78%', y: '86%', width: '88px', height: '112px', rotate: -10, scale: 0.95, z: 28 },
-    ];
-    return mobilePositions.slice(0, Math.min(count, 12));
-  }
-  
-  // Desktop positions
-  const basePositions = [
-    // Left side
-    { x: '2%', y: '8%', width: '130px', height: '170px', rotate: -12, scale: 1, z: 2 },
-    { x: '4%', y: '42%', width: '115px', height: '150px', rotate: 8, scale: 0.95, z: 1 },
-    { x: '2%', y: '72%', width: '125px', height: '165px', rotate: -6, scale: 0.9, z: 2 },
-    
-    // Left-center
-    { x: '16%', y: '15%', width: '140px', height: '185px', rotate: 5, scale: 1.05, z: 3 },
-    { x: '14%', y: '55%', width: '120px', height: '155px', rotate: -10, scale: 0.9, z: 1 },
-    { x: '18%', y: '85%', width: '110px', height: '145px', rotate: 12, scale: 0.85, z: 2 },
-    
-    // Right side
-    { x: '83%', y: '6%', width: '125px', height: '165px', rotate: 10, scale: 0.95, z: 2 },
-    { x: '85%', y: '38%', width: '135px', height: '175px', rotate: -8, scale: 1, z: 3 },
-    { x: '82%', y: '70%', width: '115px', height: '150px', rotate: 6, scale: 0.9, z: 1 },
-    
-    // Right-center
-    { x: '70%', y: '10%', width: '120px', height: '160px', rotate: -5, scale: 1, z: 2 },
-    { x: '72%', y: '52%', width: '130px', height: '170px', rotate: 8, scale: 1.05, z: 3 },
-    { x: '68%', y: '82%', width: '118px', height: '155px', rotate: -12, scale: 0.9, z: 1 },
-    
-    // Extra positions
-    { x: '9%', y: '28%', width: '100px', height: '130px', rotate: -4, scale: 0.82, z: 1 },
-    { x: '88%', y: '22%', width: '105px', height: '138px', rotate: 7, scale: 0.85, z: 1 },
-    { x: '76%', y: '90%', width: '95px', height: '125px', rotate: -9, scale: 0.8, z: 1 },
-    { x: '22%', y: '3%', width: '90px', height: '120px', rotate: 6, scale: 0.78, z: 1 },
-  ];
-  
-  return basePositions.slice(0, count);
-};
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -190,37 +127,59 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Only fetch images for logged-OUT users (logged-in don't need them)
+  // Fetch images for logged-OUT users landing page
   useEffect(() => {
     // Skip if logged in or still loading session
     if (status === 'loading' || session) return;
     
-    fetch('/api/images?allUsers=true&limit=20')
+    fetch('/api/images?allUsers=true&limit=50')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.images?.length > 0) {
           const activeImages = data.images.filter(img => img.isActive && img.url);
-          // Shuffle and dedupe for variety
+          // Shuffle for variety, dedupe by URL only (allow multiple per model)
           const shuffled = activeImages.sort(() => 0.5 - Math.random());
           
           const seenUrls = new Set();
-          const seenModels = new Set();
           const uniqueImages = [];
           
           for (const img of shuffled) {
-            const modelId = img.modelId?.toString() || img.modelId;
-            if (seenUrls.has(img.url) || seenModels.has(modelId)) continue;
+            if (seenUrls.has(img.url)) continue;
             seenUrls.add(img.url);
-            if (modelId) seenModels.add(modelId);
             uniqueImages.push(img);
-            if (uniqueImages.length >= 12) break; // Reduced from 16
+            if (uniqueImages.length >= 16) break;
           }
           
           setImages(uniqueImages);
         }
       })
-      .catch(() => {});
+      .catch(err => console.error('Failed to fetch images:', err));
   }, [session, status]);
+
+  // Desktop positions - 16 positions scattered around the edges
+  const desktopPositions = [
+    // Left side
+    { x: '2%', y: '8%', width: '130px', height: '170px', rotate: -12, scale: 1, z: 2 },
+    { x: '4%', y: '42%', width: '115px', height: '150px', rotate: 8, scale: 0.95, z: 1 },
+    { x: '2%', y: '72%', width: '125px', height: '165px', rotate: -6, scale: 0.9, z: 2 },
+    // Left-center
+    { x: '16%', y: '15%', width: '140px', height: '185px', rotate: 5, scale: 1.05, z: 3 },
+    { x: '14%', y: '55%', width: '120px', height: '155px', rotate: -10, scale: 0.9, z: 1 },
+    { x: '18%', y: '85%', width: '110px', height: '145px', rotate: 12, scale: 0.85, z: 2 },
+    // Right side
+    { x: '83%', y: '6%', width: '125px', height: '165px', rotate: 10, scale: 0.95, z: 2 },
+    { x: '85%', y: '38%', width: '135px', height: '175px', rotate: -8, scale: 1, z: 3 },
+    { x: '82%', y: '70%', width: '115px', height: '150px', rotate: 6, scale: 0.9, z: 1 },
+    // Right-center
+    { x: '70%', y: '10%', width: '120px', height: '160px', rotate: -5, scale: 1, z: 2 },
+    { x: '72%', y: '52%', width: '130px', height: '170px', rotate: 8, scale: 1.05, z: 3 },
+    { x: '68%', y: '82%', width: '118px', height: '155px', rotate: -12, scale: 0.9, z: 1 },
+    // Extra positions
+    { x: '9%', y: '28%', width: '100px', height: '130px', rotate: -4, scale: 0.85, z: 1 },
+    { x: '88%', y: '22%', width: '105px', height: '138px', rotate: 7, scale: 0.88, z: 1 },
+    { x: '76%', y: '90%', width: '95px', height: '125px', rotate: -9, scale: 0.82, z: 1 },
+    { x: '22%', y: '3%', width: '90px', height: '120px', rotate: 6, scale: 0.8, z: 1 },
+  ];
 
   const seoProps = {
     title: "fap bank - Your Private Vault",
@@ -228,8 +187,6 @@ export default function Home() {
     keywords: "private gallery, secret folder, photo vault, ai image generator, photo rating",
     ogType: "website"
   };
-
-  const positions = generatePositions(images.length, isMobile);
 
   // Logged in user - dashboard view (no scroll)
   if (session) {
@@ -316,11 +273,11 @@ export default function Home() {
     );
   }
 
-  // Feature data
+  // Feature data - assign random images on mobile
   const features = [
-    { icon: FaPiggyBank, title: 'Store', desc: 'Private & encrypted', color: 'from-pink-500 to-rose-600' },
-    { icon: HiSparkles, title: 'Create', desc: 'AI video gen', color: 'from-purple-500 to-violet-600' },
-    { icon: FaTrophy, title: 'Rate', desc: 'ELO rankings', color: 'from-amber-500 to-orange-600' },
+    { icon: FaLock, title: 'Store', desc: 'Private vault', color: 'from-pink-500 to-rose-600', image: images[0]?.url },
+    { icon: HiSparkles, title: 'Create', desc: 'AI video gen', color: 'from-purple-500 to-violet-600', image: images[1]?.url },
+    { icon: FaTrophy, title: 'Rate', desc: 'ELO rankings', color: 'from-amber-500 to-orange-600', image: images[2]?.url },
   ];
 
   // Logged out - immersive landing page (no scroll)
@@ -343,17 +300,20 @@ export default function Home() {
           }}
         />
 
-        {/* Floating Images */}
-        {images.slice(0, positions.length).map((img, i) => (
-          <FloatingImage
-            key={img._id || i}
-            src={img.url}
-            position={positions[i]}
-            index={i}
-            isVideo={img.url?.includes('.mp4') || img.url?.includes('video')}
-            isMobile={isMobile}
-          />
-        ))}
+        {/* Floating Images - Desktop only */}
+        {!isMobile && images.map((img, i) => {
+          if (i >= desktopPositions.length) return null;
+          return (
+            <FloatingImage
+              key={img._id || i}
+              src={img.url}
+              position={desktopPositions[i]}
+              index={i}
+              isVideo={img.url?.includes('.mp4') || img.url?.includes('video')}
+              isMobile={false}
+            />
+          );
+        })}
 
         {/* Footer */}
         <footer className="absolute bottom-4 sm:bottom-6 left-0 right-0 text-center z-50">
@@ -378,9 +338,9 @@ export default function Home() {
               {/* Glow behind card */}
               <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl -z-10" />
               
-              {/* Lock icon */}
+              {/* Piggy bank icon */}
               <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-purple-600 shadow-2xl shadow-pink-500/40 mb-5">
-                <FaLock className="text-xl sm:text-2xl text-white" />
+                <FaPiggyBank className="text-xl sm:text-2xl text-white" />
               </div>
 
               {/* Title */}
@@ -404,18 +364,38 @@ export default function Home() {
                 generate AI videos, and rank your favorites in head-to-head battles with ELO ratings.
               </p>
 
-              {/* Feature Cards */}
+              {/* Feature Cards - with background images on mobile */}
               <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
                 {features.map((feature) => (
                   <div
                     key={feature.title}
-                    className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10"
+                    className="relative p-3 sm:p-4 rounded-xl overflow-hidden border border-white/10"
                   >
-                    <div className={`inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${feature.color} mb-2 shadow-lg`}>
-                      <feature.icon className="text-white text-sm sm:text-base" />
+                    {/* Background image on mobile */}
+                    {isMobile && feature.image && (
+                      <>
+                        <img 
+                          src={feature.image} 
+                          alt="" 
+                          className="absolute inset-0 w-full h-full object-cover opacity-60"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
+                      </>
+                    )}
+                    {/* Desktop: solid background */}
+                    {!isMobile && (
+                      <div className="absolute inset-0 bg-white/5" />
+                    )}
+                    
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className={`inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${feature.color} mb-2 shadow-lg`}>
+                        <feature.icon className="text-white text-sm sm:text-base" />
+                      </div>
+                      <h3 className="text-white font-bold text-xs sm:text-sm">{feature.title}</h3>
+                      <p className="text-white/40 text-[10px] sm:text-xs leading-tight">{feature.desc}</p>
                     </div>
-                    <h3 className="text-white font-bold text-xs sm:text-sm">{feature.title}</h3>
-                    <p className="text-white/40 text-[10px] sm:text-xs leading-tight">{feature.desc}</p>
                   </div>
                 ))}
               </div>
