@@ -6,13 +6,18 @@ import { FaVideo, FaTimes, FaSpinner, FaTrash, FaDownload, FaCheck, FaBrain, FaG
 import { useAIGeneration } from '../context/AIGenerationContext';
 
 // Mini Game - Pop the Bubbles
-function BubblePopGame({ onClose }) {
+function BubblePopGame({ onClose, onFreeGeneration }) {
   const [score, setScore] = useState(0);
   const [bubbles, setBubbles] = useState([]);
   const [pops, setPops] = useState([]);
   const [highScore, setHighScore] = useState(0);
+  const [wonFreeGen, setWonFreeGen] = useState(false);
+  const [showWinCelebration, setShowWinCelebration] = useState(false);
   const gameRef = useRef(null);
   const nextIdRef = useRef(0);
+  const hasClaimedRef = useRef(false);
+
+  const FREE_GEN_THRESHOLD = 200;
 
   // Load high score from localStorage
   useEffect(() => {
@@ -27,6 +32,30 @@ function BubblePopGame({ onClose }) {
       localStorage.setItem('bubblePopHighScore', score.toString());
     }
   }, [score, highScore]);
+
+  // Check for free generation win
+  useEffect(() => {
+    if (score >= FREE_GEN_THRESHOLD && !hasClaimedRef.current) {
+      hasClaimedRef.current = true;
+      setWonFreeGen(true);
+      setShowWinCelebration(true);
+      
+      // Trigger the refund
+      if (onFreeGeneration) {
+        onFreeGeneration();
+      }
+      
+      // Play win sound
+      try {
+        const audio = new Audio('/win.wav');
+        audio.volume = 0.5;
+        audio.play();
+      } catch (e) {}
+      
+      // Hide celebration after a few seconds
+      setTimeout(() => setShowWinCelebration(false), 4000);
+    }
+  }, [score, onFreeGeneration]);
 
   // Spawn bubbles
   useEffect(() => {
@@ -101,15 +130,68 @@ function BubblePopGame({ onClose }) {
 
   return (
     <div className="relative">
+      {/* Win Celebration Overlay */}
+      <AnimatePresence>
+        {showWinCelebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 rounded-2xl"
+          >
+            <div className="text-center">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 0.5, repeat: 3 }}
+                className="text-6xl mb-4"
+              >
+                🎉
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400"
+              >
+                FREE GENERATION!
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-white/60 text-sm mt-2"
+              >
+                100 tokens refunded! 💎
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4">
           <div className="text-center">
-            <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+            <div className={`text-2xl font-black text-transparent bg-clip-text ${
+              wonFreeGen 
+                ? 'bg-gradient-to-r from-green-400 to-emerald-400' 
+                : 'bg-gradient-to-r from-pink-400 to-purple-400'
+            }`}>
               {score}
             </div>
             <div className="text-[10px] text-white/40 uppercase tracking-wider">Score</div>
           </div>
+          
+          {/* Free gen progress */}
+          <div className="text-center">
+            <div className={`text-lg font-bold ${wonFreeGen ? 'text-green-400' : 'text-cyan-400'}`}>
+              {wonFreeGen ? '✓ FREE' : `${FREE_GEN_THRESHOLD - score > 0 ? FREE_GEN_THRESHOLD - score : 0}`}
+            </div>
+            <div className="text-[10px] text-white/40 uppercase tracking-wider">
+              {wonFreeGen ? 'Won!' : 'To Free'}
+            </div>
+          </div>
+          
           <div className="text-center">
             <div className="text-lg font-bold text-yellow-400">{highScore}</div>
             <div className="text-[10px] text-white/40 uppercase tracking-wider">Best</div>
@@ -626,6 +708,8 @@ export default function GlobalAIModal() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showGame, setShowGame] = useState(false);
+  const [wonFreeGeneration, setWonFreeGeneration] = useState(false);
+  const [refundMessage, setRefundMessage] = useState(null);
   
   const {
     isGenerating,
@@ -663,12 +747,43 @@ export default function GlobalAIModal() {
     };
   }, [showModal]);
 
-  // Reset game when result arrives or modal closes
+  // Reset game and free gen state when result arrives or modal closes
   useEffect(() => {
     if (result || !showModal) {
       setShowGame(false);
     }
+    if (!showModal) {
+      // Reset free generation state when modal closes
+      setWonFreeGeneration(false);
+      setRefundMessage(null);
+    }
   }, [result, showModal]);
+
+  // Handle free generation win from mini-game
+  const handleFreeGeneration = useCallback(async () => {
+    if (wonFreeGeneration) return; // Prevent double refund
+    
+    setWonFreeGeneration(true);
+    
+    try {
+      const response = await fetch('/api/user/refund-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reason: 'minigame_win',
+          amount: 100 
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setRefundMessage(`🎮 FREE! +${data.refunded} tokens refunded!`);
+      }
+    } catch (error) {
+      console.error('Failed to refund tokens:', error);
+    }
+  }, [wonFreeGeneration]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -803,11 +918,33 @@ export default function GlobalAIModal() {
             </div>
           )}
 
+          {/* Free Generation Badge */}
+          <AnimatePresence>
+            {wonFreeGeneration && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 rounded-xl p-3 flex items-center gap-3"
+              >
+                <div className="text-2xl">🎮</div>
+                <div>
+                  <div className="text-green-400 font-bold text-sm">FREE GENERATION!</div>
+                  <div className="text-white/60 text-xs">100 tokens refunded to your account</div>
+                </div>
+                <div className="ml-auto text-green-400 text-xl">💎</div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Loading State */}
           {isGenerating && !result && (
             <div className="space-y-4">
               {showGame ? (
-                <BubblePopGame onClose={() => setShowGame(false)} />
+                <BubblePopGame 
+                  onClose={() => setShowGame(false)} 
+                  onFreeGeneration={handleFreeGeneration}
+                />
               ) : (
                 <>
                   <AILoadingAnimation generationType={generationType} progress={progress} />
