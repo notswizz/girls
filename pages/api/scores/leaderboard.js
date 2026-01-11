@@ -101,7 +101,7 @@ export default async function handler(req, res) {
             modelName: img.modelName,
             modelUsername: img.modelUsername,
             modelId: img.modelId,
-            elo: img.elo || 1200,
+            elo: img.elo || 1500,
             wins,
             losses,
             winRate,

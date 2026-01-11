@@ -29,33 +29,20 @@ export default function ImageViewerModal({ image, onClose, onDelete }) {
   const losses = image.losses || 0;
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? wins / totalMatches : 0;
-  const elo = image.elo || 1200;
-  const isExplore = image.ratingMode === 'explore';
-  const score = image.score || 0;
+  const elo = image.elo || 1500;
 
-  const wilsonScore = calculateWilsonScore(wins, losses);
-  const compositeScore = isExplore 
-    ? score 
-    : Math.round((wilsonScore * 0.7 + ((elo - 800) / 1600) * 0.3) * 1000);
-
+  // ELO tier system - adjusted for new 1500 base
   const getEloTier = (elo) => {
-    if (elo >= 1800) return { label: 'Elite', color: 'text-yellow-400', bg: 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30' };
-    if (elo >= 1600) return { label: 'Excellent', color: 'text-purple-400', bg: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30' };
-    if (elo >= 1400) return { label: 'Great', color: 'text-cyan-400', bg: 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20', border: 'border-cyan-500/30' };
-    if (elo >= 1200) return { label: 'Good', color: 'text-green-400', bg: 'bg-gradient-to-r from-green-500/20 to-emerald-500/20', border: 'border-green-500/30' };
-    if (elo >= 1000) return { label: 'Average', color: 'text-white/60', bg: 'bg-white/10', border: 'border-white/10' };
+    if (elo >= 2000) return { label: 'Legendary', color: 'text-yellow-400', bg: 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30' };
+    if (elo >= 1800) return { label: 'Elite', color: 'text-purple-400', bg: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30' };
+    if (elo >= 1600) return { label: 'Excellent', color: 'text-cyan-400', bg: 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20', border: 'border-cyan-500/30' };
+    if (elo >= 1400) return { label: 'Great', color: 'text-green-400', bg: 'bg-gradient-to-r from-green-500/20 to-emerald-500/20', border: 'border-green-500/30' };
+    if (elo >= 1200) return { label: 'Average', color: 'text-white/60', bg: 'bg-white/10', border: 'border-white/10' };
+    if (elo >= 1000) return { label: 'Below Avg', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' };
     return { label: 'Rising', color: 'text-white/40', bg: 'bg-white/5', border: 'border-white/5' };
   };
 
-  const getScoreTier = (score) => {
-    if (score >= 700) return { label: 'Hot', color: 'text-yellow-400', bg: 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30' };
-    if (score >= 500) return { label: 'Popular', color: 'text-purple-400', bg: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20', border: 'border-purple-500/30' };
-    if (score >= 300) return { label: 'Rising', color: 'text-cyan-400', bg: 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20', border: 'border-cyan-500/30' };
-    if (score >= 100) return { label: 'New', color: 'text-green-400', bg: 'bg-gradient-to-r from-green-500/20 to-emerald-500/20', border: 'border-green-500/30' };
-    return { label: 'Starting', color: 'text-white/40', bg: 'bg-white/5', border: 'border-white/5' };
-  };
-
-  const tier = isExplore ? getScoreTier(score) : getEloTier(elo);
+  const tier = getEloTier(elo);
 
   const modalContent = (
     <motion.div
@@ -162,9 +149,9 @@ export default function ImageViewerModal({ image, onClose, onDelete }) {
                 )}
                 <div>
                   <div className="text-white/50 text-xs uppercase tracking-wider">
-                    {isExplore ? 'Community Score' : 'Rating Score'}
+                    ELO Rating
                   </div>
-                  <div className="text-3xl font-black text-white">{compositeScore}</div>
+                  <div className="text-3xl font-black text-white">{Math.round(elo)}</div>
                 </div>
               </div>
               <div className={`text-right ${tier.color}`}>

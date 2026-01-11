@@ -114,9 +114,8 @@ export default function ImageGallery({
 
   // Sort images by ELO/score
   const sortedImages = [...modelImages].sort((a, b) => {
-    return ratingMode === 'gallery' 
-      ? (b.elo || 1200) - (a.elo || 1200)
-      : (b.score || 0) - (a.score || 0);
+    // Both modes now use ELO - sort by ELO descending
+    return (b.elo || 1500) - (a.elo || 1500);
   });
   
   const imageRanks = {};
@@ -130,7 +129,7 @@ export default function ImageGallery({
           const losses = image.losses || 0;
           const totalMatches = wins + losses;
           const rank = imageRanks[image._id];
-          const elo = image.elo || 1200;
+          const elo = image.elo || 1500;
           const score = image.score || 0;
           const isExplore = ratingMode === 'explore';
           const isVideo = isVideoUrl(image.url) || image.aiType === 'video';
@@ -192,7 +191,7 @@ export default function ImageGallery({
                     <div className="flex items-end justify-between">
                       <div>
                         <div className="text-white font-bold text-base sm:text-lg tabular-nums drop-shadow-lg">
-                          {isExplore ? score : Math.round(elo)}
+                          {Math.round(elo)}
                         </div>
                         <div className="text-[10px] sm:text-xs text-white/70 drop-shadow-md">
                           <span className="text-green-400">{wins}W</span>
@@ -224,10 +223,10 @@ export default function ImageGallery({
                     {/* Large Score Display */}
                     <div className="mb-4">
                       <div className="text-4xl font-black text-white drop-shadow-lg">
-                        {isExplore ? score : Math.round(elo)}
+                        {Math.round(elo)}
                       </div>
                       <div className="text-sm text-white/50 font-medium">
-                        {isExplore ? 'Community Score' : 'ELO Rating'}
+                        ELO Rating
                       </div>
                     </div>
                     

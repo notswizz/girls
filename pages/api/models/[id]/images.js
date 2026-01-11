@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       createdAt: img.createdAt,
       averageScore: img.averageScore || null,
       timesRated: img.timesRated || 0,
-      elo: img.elo || 1200,
+      elo: img.elo || 1500,
       wins: img.wins || 0,
       losses: img.losses || 0,
       winRate: img.winRate || 0

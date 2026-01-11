@@ -259,7 +259,7 @@ export default async function handler(req, res) {
             wins: 0,
             losses: 0,
             winRate: 0,
-            elo: 1200 // Starting ELO rating
+            elo: 1500 // Starting ELO rating - higher base for more dynamic range
           };
           
           console.log('Creating model with data:', modelData);

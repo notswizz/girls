@@ -3,6 +3,7 @@ import { connectToDatabase } from '../../../config';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 import { updateUserPreferences } from '../user/preferences';
+import { calculateNewRatings, BASE_RATING } from '../../../utils/eloCalculator';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -58,15 +59,35 @@ export default async function handler(req, res) {
 
     await db.collection('community_votes').insertOne(vote);
 
-    // Update community stats for winner's gallery
+    // Get current community stats for ELO calculation
+    const winnerStats = await db.collection('community_ratings').findOne({
+      galleryOwnerId: winnerImage.userId,
+      imageId: winnerId
+    }) || { wins: 0, losses: 0, elo: BASE_RATING };
+
+    const loserStats = await db.collection('community_ratings').findOne({
+      galleryOwnerId: loserImage.userId,
+      imageId: loserId
+    }) || { wins: 0, losses: 0, elo: BASE_RATING };
+
+    // Calculate new ELO ratings using the proper algorithm
+    const { winnerNewRating, loserNewRating, winnerDelta, loserDelta } = calculateNewRatings(
+      { elo: winnerStats.elo || BASE_RATING, wins: winnerStats.wins || 0, losses: winnerStats.losses || 0 },
+      { elo: loserStats.elo || BASE_RATING, wins: loserStats.wins || 0, losses: loserStats.losses || 0 }
+    );
+
+    // Update community stats for winner's gallery with proper ELO
     await db.collection('community_ratings').updateOne(
       { 
         galleryOwnerId: winnerImage.userId,
         imageId: winnerId
       },
       {
-        $inc: { wins: 1, score: 10 },
-        $set: { lastVotedAt: new Date() },
+        $inc: { wins: 1 },
+        $set: { 
+          elo: winnerNewRating,
+          lastVotedAt: new Date() 
+        },
         $setOnInsert: { 
           galleryOwnerId: winnerImage.userId,
           imageId: winnerId,
@@ -77,15 +98,18 @@ export default async function handler(req, res) {
       { upsert: true }
     );
 
-    // Update community stats for loser's gallery
+    // Update community stats for loser's gallery with proper ELO
     await db.collection('community_ratings').updateOne(
       { 
         galleryOwnerId: loserImage.userId,
         imageId: loserId
       },
       {
-        $inc: { losses: 1, score: -5 },
-        $set: { lastVotedAt: new Date() },
+        $inc: { losses: 1 },
+        $set: { 
+          elo: loserNewRating,
+          lastVotedAt: new Date() 
+        },
         $setOnInsert: { 
           galleryOwnerId: loserImage.userId,
           imageId: loserId,
@@ -140,11 +164,14 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Vote recorded'
+      message: 'Vote recorded',
+      ratings: {
+        winner: { oldElo: winnerStats.elo || BASE_RATING, newElo: winnerNewRating, delta: winnerDelta },
+        loser: { oldElo: loserStats.elo || BASE_RATING, newElo: loserNewRating, delta: loserDelta }
+      }
     });
   } catch (error) {
     console.error('Error recording vote:', error);
     return res.status(500).json({ message: 'Failed to record vote' });
   }
 }
-

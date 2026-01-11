@@ -1,3 +1,6 @@
+// New models start at 1500 for more room to move up/down
+const DEFAULT_ELO = 1500;
+
 /**
  * Model class representing the girls/models in the hot or not game
  */
@@ -19,7 +22,7 @@ class Model {
     wins = 0,
     losses = 0,
     winRate = 0,
-    elo = 1200, // Starting ELO rating
+    elo = DEFAULT_ELO, // Starting ELO rating
     eloHistory = []
   }) {
     this._id = _id;

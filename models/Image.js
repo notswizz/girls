@@ -1,3 +1,6 @@
+// New images start at 1500 for more room to move up/down
+const DEFAULT_ELO = 1500;
+
 /**
  * Image model representing the girls in the hot or not game
  */
@@ -18,7 +21,7 @@ class Image {
     wins = 0,
     losses = 0,
     winRate = 0,
-    elo = 1200, // Starting ELO rating
+    elo = DEFAULT_ELO, // Starting ELO rating
     lastOpponents = [] // Track recent opponents for analysis
   }) {
     this._id = _id;

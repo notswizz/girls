@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../lib/mongodb';
-import { calculateNewRatings } from '../../../utils/eloCalculator';
+import { calculateNewRatings, BASE_RATING } from '../../../utils/eloCalculator';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 import { updateUserPreferences } from '../user/preferences';
@@ -77,14 +77,14 @@ export default async function handler(req, res) {
       loserId: loserObjectId,
       userId: authenticatedUserId || userId || null, // Use authenticated or provided user ID
       timestamp: new Date(),
-      winnerRating: winnerImage.elo || 1200,
-      loserRating: loserImage.elo || 1200
+      winnerRating: winnerImage.elo || BASE_RATING,
+      loserRating: loserImage.elo || BASE_RATING
     });
     
-    // Calculate new ELO ratings
-    const { winnerNewRating, loserNewRating } = calculateNewRatings(
-      winnerImage.elo || 1200,
-      loserImage.elo || 1200
+    // Calculate new ELO ratings - pass full image objects for proper K-factor calculation
+    const { winnerNewRating, loserNewRating, winnerDelta, loserDelta } = calculateNewRatings(
+      winnerImage,
+      loserImage
     );
     
     // Update winner image
@@ -168,12 +168,12 @@ export default async function handler(req, res) {
       newRatings: {
         winner: {
           id: winnerId,
-          oldRating: winnerImage.elo || 1200,
+          oldRating: winnerImage.elo || BASE_RATING,
           newRating: winnerNewRating
         },
         loser: {
           id: loserId,
-          oldRating: loserImage.elo || 1200,
+          oldRating: loserImage.elo || BASE_RATING,
           newRating: loserNewRating
         }
       }
@@ -210,8 +210,8 @@ async function updateModelStats(db, modelId) {
     const winRate = totalMatches > 0 ? totalWins / totalMatches : 0;
     
     // Calculate average ELO
-    const totalElo = images.reduce((sum, img) => sum + (img.elo || 1200), 0);
-    const averageElo = images.length > 0 ? totalElo / images.length : 1200;
+    const totalElo = images.reduce((sum, img) => sum + (img.elo || BASE_RATING), 0);
+    const averageElo = images.length > 0 ? totalElo / images.length : BASE_RATING;
     
     // Update the model document
     await db.collection('models').updateOne(

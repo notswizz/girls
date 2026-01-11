@@ -1,75 +1,143 @@
 /**
- * Enhanced ELO Rating System for Hot or Not app
+ * Enhanced ELO/Glicko-inspired Rating System
  * 
- * This system calculates new ELO ratings after matches between images/models.
- * Features:
- * - Dynamic K-factors based on rating, match count, and rating volatility
- * - Rating floors to prevent unrealistic low ratings
- * - Adjustment multiplier based on expectedness of outcome
- * - Provisional period handling for new entries
- * - Match quality calculation for balanced matchmaking
+ * This system produces DYNAMIC, SPREAD OUT ratings that make sense.
+ * 
+ * Key improvements:
+ * - High K-factors for volatile, exciting rating changes
+ * - Rating Deviation (RD) tracking for uncertainty-based adjustments
+ * - Upset bonuses that reward surprising wins massively
+ * - Streak multipliers for momentum
+ * - Anti-clustering: forces ratings to spread apart
+ * - Confidence intervals that tighten over time
  */
 
-// Constants for the ELO system
-const DEFAULT_K_FACTOR = 32;      // Standard adjustment amount
-const BASE_RATING = 1200;         // Starting rating for new images
-const RATING_FLOOR = 800;         // Minimum possible rating
-const PROVISIONAL_THRESHOLD = 15; // Number of matches before an image is no longer provisional
+// Rating constants
+const BASE_RATING = 1500;          // Starting rating (higher base for more room to fall)
+const RATING_FLOOR = 600;          // Absolute minimum
+const RATING_CEILING = 2800;       // Absolute maximum
+const PROVISIONAL_THRESHOLD = 10;  // Matches before considered established
+
+// K-factor constants (higher = more volatile)
+const K_NEW = 80;                  // Brand new images - VERY volatile
+const K_PROVISIONAL = 60;          // Still finding their level
+const K_ESTABLISHED = 40;          // Have a track record
+const K_ELITE = 32;                // Top tier, more stable
+
+// Rating Deviation constants (uncertainty)
+const RD_INITIAL = 350;            // Starting uncertainty
+const RD_MIN = 50;                 // Minimum uncertainty (very confident)
+const RD_MAX = 500;                // Maximum uncertainty
+const RD_DECAY_PER_MATCH = 15;     // How much RD decreases per match
 
 /**
- * Get the appropriate K-factor based on image characteristics
- * K-factor determines how much a rating can change in a single match
- * 
- * @param {Number} rating - Current rating of the image
- * @param {Number} matchCount - Number of matches the image has participated in
- * @returns {Number} - The K-factor to use for this image
+ * Calculate Rating Deviation (uncertainty) for an image
+ * Higher RD = less confident about rating = bigger potential swings
  */
-const getKFactor = (rating, matchCount) => {
-  // Provisional period - new images need faster calibration
-  if (matchCount < PROVISIONAL_THRESHOLD) {
-    return 40 + Math.max(0, PROVISIONAL_THRESHOLD - matchCount) * 2; // Even faster for very new images
-  }
+const calculateRD = (matchCount, currentRD = RD_INITIAL) => {
+  if (matchCount === 0) return RD_INITIAL;
   
-  // Very new images (but past initial provisional) still need larger adjustments
-  if (matchCount < 30) {
-    return 40;
-  }
+  // RD decreases with more matches (we become more confident)
+  const calculatedRD = RD_INITIAL - (matchCount * RD_DECAY_PER_MATCH);
   
-  // High-rated images get smaller adjustments for stability at the top
-  if (rating > 2100) {
-    return 12; // More stability for the highest rated
-  }
-  
-  if (rating > 1800) {
-    return 16;
-  }
-  
-  // Intermediate ratings
-  if (rating > 1500) {
-    return 24;
-  }
-  
-  // Default K factor
-  return DEFAULT_K_FACTOR;
+  // Clamp between min and max
+  return Math.max(RD_MIN, Math.min(RD_MAX, calculatedRD));
 };
 
 /**
- * Calculate expected win probability
- * 
- * @param {Number} ratingA - Rating of player A
- * @param {Number} ratingB - Rating of player B
- * @returns {Number} - Expected score (probability of winning) for player A
+ * Get dynamic K-factor based on rating, matches, and uncertainty
+ * This determines how much ratings can swing in a single match
  */
-const getExpectedScore = (ratingA, ratingB) => {
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+const getKFactor = (rating, matchCount, rd = null) => {
+  // Calculate RD if not provided
+  const ratingDeviation = rd || calculateRD(matchCount);
+  
+  // Base K from match count tier
+  let baseK;
+  if (matchCount < 5) {
+    baseK = K_NEW;           // First 5 matches: MAXIMUM volatility
+  } else if (matchCount < PROVISIONAL_THRESHOLD) {
+    baseK = K_PROVISIONAL;   // 5-10 matches: Still finding level
+  } else if (matchCount < 30) {
+    baseK = K_ESTABLISHED;   // 10-30 matches: Getting stable
+  } else {
+    baseK = K_ELITE;         // 30+: More stable
+  }
+  
+  // Uncertainty multiplier: higher RD = bigger swings
+  const rdMultiplier = 1 + (ratingDeviation - RD_MIN) / (RD_INITIAL - RD_MIN) * 0.5;
+  
+  // Rating zone adjustments
+  let ratingMultiplier = 1.0;
+  if (rating > 2400) {
+    ratingMultiplier = 0.7;  // Very top: harder to move
+  } else if (rating > 2000) {
+    ratingMultiplier = 0.85; // Elite: somewhat harder
+  } else if (rating < 900) {
+    ratingMultiplier = 0.8;  // Very bottom: can't fall too fast
+  }
+  
+  return Math.round(baseK * rdMultiplier * ratingMultiplier);
 };
 
 /**
- * Calculate new ELO ratings after a match
- * 
- * @param {Object} winner - The winning image/model
- * @param {Object} loser - The losing image/model
- * @returns {Object} - New ratings for both participants
+ * Calculate expected win probability using logistic curve
+ * Includes RD in the calculation for more nuanced expectations
+ */
+const getExpectedScore = (ratingA, ratingB, rdA = RD_INITIAL, rdB = RD_INITIAL) => {
+  // Standard ELO expected score with combined uncertainty
+  const combinedRD = Math.sqrt(rdA * rdA + rdB * rdB);
+  const scaleFactor = 400 * (1 + combinedRD / 1000); // Higher uncertainty = less predictable
+  
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / scaleFactor));
+};
+
+/**
+ * Calculate how surprising/upset a result is
+ * Returns multiplier from 1.0 (expected) to 3.0 (massive upset)
+ */
+const getUpsetMultiplier = (winnerRating, loserRating, expectedWinnerScore) => {
+  // If winner was expected to win (>50%), no upset bonus
+  if (expectedWinnerScore >= 0.5) {
+    // Actually penalize slightly for winning when heavily favored
+    const dominanceFactor = expectedWinnerScore - 0.5;
+    return Math.max(0.6, 1 - dominanceFactor * 0.5);
+  }
+  
+  // UPSET! Winner was expected to lose
+  // The bigger the upset, the bigger the multiplier
+  const upsetMagnitude = 0.5 - expectedWinnerScore; // 0 to 0.5
+  
+  // Exponential upset bonus: small upsets get small bonus, huge upsets get HUGE bonus
+  return 1 + Math.pow(upsetMagnitude * 4, 1.5); // Can go up to ~2.8x
+};
+
+/**
+ * Calculate streak bonus/penalty
+ * Winning streaks make wins worth more, losing streaks make losses hurt more
+ */
+const getStreakMultiplier = (wins, losses) => {
+  const total = wins + losses;
+  if (total < 3) return 1.0; // Not enough data
+  
+  const winRate = wins / total;
+  
+  // Hot streak bonus (>70% win rate)
+  if (winRate > 0.7) {
+    return 1.0 + (winRate - 0.7) * 0.5; // Up to 1.15x
+  }
+  
+  // Cold streak penalty (<30% win rate)
+  if (winRate < 0.3) {
+    return 1.0 + (0.3 - winRate) * 0.5; // Up to 1.15x (losses hit harder)
+  }
+  
+  return 1.0;
+};
+
+/**
+ * Main rating calculation function
+ * Returns new ratings after a head-to-head match
  */
 const calculateNewRatings = (winner, loser) => {
   // Get current ratings with defaults
@@ -80,78 +148,104 @@ const calculateNewRatings = (winner, loser) => {
   const winnerMatches = (winner.wins || 0) + (winner.losses || 0);
   const loserMatches = (loser.wins || 0) + (loser.losses || 0);
   
+  // Calculate Rating Deviations
+  const winnerRD = calculateRD(winnerMatches);
+  const loserRD = calculateRD(loserMatches);
+  
   // Calculate expected scores (probability of winning)
-  const expectedWinnerScore = getExpectedScore(winnerRating, loserRating);
-  const expectedLoserScore = getExpectedScore(loserRating, winnerRating);
+  const expectedWinnerScore = getExpectedScore(winnerRating, loserRating, winnerRD, loserRD);
+  const expectedLoserScore = 1 - expectedWinnerScore;
   
-  // Calculate unexpectedness factor - increase rating changes for surprising outcomes
-  // This rewards upsets more and penalizes favorites who lose more
-  const unexpectednessMultiplier = 1 + Math.max(0, 0.5 - expectedWinnerScore);
+  // Get base K-factors
+  let winnerK = getKFactor(winnerRating, winnerMatches, winnerRD);
+  let loserK = getKFactor(loserRating, loserMatches, loserRD);
   
-  // Get base K-factors based on rating and match count
-  let winnerK = getKFactor(winnerRating, winnerMatches);
-  let loserK = getKFactor(loserRating, loserMatches);
+  // Apply upset multiplier
+  const upsetMult = getUpsetMultiplier(winnerRating, loserRating, expectedWinnerScore);
+  winnerK = Math.round(winnerK * upsetMult);
+  loserK = Math.round(loserK * upsetMult);
   
-  // Apply the unexpectedness multiplier to boost changes for surprising results
-  winnerK = Math.round(winnerK * unexpectednessMultiplier);
-  loserK = Math.round(loserK * unexpectednessMultiplier);
+  // Apply streak multipliers
+  const winnerStreakMult = getStreakMultiplier(winner.wins || 0, winner.losses || 0);
+  const loserStreakMult = getStreakMultiplier(loser.wins || 0, loser.losses || 0);
+  winnerK = Math.round(winnerK * winnerStreakMult);
+  loserK = Math.round(loserK * loserStreakMult);
+  
+  // Calculate raw rating changes
+  let winnerDelta = Math.round(winnerK * (1 - expectedWinnerScore));
+  let loserDelta = Math.round(loserK * (0 - expectedLoserScore));
+  
+  // MINIMUM change guarantee: every match matters
+  if (winnerDelta < 5) winnerDelta = 5;
+  if (loserDelta > -5) loserDelta = -5;
+  
+  // Provisional bonus: new images beating established ones get extra boost
+  if (winnerMatches < PROVISIONAL_THRESHOLD && loserMatches >= PROVISIONAL_THRESHOLD) {
+    const provisionalBonus = Math.round(20 * (1 - expectedWinnerScore));
+    winnerDelta += provisionalBonus;
+  }
+  
+  // Anti-clustering: if ratings are too close, push them apart more
+  const ratingDiff = Math.abs(winnerRating - loserRating);
+  if (ratingDiff < 100) {
+    const clusteringPenalty = Math.round((100 - ratingDiff) / 10);
+    winnerDelta += clusteringPenalty;
+    loserDelta -= clusteringPenalty;
+  }
   
   // Calculate new ratings
-  let newWinnerRating = Math.round(winnerRating + winnerK * (1 - expectedWinnerScore));
-  let newLoserRating = Math.round(loserRating + loserK * (0 - expectedLoserScore));
+  let newWinnerRating = winnerRating + winnerDelta;
+  let newLoserRating = loserRating + loserDelta;
   
-  // Apply rating floor to prevent unrealistically low ratings
-  newLoserRating = Math.max(RATING_FLOOR, newLoserRating);
+  // Clamp to valid range
+  newWinnerRating = Math.max(RATING_FLOOR, Math.min(RATING_CEILING, newWinnerRating));
+  newLoserRating = Math.max(RATING_FLOOR, Math.min(RATING_CEILING, newLoserRating));
   
-  // Special handling for new images (extra boost to help establish clear hierarchies)
-  if (winnerMatches < PROVISIONAL_THRESHOLD && loserMatches > PROVISIONAL_THRESHOLD) {
-    // New image beating established image gets extra boost
-    newWinnerRating += Math.round(10 * (1 - expectedWinnerScore));
-  }
+  // Recalculate actual deltas after clamping
+  const actualWinnerDelta = newWinnerRating - winnerRating;
+  const actualLoserDelta = newLoserRating - loserRating;
   
   return {
     winnerNewRating: newWinnerRating,
     loserNewRating: newLoserRating,
-    winnerDelta: newWinnerRating - winnerRating,
-    loserDelta: newLoserRating - loserRating
+    winnerDelta: actualWinnerDelta,
+    loserDelta: actualLoserDelta,
+    // Bonus info for debugging/display
+    upset: upsetMult > 1.1,
+    upsetMultiplier: upsetMult,
+    expectedWinnerScore,
+    winnerRD,
+    loserRD
   };
 };
 
 /**
- * Get a quality score for a match (how balanced the match is)
- * 
- * @param {Number} ratingA - Rating of player A
- * @param {Number} ratingB - Rating of player B
- * @returns {Number} - Quality score between 0 and 1
+ * Get a quality score for a match (how balanced/interesting it is)
+ * 1.0 = perfectly balanced, 0.0 = completely one-sided
  */
 const getMatchQuality = (ratingA, ratingB) => {
   const expectedA = getExpectedScore(ratingA, ratingB);
-  return 2 * Math.min(expectedA, 1 - expectedA);
+  // Quality is highest when expected score is near 0.5
+  return 1 - Math.abs(expectedA - 0.5) * 2;
 };
 
 /**
- * Get a descriptive tier/category based on an Elo rating
- * 
- * @param {Number} rating - The Elo rating
- * @returns {String} - The tier/category name
+ * Get a descriptive tier/category based on rating
  */
 const getRatingTier = (rating) => {
-  if (rating >= 2200) return 'LEGENDARY';
-  if (rating >= 2000) return 'ELITE';
-  if (rating >= 1800) return 'OUTSTANDING';
-  if (rating >= 1600) return 'EXCELLENT';
+  if (rating >= 2500) return 'LEGENDARY';
+  if (rating >= 2200) return 'ELITE';
+  if (rating >= 1900) return 'OUTSTANDING';
+  if (rating >= 1650) return 'EXCELLENT';
   if (rating >= 1400) return 'ABOVE AVERAGE';
-  if (rating >= 1200) return 'AVERAGE';
-  if (rating >= 1000) return 'BELOW AVERAGE';
+  if (rating >= 1150) return 'AVERAGE';
+  if (rating >= 900)  return 'BELOW AVERAGE';
+  if (rating >= 700)  return 'STRUGGLING';
   return 'BEGINNER';
 };
 
 /**
- * Calculate the percentile of a rating among all ratings
- * 
- * @param {Number} rating - The rating to find the percentile for
- * @param {Array} allRatings - Array of all ratings in the system
- * @returns {Number} - Percentile from 0 to 100
+ * Calculate percentile of a rating among all ratings
  */
 const calculatePercentile = (rating, allRatings) => {
   if (!allRatings || allRatings.length === 0) return 50;
@@ -159,21 +253,13 @@ const calculatePercentile = (rating, allRatings) => {
   const sortedRatings = [...allRatings].sort((a, b) => a - b);
   const position = sortedRatings.findIndex(r => r >= rating);
   
-  if (position === -1) return 100; // Higher than all ratings
+  if (position === -1) return 100;
   return Math.round((position / sortedRatings.length) * 100);
 };
 
 /**
  * Wilson Score Lower Bound
- * 
- * A statistically fair way to rank items with few votes.
- * Returns a "confidence lower bound" - what we're 95% sure the true score is at least.
- * This prevents items with 1 win / 1 loss from ranking higher than items with 100 wins / 50 losses.
- * 
- * @param {Number} wins - Number of wins
- * @param {Number} losses - Number of losses
- * @param {Number} z - Z-score for confidence level (1.96 for 95% confidence)
- * @returns {Number} - Wilson score between 0 and 1
+ * Statistically fair ranking that accounts for sample size
  */
 const calculateWilsonScore = (wins, losses, z = 1.96) => {
   const n = wins + losses;
@@ -188,14 +274,10 @@ const calculateWilsonScore = (wins, losses, z = 1.96) => {
 };
 
 /**
- * Calculate a model's score based on their top N images
- * This ensures adding more pics doesn't hurt or help unfairly
- * 
- * @param {Array} images - All images for the model
- * @param {Number} topN - Number of top images to consider (default 3)
- * @returns {Object} - Model score data
+ * Calculate a model's aggregate score from their top images
+ * Uses a combination of ELO, Wilson score, and confidence
  */
-const calculateModelScore = (images, topN = 3) => {
+const calculateModelScore = (images, topN = 5) => {
   if (!images || images.length === 0) {
     return {
       score: 0,
@@ -233,7 +315,7 @@ const calculateModelScore = (images, topN = 3) => {
   // Take top N images
   const topImages = sortedByElo.slice(0, Math.min(topN, sortedByElo.length));
   
-  // Calculate aggregate stats from top images only
+  // Calculate aggregate stats from top images
   const totalWins = topImages.reduce((sum, img) => sum + (img.wins || 0), 0);
   const totalLosses = topImages.reduce((sum, img) => sum + (img.losses || 0), 0);
   const totalMatches = totalWins + totalLosses;
@@ -241,21 +323,30 @@ const calculateModelScore = (images, topN = 3) => {
   const winRate = totalMatches > 0 ? totalWins / totalMatches : 0;
   const wilsonScore = calculateWilsonScore(totalWins, totalLosses);
   
-  // Average ELO of top images
-  const avgElo = topImages.reduce((sum, img) => sum + (img.elo || BASE_RATING), 0) / topImages.length;
+  // Weighted average ELO (top image counts more)
+  const weights = topImages.map((_, i) => Math.pow(0.7, i)); // 1.0, 0.7, 0.49, ...
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const weightedElo = topImages.reduce((sum, img, i) => {
+    return sum + (img.elo || BASE_RATING) * weights[i];
+  }, 0) / totalWeight;
+  
   const topElo = topImages[0]?.elo || BASE_RATING;
   
-  // Confidence based on number of matches (0-1 scale)
-  const confidence = Math.min(1, totalMatches / 50);
+  // Confidence based on matches
+  const confidence = Math.min(1, totalMatches / 30);
   
-  // Combined score: Wilson score * 1000 for a nice readable number
-  // Wilson score naturally handles the sample size problem
-  const score = Math.round(wilsonScore * 1000);
+  // Combined score: blend of Wilson score (sample-size adjusted) and ELO
+  // Wilson gives 0-1, scale to 0-1000 then blend with normalized ELO
+  const normalizedElo = Math.max(0, Math.min(1000, (weightedElo - 600) / 2.2));
+  const wilsonComponent = wilsonScore * 500;
+  
+  // More weight to ELO as confidence grows
+  const score = Math.round(wilsonComponent * (1 - confidence * 0.5) + normalizedElo * (confidence * 0.5));
   
   return {
     score,
     wilsonScore,
-    avgElo: Math.round(avgElo),
+    avgElo: Math.round(weightedElo),
     topElo: Math.round(topElo),
     totalWins,
     totalLosses,
@@ -273,5 +364,9 @@ export {
   calculatePercentile,
   calculateWilsonScore,
   calculateModelScore,
-  BASE_RATING
-}; 
+  calculateRD,
+  getKFactor,
+  BASE_RATING,
+  RATING_FLOOR,
+  RATING_CEILING
+};

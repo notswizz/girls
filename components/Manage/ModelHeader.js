@@ -183,13 +183,14 @@ function calculateWilsonScore(wins, losses, z = 1.96) {
 }
 
 function calculateModelAnalytics(images) {
+  const BASE_ELO = 1500;
   if (!images || images.length === 0) {
-    return { score: 0, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: 1200, topElo: 1200 };
+    return { score: BASE_ELO, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: BASE_ELO, topElo: BASE_ELO };
   }
 
   const ratedImages = images.filter(img => (img.wins || 0) + (img.losses || 0) > 0);
   if (ratedImages.length === 0) {
-    return { score: 0, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: 1200, topElo: 1200 };
+    return { score: BASE_ELO, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: BASE_ELO, topElo: BASE_ELO };
   }
 
   const wins = ratedImages.reduce((sum, img) => sum + (img.wins || 0), 0);
@@ -197,39 +198,48 @@ function calculateModelAnalytics(images) {
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? wins / totalMatches : 0;
   
-  const wilsonScore = calculateWilsonScore(wins, losses);
-  const avgElo = Math.round(ratedImages.reduce((sum, img) => sum + (img.elo || 1200), 0) / ratedImages.length);
-  const topElo = Math.max(...ratedImages.map(img => img.elo || 1200));
-  const eloNormalized = (avgElo - 800) / 1600;
-  const score = Math.round((wilsonScore * 0.7 + eloNormalized * 0.3) * 1000);
-
-  return { score, wins, losses, totalMatches, winRate, avgElo, topElo };
+  const avgElo = Math.round(ratedImages.reduce((sum, img) => sum + (img.elo || BASE_ELO), 0) / ratedImages.length);
+  const topElo = Math.max(...ratedImages.map(img => img.elo || BASE_ELO));
+  
+  // Score is now just the average ELO
+  return { score: avgElo, wins, losses, totalMatches, winRate, avgElo, topElo };
 }
 
 function calculateCommunityAnalytics(images, stats) {
+  const BASE_ELO = 1500;
+  
   if (stats) {
-    const wilsonScore = calculateWilsonScore(stats.totalWins || 0, stats.totalLosses || 0);
+    // Use ELO from stats if available
+    const avgElo = stats.avgElo || BASE_ELO;
+    const topElo = stats.topElo || BASE_ELO;
     return {
-      score: Math.round(wilsonScore * 1000),
+      score: avgElo,
       wins: stats.totalWins || 0,
       losses: stats.totalLosses || 0,
       totalMatches: stats.totalMatches || 0,
       winRate: stats.winRate || 0,
-      avgElo: null,
-      topElo: null
+      avgElo,
+      topElo
     };
   }
 
   if (!images || images.length === 0) {
-    return { score: 0, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: null, topElo: null };
+    return { score: BASE_ELO, wins: 0, losses: 0, totalMatches: 0, winRate: 0, avgElo: BASE_ELO, topElo: BASE_ELO };
   }
 
+  const ratedImages = images.filter(img => (img.wins || 0) + (img.losses || 0) > 0);
   const wins = images.reduce((sum, img) => sum + (img.wins || 0), 0);
   const losses = images.reduce((sum, img) => sum + (img.losses || 0), 0);
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? wins / totalMatches : 0;
-  const wilsonScore = calculateWilsonScore(wins, losses);
-  const score = Math.round(wilsonScore * 1000);
+  
+  // Calculate ELO from images
+  const avgElo = ratedImages.length > 0 
+    ? Math.round(ratedImages.reduce((sum, img) => sum + (img.elo || BASE_ELO), 0) / ratedImages.length)
+    : BASE_ELO;
+  const topElo = ratedImages.length > 0
+    ? Math.max(...ratedImages.map(img => img.elo || BASE_ELO))
+    : BASE_ELO;
 
-  return { score, wins, losses, totalMatches, winRate, avgElo: null, topElo: null };
+  return { score: avgElo, wins, losses, totalMatches, winRate, avgElo, topElo };
 }

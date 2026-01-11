@@ -381,7 +381,7 @@ function GalleryLeaderboardModal({ onClose }) {
 
                 {/* ELO Score */}
                 <div className="text-right">
-                  <p className="text-pink-400 font-bold">{Math.round(entry.elo || 1200)}</p>
+                  <p className="text-pink-400 font-bold">{Math.round(entry.elo || 1500)}</p>
                   <p className="text-white/40 text-xs">elo</p>
                 </div>
               </div>

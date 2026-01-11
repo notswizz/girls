@@ -2,10 +2,12 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '../../../../config';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
+import { BASE_RATING } from '../../../../utils/eloCalculator';
 
 /**
  * Get community (explore) ratings for a model's images
  * These are ratings from OTHER users voting on your public photos
+ * Now uses proper ELO rating system
  */
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -67,7 +69,7 @@ export default async function handler(req, res) {
       communityStatsMap[rating.imageId] = {
         wins: rating.wins || 0,
         losses: rating.losses || 0,
-        score: rating.score || 0,
+        elo: rating.elo || BASE_RATING,
         lastVotedAt: rating.lastVotedAt
       };
     }
@@ -75,26 +77,22 @@ export default async function handler(req, res) {
     // Map images with community stats
     const imagesWithCommunityStats = images.map(img => {
       const imgId = img._id.toString();
-      const communityStats = communityStatsMap[imgId] || { wins: 0, losses: 0, score: 0 };
+      const communityStats = communityStatsMap[imgId] || { wins: 0, losses: 0, elo: BASE_RATING };
       const totalMatches = communityStats.wins + communityStats.losses;
       const winRate = totalMatches > 0 ? communityStats.wins / totalMatches : 0;
-      
-      // Calculate Wilson score for community ratings
-      const wilsonScore = calculateWilsonScore(communityStats.wins, communityStats.losses);
-      const compositeScore = Math.round(wilsonScore * 1000);
 
       return {
         _id: imgId,
         id: imgId,
         url: img.url,
         name: img.name || '',
-        // Community stats
+        // Community stats - now using ELO
         wins: communityStats.wins,
         losses: communityStats.losses,
         totalMatches,
         winRate,
-        score: compositeScore,
-        communityScore: communityStats.score,
+        elo: communityStats.elo,
+        score: communityStats.elo, // For backwards compatibility, score = elo now
         lastVotedAt: communityStats.lastVotedAt
       };
     });
@@ -104,7 +102,15 @@ export default async function handler(req, res) {
     const totalLosses = imagesWithCommunityStats.reduce((sum, img) => sum + img.losses, 0);
     const totalMatches = totalWins + totalLosses;
     const overallWinRate = totalMatches > 0 ? totalWins / totalMatches : 0;
-    const topScore = Math.max(0, ...imagesWithCommunityStats.map(img => img.score));
+    
+    // Calculate average and top ELO for rated images only
+    const ratedImages = imagesWithCommunityStats.filter(img => img.totalMatches > 0);
+    const avgElo = ratedImages.length > 0 
+      ? Math.round(ratedImages.reduce((sum, img) => sum + img.elo, 0) / ratedImages.length)
+      : BASE_RATING;
+    const topElo = ratedImages.length > 0
+      ? Math.max(...ratedImages.map(img => img.elo))
+      : BASE_RATING;
 
     return res.status(200).json({
       success: true,
@@ -114,7 +120,9 @@ export default async function handler(req, res) {
         totalLosses,
         totalMatches,
         winRate: overallWinRate,
-        topScore
+        avgElo,
+        topElo,
+        topScore: topElo // backwards compatibility
       }
     });
   } catch (error) {
@@ -122,16 +130,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to fetch community stats' });
   }
 }
-
-function calculateWilsonScore(wins, losses, z = 1.96) {
-  const n = wins + losses;
-  if (n === 0) return 0;
-  
-  const p = wins / n;
-  const denominator = 1 + (z * z) / n;
-  const centre = p + (z * z) / (2 * n);
-  const spread = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
-  
-  return (centre - spread) / denominator;
-}
-
